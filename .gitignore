@@ -1,0 +1,8 @@
+node_modules/
+.tmpdbg/
+.tmptest-data/
+package-lock.json
+*.log
+
+# gegenereerd door `npm run build` (zelfde bestand als index.html in de wortel)
+deploy/homeassistant/addon/www/

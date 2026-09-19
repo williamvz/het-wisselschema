@@ -1,0 +1,3113 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Het Wisselschema</title>
+<meta name="description" content="Maakt en bewaakt het wisselschema van een jeugdvoetbalteam. Werkt offline, zonder account.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#10794a" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c1310" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wisselschema">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%2310794a%22%2F%3E%3Crect%20x%3D%2212%22%20y%3D%2210%22%20width%3D%2240%22%20height%3D%2244%22%20rx%3D%224%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%2F%3E%3Cline%20x1%3D%2212%22%20y1%3D%2232%22%20x2%3D%2252%22%20y2%3D%2232%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2232%22%20r%3D%227%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%2222%22%20cy%3D%2220%22%20r%3D%224%22%20fill%3D%22%23fbbf24%22%2F%3E%3Ccircle%20cx%3D%2242%22%20cy%3D%2244%22%20r%3D%224%22%20fill%3D%22%23fbbf24%22%2F%3E%3C%2Fsvg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%2310794a%22%2F%3E%3Crect%20x%3D%2212%22%20y%3D%2210%22%20width%3D%2240%22%20height%3D%2244%22%20rx%3D%224%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%2F%3E%3Cline%20x1%3D%2212%22%20y1%3D%2232%22%20x2%3D%2252%22%20y2%3D%2232%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2232%22%20r%3D%227%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%2222%22%20cy%3D%2220%22%20r%3D%224%22%20fill%3D%22%23fbbf24%22%2F%3E%3Ccircle%20cx%3D%2242%22%20cy%3D%2244%22%20r%3D%224%22%20fill%3D%22%23fbbf24%22%2F%3E%3C%2Fsvg%3E">
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Het%20Wisselschema%22%2C%22short_name%22%3A%22Wisselschema%22%2C%22start_url%22%3A%22.%22%2C%22scope%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f1f4f2%22%2C%22theme_color%22%3A%22%2310794a%22%2C%22lang%22%3A%22nl%22%2C%22description%22%3A%22Maakt%20en%20bewaakt%20het%20wisselschema%20van%20een%20jeugdvoetbalteam.%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520viewBox%253D%25220%25200%252064%252064%2522%253E%253Crect%2520width%253D%252264%2522%2520height%253D%252264%2522%2520rx%253D%252214%2522%2520fill%253D%2522%252310794a%2522%252F%253E%253Crect%2520x%253D%252212%2522%2520y%253D%252210%2522%2520width%253D%252240%2522%2520height%253D%252244%2522%2520rx%253D%25224%2522%2520fill%253D%2522none%2522%2520stroke%253D%2522%2523fff%2522%2520stroke-width%253D%25223%2522%252F%253E%253Cline%2520x1%253D%252212%2522%2520y1%253D%252232%2522%2520x2%253D%252252%2522%2520y2%253D%252232%2522%2520stroke%253D%2522%2523fff%2522%2520stroke-width%253D%25223%2522%252F%253E%253Ccircle%2520cx%253D%252232%2522%2520cy%253D%252232%2522%2520r%253D%25227%2522%2520fill%253D%2522none%2522%2520stroke%253D%2522%2523fff%2522%2520stroke-width%253D%25223%2522%252F%253E%253Ccircle%2520cx%253D%252222%2522%2520cy%253D%252220%2522%2520r%253D%25224%2522%2520fill%253D%2522%2523fbbf24%2522%252F%253E%253Ccircle%2520cx%253D%252242%2522%2520cy%253D%252244%2522%2520r%253D%25224%2522%2520fill%253D%2522%2523fbbf24%2522%252F%253E%253C%252Fsvg%253E%22%2C%22sizes%22%3A%22any%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%2C%22purpose%22%3A%22any%22%7D%5D%7D">
+<style>/* ------------------------------------------------------------------ tokens */
+:root {
+  --bg: #f1f4f2;
+  --vlak: #ffffff;
+  --vlak-2: #f7f9f8;
+  --rand: #dde4e0;
+  --tekst: #0f1714;
+  --zacht: #5b6b63;
+  --accent: #10794a;
+  --accent-fel: #15a163;
+  --accent-zacht: #e3f3ea;
+  --waarschuwing: #b45309;
+  --waarschuwing-zacht: #fef3c7;
+  --alarm: #be123c;
+  --alarm-zacht: #ffe4e9;
+  --rol-K: #d97706;
+  --rol-V: #2563eb;
+  --rol-M: #7c3aed;
+  --rol-A: #e11d48;
+  --bank: #94a3b8;
+  --schaduw: 0 1px 2px rgba(12, 30, 22, .06), 0 6px 20px rgba(12, 30, 22, .07);
+  --r: 16px;
+  --r-s: 10px;
+  --veld-1: #2f9e5e;
+  --veld-2: #2a8d54;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-thema="licht"]) {
+    --bg: #0c1310; --vlak: #151e19; --vlak-2: #1b2620; --rand: #2a3830;
+    --tekst: #e9f1ec; --zacht: #94a89d;
+    --accent: #2fbd74; --accent-fel: #3ad484; --accent-zacht: #16301f;
+    --waarschuwing: #fbbf24; --waarschuwing-zacht: #34240a;
+    --alarm: #fb7185; --alarm-zacht: #3b0d18;
+    --rol-K: #f0a532; --rol-V: #5b91f5; --rol-M: #a17cf0; --rol-A: #f4506f;
+    --bank: #64748b;
+    --schaduw: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.35);
+    --veld-1: #1f6b41; --veld-2: #1b5d39;
+  }
+}
+:root[data-thema="donker"] {
+  --bg: #0c1310; --vlak: #151e19; --vlak-2: #1b2620; --rand: #2a3830;
+  --tekst: #e9f1ec; --zacht: #94a89d;
+  --accent: #2fbd74; --accent-fel: #3ad484; --accent-zacht: #16301f;
+  --waarschuwing: #fbbf24; --waarschuwing-zacht: #34240a;
+  --alarm: #fb7185; --alarm-zacht: #3b0d18;
+  --rol-K: #f0a532; --rol-V: #5b91f5; --rol-M: #a17cf0; --rol-A: #f4506f;
+  --bank: #64748b;
+  --schaduw: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.35);
+  --veld-1: #1f6b41; --veld-2: #1b5d39;
+}
+
+/* ------------------------------------------------------------------ basis */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--tekst);
+  font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: contain;
+}
+h1, h2, h3 { margin: 0; line-height: 1.2; letter-spacing: -.02em; }
+h1 { font-size: 1.35rem; font-weight: 700; }
+h2 { font-size: 1.1rem; font-weight: 700; }
+h3 { font-size: .95rem; font-weight: 650; }
+p { margin: 0 0 .6em; }
+button { font: inherit; color: inherit; }
+input, select, textarea { font: inherit; color: inherit; }
+
+#app { max-width: 720px; margin: 0 auto; padding: 0 16px 100px; }
+
+/* ------------------------------------------------------------------ header */
+.kop {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 0 10px; margin-bottom: 4px;
+  background: linear-gradient(var(--bg) 72%, transparent);
+}
+.kop .titel { flex: 1; min-width: 0; }
+.kop .titel small { display: block; color: var(--zacht); font-size: .78rem; font-weight: 500; }
+.kop .titel strong { display: block; font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.merk { width: 34px; height: 34px; border-radius: 10px; flex: none;
+  background: linear-gradient(140deg, var(--accent-fel), var(--accent));
+  display: grid; place-items: center; color: #fff; font-weight: 800; font-size: .9rem; }
+
+/* ------------------------------------------------------------------ kaarten */
+.kaart {
+  background: var(--vlak); border: 1px solid var(--rand); border-radius: var(--r);
+  padding: 14px; margin-bottom: 12px; box-shadow: var(--schaduw);
+}
+.kaart > h2, .kaart > h3 { margin-bottom: 10px; }
+.kaart-kop { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.kaart-kop h2, .kaart-kop h3 { flex: 1; margin: 0; }
+.uitleg { color: var(--zacht); font-size: .84rem; margin: -4px 0 10px; }
+.leeg { color: var(--zacht); text-align: center; padding: 26px 12px; font-size: .9rem; }
+
+/* ------------------------------------------------------------------ knoppen */
+.knop {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: 46px; padding: 0 16px; border-radius: 12px;
+  border: 1px solid var(--rand); background: var(--vlak); color: var(--tekst);
+  font-weight: 600; font-size: .95rem; cursor: pointer;
+  transition: transform .06s ease, background .12s ease, border-color .12s ease;
+}
+.knop:active { transform: scale(.975); }
+.knop:disabled { opacity: .45; cursor: default; }
+.knop.primair { background: var(--accent); border-color: var(--accent); color: #fff; }
+.knop.gevaar { background: var(--alarm-zacht); border-color: transparent; color: var(--alarm); }
+.knop.stil { background: transparent; border-color: transparent; color: var(--zacht); }
+.knop.breed { width: 100%; }
+.knop.groot { min-height: 58px; font-size: 1.05rem; border-radius: 14px; }
+.knop.klein { min-height: 36px; padding: 0 11px; font-size: .84rem; border-radius: 9px; }
+.knoprij { display: flex; gap: 8px; flex-wrap: wrap; }
+.knoprij > .knop { flex: 1 1 auto; }
+
+/* ------------------------------------------------------------------ velden */
+label.veld { display: block; margin-bottom: 12px; }
+label.veld > span { display: block; font-size: .8rem; font-weight: 600; color: var(--zacht); margin-bottom: 5px; }
+input[type=text], input[type=date], input[type=number], select, textarea {
+  width: 100%; min-height: 46px; padding: 10px 12px;
+  background: var(--vlak-2); border: 1px solid var(--rand); border-radius: 11px;
+}
+textarea { min-height: 96px; resize: vertical; line-height: 1.5; }
+input:focus, select:focus, textarea:focus, .knop:focus-visible, .chip:focus-visible {
+  outline: 2px solid var(--accent-fel); outline-offset: 1px;
+}
+.rij2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rij3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+/* keuzeknoppen (segmented) */
+.segment { display: flex; gap: 4px; background: var(--vlak-2); border: 1px solid var(--rand);
+  border-radius: 12px; padding: 4px; }
+.segment button { flex: 1; min-height: 38px; border: 0; border-radius: 9px; background: transparent;
+  font-weight: 600; font-size: .88rem; cursor: pointer; color: var(--zacht); }
+.segment button[aria-pressed="true"] { background: var(--vlak); color: var(--tekst); box-shadow: var(--schaduw); }
+
+/* ------------------------------------------------------------------ chips */
+.chip {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 42px;
+  padding: 0 13px; border-radius: 11px; cursor: pointer;
+  background: var(--vlak-2); border: 1px solid var(--rand);
+  font-weight: 600; font-size: .9rem; user-select: none;
+}
+.chip[aria-pressed="true"] { background: var(--accent-zacht); border-color: var(--accent); color: var(--accent); }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bank); flex: none; }
+.chip[aria-pressed="true"] .dot { background: var(--accent); }
+.chiprij { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.vlag { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: .68rem;
+  font-weight: 700; letter-spacing: .03em; background: var(--vlak-2); color: var(--zacht); border: 1px solid var(--rand); }
+.vlag.K { background: color-mix(in srgb, var(--rol-K) 16%, transparent); color: var(--rol-K); border-color: transparent; }
+.vlag.V { background: color-mix(in srgb, var(--rol-V) 16%, transparent); color: var(--rol-V); border-color: transparent; }
+.vlag.M { background: color-mix(in srgb, var(--rol-M) 16%, transparent); color: var(--rol-M); border-color: transparent; }
+.vlag.A { background: color-mix(in srgb, var(--rol-A) 16%, transparent); color: var(--rol-A); border-color: transparent; }
+
+/* ------------------------------------------------------------------ spelerlijst */
+.spelerrij {
+  display: flex; align-items: center; gap: 11px; padding: 10px 4px;
+  border-bottom: 1px solid var(--rand); cursor: pointer;
+}
+.spelerrij:last-child { border-bottom: 0; }
+.bal {
+  width: 38px; height: 38px; border-radius: 11px; flex: none; display: grid; place-items: center;
+  background: var(--vlak-2); border: 1px solid var(--rand); font-weight: 700; font-size: .85rem;
+}
+.spelerrij .naam { flex: 1; min-width: 0; font-weight: 600; }
+.spelerrij .naam small { display: block; font-weight: 500; font-size: .76rem; color: var(--zacht);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.saldo { font-variant-numeric: tabular-nums; font-size: .8rem; font-weight: 650; color: var(--zacht); }
+.saldo.plus { color: var(--rol-V); }
+.saldo.min { color: var(--waarschuwing); }
+
+/* ------------------------------------------------------------------ veld (svg) */
+.veld { width: 100%; display: block; border-radius: var(--r-s); overflow: hidden; }
+.veld .gras-a { fill: var(--veld-1); }
+.veld .gras-b { fill: var(--veld-2); }
+.veld .lijn { fill: none; stroke: rgba(255,255,255,.5); stroke-width: .7; }
+.veld .naam { font-size: 4.4px; font-weight: 650; fill: #fff; text-anchor: middle;
+  paint-order: stroke; stroke: rgba(0,0,0,.45); stroke-width: .9px; }
+.veld .nr { font-size: 6.2px; font-weight: 800; text-anchor: middle; dominant-baseline: central; fill: #fff; }
+.veld .pion { stroke: rgba(255,255,255,.85); stroke-width: .8; }
+.veld .pos { font-size: 3.4px; fill: rgba(255,255,255,.75); text-anchor: middle; font-weight: 600; }
+
+/* ------------------------------------------------------------------ schema-tabel */
+.schema-wrap { overflow-x: auto; margin: 0 -14px; padding: 0 14px; }
+table.schema { border-collapse: separate; border-spacing: 0; width: 100%; font-size: .82rem; }
+table.schema th, table.schema td { padding: 0; }
+table.schema thead th { font-size: .7rem; font-weight: 700; color: var(--zacht); text-align: center;
+  padding-bottom: 6px; white-space: nowrap; }
+table.schema thead th.sp { text-align: left; padding-left: 2px; }
+table.schema tbody td { padding: 2px; }
+table.schema td.sp { text-align: left; font-weight: 600; white-space: nowrap; padding-right: 8px;
+  max-width: 96px; overflow: hidden; text-overflow: ellipsis; }
+table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; color: var(--zacht);
+  font-weight: 650; padding-left: 6px; white-space: nowrap; }
+.cel {
+  display: block; width: 100%; min-height: 40px; border-radius: 9px; border: 0; cursor: pointer;
+  font-weight: 750; font-size: .78rem; color: #fff; letter-spacing: .01em;
+}
+.cel.K { background: var(--rol-K); } .cel.V { background: var(--rol-V); }
+.cel.M { background: var(--rol-M); } .cel.A { background: var(--rol-A); }
+.cel.bank { background: var(--vlak-2); color: var(--bank); border: 1px dashed var(--rand); font-weight: 600; }
+.cel.weg { background: transparent; color: var(--rand); border: 1px dashed var(--rand); }
+.cel.vast { box-shadow: inset 0 0 0 2px var(--tekst); }
+
+/* ------------------------------------------------------------------ wisselkaart */
+.wissel { border: 1px solid var(--rand); border-radius: var(--r-s); padding: 11px; margin-bottom: 8px;
+  background: var(--vlak-2); }
+.wissel .wanneer { font-size: .74rem; font-weight: 700; color: var(--zacht); text-transform: uppercase;
+  letter-spacing: .05em; margin-bottom: 7px; }
+.beweging { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: .9rem; }
+.beweging .pijl { width: 22px; text-align: center; font-weight: 800; flex: none; }
+.beweging.uit .pijl { color: var(--alarm); }
+.beweging.erin .pijl { color: var(--accent); }
+.beweging.schuif .pijl { color: var(--rol-M); }
+.beweging b { font-weight: 700; }
+.beweging span { color: var(--zacht); font-size: .82rem; }
+
+/* ------------------------------------------------------------------ waarschuwingen */
+.melding { display: flex; gap: 9px; padding: 10px 12px; border-radius: var(--r-s); margin-bottom: 7px;
+  font-size: .86rem; line-height: 1.4; }
+.melding .ico { flex: none; font-weight: 800; }
+.melding.hoog { background: var(--alarm-zacht); color: var(--alarm); }
+.melding.midden { background: var(--waarschuwing-zacht); color: var(--waarschuwing); }
+.melding.info { background: var(--vlak-2); color: var(--zacht); }
+
+/* ------------------------------------------------------------------ live */
+.klok-kaart { text-align: center; padding: 18px 14px 14px; }
+.klok { font-size: 3.6rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.035em;
+  line-height: 1; margin: 2px 0 4px; }
+.klok.pauze { color: var(--zacht); }
+.kwartlabel { font-size: .8rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--zacht); }
+.balk { height: 9px; border-radius: 99px; background: var(--vlak-2); overflow: hidden; margin: 12px 0 8px;
+  border: 1px solid var(--rand); }
+.balk > i { display: block; height: 100%; background: var(--accent); transition: width .3s linear; }
+.balk.bijna > i { background: var(--waarschuwing); }
+.balk.nu > i { background: var(--alarm); }
+.tot-wissel { font-size: .88rem; color: var(--zacht); font-weight: 600; }
+.tot-wissel b { color: var(--tekst); font-variant-numeric: tabular-nums; }
+
+.alarmkaart { border: 2px solid var(--accent); background: var(--accent-zacht); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { border-color: var(--accent); } 50% { border-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .alarmkaart { animation: none; } .knop:active { transform: none; } }
+
+/* ------------------------------------------------------------------ navigatie */
+.nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+  display: flex; justify-content: center; gap: 2px;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--vlak) 96%, transparent);
+  backdrop-filter: blur(16px); border-top: 1px solid var(--rand);
+}
+.nav button {
+  flex: 1; max-width: 120px; border: 0; background: transparent; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 5px 2px; border-radius: 11px; color: var(--zacht); font-size: .66rem; font-weight: 650;
+}
+.nav button[aria-current="page"] { color: var(--accent); background: var(--accent-zacht); }
+.nav button svg { width: 21px; height: 21px; }
+.nav button .punt { position: absolute; margin: -2px 0 0 18px; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--alarm); }
+
+/* ------------------------------------------------------------------ sheet */
+.overlay { position: fixed; inset: 0; z-index: 60; background: rgba(8, 18, 14, .45);
+  display: flex; align-items: flex-end; justify-content: center; }
+.sheet {
+  background: var(--vlak); width: 100%; max-width: 720px; max-height: 88vh; overflow-y: auto;
+  border-radius: 20px 20px 0 0; padding: 8px 16px calc(20px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 40px rgba(0,0,0,.25); animation: omhoog .22s cubic-bezier(.2,.8,.3,1);
+}
+@keyframes omhoog { from { transform: translateY(18px); opacity: .5; } }
+.greep { width: 38px; height: 4px; border-radius: 99px; background: var(--rand); margin: 6px auto 12px; }
+@media (min-width: 640px) {
+  .overlay { align-items: center; }
+  .sheet { border-radius: 20px; max-height: 84vh; }
+}
+
+/* ------------------------------------------------------------------ overig */
+.mini { font-size: .78rem; color: var(--zacht); }
+.tussenkop { font-size: .72rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--zacht); margin: 16px 0 7px; }
+.strook { display: flex; gap: 10px; align-items: center; justify-content: space-between;
+  padding: 11px 0; border-bottom: 1px solid var(--rand); }
+.strook:last-child { border-bottom: 0; }
+.strook .kop2 { font-weight: 600; font-size: .92rem; }
+.strook .kop2 small { display: block; color: var(--zacht); font-weight: 500; font-size: .76rem; }
+.schuif { width: 100%; accent-color: var(--accent); min-height: 34px; }
+.tel { display: flex; align-items: baseline; gap: 5px; }
+.tel b { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+
+/* schakelaar */
+.schakel { position: relative; width: 50px; height: 30px; flex: none; border-radius: 99px;
+  background: var(--rand); border: 0; cursor: pointer; transition: background .16s; }
+.schakel[aria-pressed="true"] { background: var(--accent); }
+.schakel i { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
+  background: #fff; transition: transform .16s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.schakel[aria-pressed="true"] i { transform: translateX(20px); }
+
+/* ------------------------------------------------------------------ printen */
+@media print {
+  .nav, .kop, .knoprij, .niet-printen { display: none !important; }
+  body { background: #fff; color: #000; }
+  #app { max-width: none; padding: 0; }
+  .kaart { border: 1px solid #bbb; box-shadow: none; break-inside: avoid; margin-bottom: 8px; }
+  .cel { color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}</style>
+</head>
+<body>
+<div id="app"></div>
+<noscript><p style="padding:24px;font-family:sans-serif">Deze app heeft JavaScript nodig.</p></noscript>
+<script type="module">(() => {
+'use strict';
+const __defs = Object.create(null);
+const __cache = Object.create(null);
+function __mod(naam) {
+  if (__cache[naam]) return __cache[naam];
+  const maker = __defs[naam];
+  if (!maker) throw new Error('onbekende module: ' + naam);
+  return (__cache[naam] = maker());
+}
+__defs["app/main.js"] = function () {
+// De romp: kopbalk, schermkeuze, navigatie en het opstarten.
+
+const { h, icoon, leegmaken, toonSheet, melding, houdSchermAan, minutenTekst, voornaam, datumTekst } = __mod("app/ui.js");
+const { S, wijzig, abonneer, laadLokaal, startSync, plan, klokStand, leesDeelLink, nieuweSpeler, nieuweWedstrijd, bewaarNu } = __mod("app/store.js");
+const { getFormation } = __mod("lib/formations.js");
+const { totaleSpeeltijd } = __mod("lib/schedule.js");
+const { schermTeam } = __mod("app/scherm-team.js");
+const { schermOpzet } = __mod("app/scherm-opzet.js");
+const { schermSchema } = __mod("app/scherm-schema.js");
+const { schermLive, tikLive, actiefBlokIndex } = __mod("app/scherm-live.js");
+const { schermArchief } = __mod("app/scherm-archief.js");
+
+const SCHERMEN = [
+  { id: 'team', naam: 'Team', ico: 'team' },
+  { id: 'opzet', naam: 'Wedstrijd', ico: 'opzet' },
+  { id: 'schema', naam: 'Schema', ico: 'schema' },
+  { id: 'live', naam: 'Live', ico: 'live' },
+  { id: 'archief', naam: 'Archief', ico: 'archief' },
+];
+
+let wortel = null;
+
+function ganaar(scherm) {
+  wijzig((s) => { s.ui.scherm = scherm; });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function ondertitel() {
+  const w = S.wedstrijd;
+  if (!w) return `${S.team.spelers.length} speler${S.team.spelers.length === 1 ? '' : 's'}`;
+  const tegen = w.tegenstander ? `${w.thuis ? 'thuis tegen' : 'uit bij'} ${w.tegenstander}` : datumTekst(w.datum);
+  return `${tegen} · ${getFormation(w.formationId).naam}`;
+}
+
+function wisselStaatOpen() {
+  const w = S.wedstrijd;
+  if (!w || !w.blokken || w.status !== 'bezig') return false;
+  const p = plan();
+  const i = actiefBlokIndex(p.blokken);
+  return klokStand() >= p.blokken[i].totSec;
+}
+
+function render() {
+  const thema = S.instellingen.thema || 'auto';
+  document.documentElement.dataset.thema = thema === 'auto' ? '' : thema;
+
+  leegmaken(wortel);
+  wortel.appendChild(h('header', { class: 'kop' },
+    h('div', { class: 'merk', 'aria-hidden': 'true' }, 'W'),
+    h('div', { class: 'titel' },
+      h('strong', {}, S.team.naam),
+      h('small', {}, ondertitel()))));
+
+  const scherm = S.ui.scherm || 'team';
+  const inhoud =
+    scherm === 'team' ? schermTeam()
+    : scherm === 'opzet' ? schermOpzet(ganaar)
+    : scherm === 'schema' ? schermSchema(ganaar)
+    : scherm === 'live' ? schermLive(ganaar, render)
+    : schermArchief();
+  wortel.appendChild(inhoud);
+
+  const open = wisselStaatOpen();
+  const nav = h('nav', { class: 'nav niet-printen', 'aria-label': 'Hoofdnavigatie' });
+  for (const s of SCHERMEN) {
+    nav.appendChild(h('button', {
+      'aria-current': scherm === s.id ? 'page' : null,
+      onclick: () => ganaar(s.id),
+    }, icoon(s.ico), s.id === 'live' && open ? h('span', { class: 'punt' }) : null, s.naam));
+  }
+  document.getElementById('nav')?.remove();
+  nav.id = 'nav';
+  document.body.appendChild(nav);
+
+  houdSchermAan(S.instellingen.schermAan && scherm === 'live' && !!S.wedstrijd?.klok?.loopt);
+}
+
+// -------------------------------------------------------------- gedeelde link
+async function verwerkDeelLink() {
+  if (!location.hash || !/[#&][zj]=/.test(location.hash)) return false;
+  let data;
+  try { data = await leesDeelLink(location.hash); } catch (e) { return false; }
+  if (!data || !data.w) return false;
+  history.replaceState(null, '', location.pathname + location.search);
+
+  const spelers = (data.s || []).map(([id, naam, nummer, keeper, posities]) =>
+    ({ ...nieuweSpeler(naam), id, nummer: nummer || '', keeper: !!keeper, posities: (posities || '').split('').filter(Boolean) }));
+  const formatie = getFormation(data.w.f);
+  const naam = (id) => voornaam((spelers.find((q) => q.id === id) || {}).naam);
+
+  toonSheet(`Gedeeld schema`, (c, sluit) => {
+    c.appendChild(h('p', { class: 'uitleg' },
+      `${data.t || 'Een team'}${data.w.o ? ` tegen ${data.w.o}` : ''} · ${data.w.d || ''} · ${formatie.naam}`));
+
+    const blokken = data.w.bl || [];
+    const kop = h('tr', {}, h('th', { class: 'sp' }, 'Speler'),
+      ...blokken.map(([van]) => h('th', {}, `${Math.round(van / 60)}'`)), h('th', {}, 'Tot.'));
+    const lijf = h('tbody', {});
+    for (const sp of spelers) {
+      let sec = 0;
+      const cellen = blokken.map(([van, tot, opstelling]) => {
+        const sid = Object.keys(opstelling || {}).find((k) => opstelling[k] === sp.id);
+        const slot = sid ? formatie.slots.find((x) => x.id === sid) : null;
+        if (slot) sec += tot - van;
+        return h('td', {}, h('span', { class: `cel ${slot ? slot.role : 'bank'}`,
+          style: { display: 'grid', placeItems: 'center', minHeight: '34px' } }, slot ? slot.label : 'bank'));
+      });
+      lijf.appendChild(h('tr', {}, h('td', { class: 'sp' }, voornaam(sp.naam)), ...cellen,
+        h('td', { class: 'tot' }, minutenTekst(sec))));
+    }
+    c.appendChild(h('div', { class: 'schema-wrap' }, h('table', { class: 'schema' }, h('thead', {}, kop), lijf)));
+
+    c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '16px' } },
+      h('button', { class: 'knop', onclick: sluit }, 'Alleen bekijken'),
+      h('button', { class: 'knop primair', style: { flex: '2' }, onclick: () => {
+        wijzig((s) => {
+          s.team.naam = data.t || s.team.naam;
+          for (const sp of spelers) if (!s.team.spelers.some((q) => q.id === sp.id)) s.team.spelers.push(sp);
+          const w = nieuweWedstrijd();
+          Object.assign(w, {
+            datum: data.w.d, tegenstander: data.w.o, formationId: data.w.f,
+            periodes: data.w.p, periodeMin: data.w.m, blokkenPerPeriode: data.w.b,
+            speelvorm: formatie.speelvorm, selectie: data.w.sel || spelers.map((x) => x.id),
+            blokken: blokken.map(([van, tot, opstelling], i) => ({
+              id: `gd${i}`, periode: Math.floor(van / (data.w.m * 60)), deel: 0,
+              vanSec: van, totSec: tot, vast: false, opstelling: opstelling || {}, bank: [],
+            })),
+          });
+          w.pins = Object.fromEntries(w.blokken.map((b) => [b.id, b.opstelling]));
+          s.wedstrijd = w;
+          s.ui.scherm = 'schema';
+        }, { terugdraaibaar: true });
+        sluit();
+        melding('Schema overgenomen');
+      } }, 'Overnemen')));
+  });
+  return true;
+}
+
+// --------------------------------------------------------------------- start
+async function start() {
+  wortel = document.getElementById('app');
+  laadLokaal();
+  render();
+
+  const gedeeld = await verwerkDeelLink();
+  if (!gedeeld) startSync().then((ok) => { if (ok) render(); });
+
+  setInterval(() => { if (S.ui.scherm === 'live' && S.wedstrijd) tikLive(); }, 250);
+
+  // Terugkomen uit de achtergrond: de klok loopt door op wandkloktijd, dus
+  // even bijwerken zodat het scherm meteen weer klopt.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { tikLive(); houdSchermAan(S.instellingen.schermAan && S.ui.scherm === 'live' && !!S.wedstrijd?.klok?.loopt); }
+  });
+  window.addEventListener('pagehide', bewaarNu);
+  window.addEventListener('beforeunload', (e) => {
+    if (S.wedstrijd?.klok?.loopt) { bewaarNu(); e.preventDefault(); e.returnValue = ''; }
+  });
+
+  abonneer(render);
+}
+
+return { ganaar, render, start };
+};
+__defs["app/ui.js"] = function () {
+// Minimale UI-gereedschapskist. Geen framework: de app is klein genoeg om
+// de DOM gewoon opnieuw op te bouwen, en dat scheelt een halve megabyte.
+
+function h(tag, props = {}, ...kinderen) {
+  const el = document.createElement(tag);
+  vulIn(el, props, kinderen);
+  return el;
+}
+
+function svgEl(tag, props = {}, ...kinderen) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v == null || v === false) continue;
+    if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
+    else el.setAttribute(k, v);
+  }
+  hangAan(el, kinderen);
+  return el;
+}
+
+function vulIn(el, props, kinderen) {
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === 'value' || k === 'checked' || k === 'disabled' || k === 'type' || k === 'placeholder') el[k] = v;
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  hangAan(el, kinderen);
+}
+
+function hangAan(el, kinderen) {
+  for (const k of kinderen.flat(4)) {
+    if (k == null || k === false) continue;
+    el.appendChild(k instanceof Node ? k : document.createTextNode(String(k)));
+  }
+}
+
+const leegmaken = (el) => { while (el.firstChild) el.removeChild(el.firstChild); return el; };
+
+// ------------------------------------------------------------------ opmaak
+const mmss = (sec) => {
+  const s = Math.max(0, Math.round(sec));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+const minuten = (sec) => `${Math.round(sec / 60)}`;
+const minutenTekst = (sec) => `${Math.round(sec / 60)} min`;
+const saldoTekst = (sec) => {
+  const m = Math.round(sec / 60);
+  return m === 0 ? '0' : (m > 0 ? `+${m}` : `${m}`);
+};
+
+function initialen(naam) {
+  const d = String(naam || '').trim().split(/\s+/);
+  if (!d[0]) return '?';
+  return (d.length > 1 ? d[0][0] + d[d.length - 1][0] : d[0].slice(0, 2)).toUpperCase();
+}
+const voornaam = (naam) => String(naam || '').trim().split(/\s+/)[0] || '?';
+
+const datumTekst = (iso) => {
+  try {
+    return new Date(iso + 'T12:00:00').toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
+  } catch (e) { return iso; }
+};
+
+// ------------------------------------------------------------------ iconen
+const PADEN = {
+  team: 'M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm10 8v-1.5a3.5 3.5 0 0 0-2.6-3.4M15.5 4.3a3.5 3.5 0 0 1 0 6.5',
+  opzet: 'M4 7h16M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2M4 7v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7M9 3v3m6-3v3M8 12h8m-8 4h5',
+  schema: 'M4 5h16M4 5v14M4 5a0 0 0 0 0 0 0m16 0v14M4 19h16M9.5 5v14M14.5 5v14M4 12h16',
+  live: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3.5 2',
+  archief: 'M4 8h16M5 8V6a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v2M6 8v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8M10 12h4',
+  tandwiel: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8.4-3a8.4 8.4 0 0 0-.16-1.6l2.1-1.6-2-3.5-2.5 1a8.4 8.4 0 0 0-2.8-1.6L14.6 2h-4l-.44 2.7a8.4 8.4 0 0 0-2.8 1.6l-2.5-1-2 3.5 2.1 1.6a8.4 8.4 0 0 0 0 3.2l-2.1 1.6 2 3.5 2.5-1a8.4 8.4 0 0 0 2.8 1.6l.44 2.7h4l.44-2.7a8.4 8.4 0 0 0 2.8-1.6l2.5 1 2-3.5-2.1-1.6c.1-.52.16-1.06.16-1.6Z',
+  terug: 'M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
+  plus: 'M12 5v14M5 12h14',
+  deel: 'M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 15V3m0 0L8 7m4-4 4 4',
+  vernieuw: 'M20 11a8 8 0 1 0-.6 3M20 5v6h-6',
+  fluit: 'M12 3v4m0 0a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm-2.5 7h5',
+};
+function icoon(naam, grootte = 21) {
+  return svgEl('svg', { viewBox: '0 0 24 24', width: grootte, height: grootte, fill: 'none', stroke: 'currentColor',
+    'stroke-width': 1.8, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' },
+    svgEl('path', { d: PADEN[naam] || PADEN.schema }));
+}
+
+// ------------------------------------------------------------------ sheets
+let openSheet = null;
+function sluitSheet() {
+  if (openSheet) { openSheet.remove(); openSheet = null; document.body.style.overflow = ''; }
+}
+function toonSheet(titel, bouwInhoud, { breed = false } = {}) {
+  sluitSheet();
+  const paneel = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': titel });
+  const overlay = h('div', { class: 'overlay', onclick: (e) => { if (e.target === overlay) sluitSheet(); } }, paneel);
+  paneel.appendChild(h('div', { class: 'greep' }));
+  if (titel) paneel.appendChild(h('h2', { style: { marginBottom: '12px' } }, titel));
+  const inhoud = h('div', {});
+  paneel.appendChild(inhoud);
+  bouwInhoud(inhoud, sluitSheet);
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  openSheet = overlay;
+  const eerste = paneel.querySelector('input, button, select, textarea');
+  if (eerste && !('ontouchstart' in window)) setTimeout(() => eerste.focus(), 30);
+  return sluitSheet;
+}
+
+function bevestig(titel, tekst, opBevestigd, { knop = 'Ja, doen', gevaar = false } = {}) {
+  toonSheet(titel, (c, sluit) => {
+    c.appendChild(h('p', { class: 'uitleg', style: { fontSize: '.95rem', marginBottom: '16px' } }, tekst));
+    c.appendChild(h('div', { class: 'knoprij' },
+      h('button', { class: 'knop', onclick: sluit }, 'Annuleren'),
+      h('button', { class: `knop ${gevaar ? 'gevaar' : 'primair'}`, onclick: () => { sluit(); opBevestigd(); } }, knop)));
+  });
+}
+
+// ------------------------------------------------------------------ melding
+let toastTimer = null;
+function melding(tekst) {
+  let el = document.getElementById('toast');
+  if (!el) {
+    el = h('div', { id: 'toast', style: {
+      position: 'fixed', left: '50%', bottom: '86px', transform: 'translateX(-50%)', zIndex: '70',
+      background: 'var(--tekst)', color: 'var(--bg)', padding: '11px 18px', borderRadius: '11px',
+      fontSize: '.88rem', fontWeight: '600', boxShadow: 'var(--schaduw)', maxWidth: '86vw', textAlign: 'center',
+      pointerEvents: 'none', // anders blijft de onzichtbare balk tikken opvangen
+    } });
+    document.body.appendChild(el);
+  }
+  el.textContent = tekst;
+  el.style.transition = '';
+  el.style.opacity = '1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.transition = 'opacity .4s'; el.style.opacity = '0'; }, 2600);
+}
+
+// ------------------------------------------------------------------ signalen
+let audioCtx = null;
+function piep({ aantal = 2, hoog = 880 } = {}) {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    for (let i = 0; i < aantal; i++) {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      const t = audioCtx.currentTime + i * 0.26;
+      o.frequency.value = hoog; o.type = 'sine';
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.32, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(t); o.stop(t + 0.22);
+    }
+  } catch (e) { /* geluid is een extraatje, geen voorwaarde */ }
+}
+function tril(patroon = [120, 60, 120]) {
+  try { if (navigator.vibrate) navigator.vibrate(patroon); } catch (e) { /* niet overal beschikbaar */ }
+}
+
+// -------------------------------------------------------- scherm aan houden
+let wakeLock = null;
+async function houdSchermAan(aan) {
+  try {
+    if (aan && 'wakeLock' in navigator) {
+      if (!wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); }
+    } else if (wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch (e) { /* browser wil niet, ook prima */ }
+}
+
+function downloadBestand(naam, inhoud, type = 'application/json') {
+  const blob = new Blob([inhoud], { type });
+  const url = URL.createObjectURL(blob);
+  const a = h('a', { href: url, download: naam });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+async function kopieer(tekst) {
+  try { await navigator.clipboard.writeText(tekst); return true; }
+  catch (e) {
+    const ta = h('textarea', { style: { position: 'fixed', opacity: '0' } });
+    ta.value = tekst; document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
+    ta.remove();
+    return ok;
+  }
+}
+
+return { h, svgEl, initialen, icoon, sluitSheet, toonSheet, bevestig, melding, piep, tril, houdSchermAan, downloadBestand, kopieer, leegmaken, mmss, minuten, minutenTekst, saldoTekst, voornaam, datumTekst };
+};
+__defs["app/store.js"] = function () {
+// Toestand, opslag en synchronisatie.
+//
+// Alles draait lokaal. localStorage is de waarheid; een server (de Home
+// Assistant-add-on) is optioneel en wordt alleen gebruikt als hij er is.
+// Zo blijft de app langs de lijn werken zonder netwerk.
+
+const { planWedstrijd, herplan, wisselUitgevoerd, maakBlokken, totaleSpeeltijd } = __mod("lib/schedule.js");
+const { FORMATIONS, getFormation, formationsForSize } = __mod("lib/formations.js");
+
+const SLEUTEL = 'wisselschema.v1';
+const VERSIE = 1;
+
+function uid(pre = 'x') {
+  return `${pre}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+}
+
+const vandaag = () => new Date().toISOString().slice(0, 10);
+
+function nieuweSpeler(naam = '') {
+  return { id: uid('s'), naam, nummer: '', keeper: false, posities: [], sterkte: 3, saldoSec: 0, actief: true };
+}
+
+function nieuweWedstrijd(vorige = null) {
+  return {
+    id: uid('w'), datum: vandaag(), tegenstander: '', thuis: true,
+    formationId: vorige?.formationId ?? '6-1-2-2-1',
+    // Speelvorm volgt uit de opstelling, anders lopen ze uiteen als je een
+    // wedstrijd overneemt uit het archief (dat bewaart alleen de opstelling).
+    speelvorm: getFormation(vorige?.formationId ?? '6-1-2-2-1').speelvorm,
+    periodes: vorige?.periodes ?? 4,
+    periodeMin: vorige?.periodeMin ?? 15,
+    blokkenPerPeriode: vorige?.blokkenPerPeriode ?? 1,
+    selectie: [], beschikbaar: {}, blokken: null, pins: {},
+    opties: { seed: Math.floor(Math.random() * 1e6), vormAccent: 0, saldoGewicht: 0.6 },
+    status: 'opzet',
+    klok: { loopt: false, verstreken: 0, sindsMs: null, pauzeReden: null },
+    gebeurtenissen: [],
+  };
+}
+
+const leeg = () => ({
+  versie: VERSIE,
+  team: { naam: 'Mijn team', spelers: [] },
+  wedstrijd: null,
+  archief: [],
+  instellingen: { thema: 'auto', geluid: true, trillen: true, schermAan: true, syncUrl: '' },
+  ui: { scherm: 'team' },
+  gewijzigdOp: 0,
+});
+
+const S = leeg();
+let teller = 0;
+const luisteraars = new Set();
+
+function abonneer(fn) { luisteraars.add(fn); return () => luisteraars.delete(fn); }
+function stempel() { return teller; }
+
+// Hertekenen gebeurt pas in de volgende frame. Dat is niet alleen zuiniger,
+// het voorkomt ook een venijnig probleem: een tik op een knop laat eerst het
+// invoerveld zijn focus verliezen, dat vuurt `change`, en als we daarop meteen
+// de hele DOM herbouwen is de knop verdwenen voordat de klik hem bereikt.
+let meldingGepland = false;
+function meldLuisteraars() {
+  if (meldingGepland) return;
+  meldingGepland = true;
+  const uitvoeren = () => { meldingGepland = false; for (const l of luisteraars) l(); };
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(uitvoeren);
+  else setTimeout(uitvoeren, 0);
+}
+
+/** Enige route waarlangs de toestand verandert: muteren, bewaren, hertekenen. */
+function wijzig(fn, opties = {}) {
+  if (opties.terugdraaibaar) bewaarMoment();
+  const uitkomst = fn(S);
+  teller += 1;
+  S.gewijzigdOp = Date.now();
+  planCache = null;
+  bewaarLater();
+  meldLuisteraars();
+  return uitkomst;
+}
+
+// ------------------------------------------------------------- ongedaan maken
+const momenten = [];
+function bewaarMoment() {
+  if (!S.wedstrijd) return;
+  momenten.push(JSON.stringify({ wedstrijd: S.wedstrijd, spelers: S.team.spelers }));
+  if (momenten.length > 40) momenten.shift();
+}
+function kanTerug() { return momenten.length > 0; }
+function draaiTerug() {
+  const m = momenten.pop();
+  if (!m) return false;
+  const d = JSON.parse(m);
+  S.wedstrijd = d.wedstrijd;
+  S.team.spelers = d.spelers;
+  teller += 1; planCache = null; bewaarLater();
+  meldLuisteraars();
+  return true;
+}
+
+// -------------------------------------------------------------------- opslag
+let bewaarTimer = null;
+function bewaarLater() {
+  clearTimeout(bewaarTimer);
+  bewaarTimer = setTimeout(bewaarNu, 250);
+}
+function bewaarNu() {
+  try {
+    localStorage.setItem(SLEUTEL, JSON.stringify(exporteer()));
+  } catch (e) { /* privémodus of vol: de app werkt door, alleen zonder onthouden */ }
+  duwNaarServer();
+}
+function exporteer() {
+  return { versie: VERSIE, team: S.team, wedstrijd: S.wedstrijd, archief: S.archief, instellingen: S.instellingen, gewijzigdOp: S.gewijzigdOp };
+}
+function neemOver(data) {
+  if (!data || typeof data !== 'object') return false;
+  if (data.team) S.team = { naam: data.team.naam || 'Mijn team', spelers: (data.team.spelers || []).map((p) => ({ ...nieuweSpeler(), ...p })) };
+  if ('wedstrijd' in data) S.wedstrijd = data.wedstrijd;
+  if (data.archief) S.archief = data.archief;
+  if (data.instellingen) S.instellingen = { ...S.instellingen, ...data.instellingen };
+  S.gewijzigdOp = data.gewijzigdOp || Date.now();
+  planCache = null;
+  return true;
+}
+function laadLokaal() {
+  try {
+    const ruw = localStorage.getItem(SLEUTEL);
+    if (ruw) neemOver(JSON.parse(ruw));
+  } catch (e) { /* onleesbaar: we beginnen schoon in plaats van te crashen */ }
+}
+
+// ---------------------------------------------------------------- server-sync
+// Wordt alleen actief als er echt iets luistert op het sync-adres. Faalt stil.
+const sync = { actief: false, adres: null, bezig: false, laatst: null, fout: null };
+
+function syncAdres() {
+  const eigen = (S.instellingen.syncUrl || '').trim();
+  if (eigen) return eigen.replace(/\/$/, '');
+  if (typeof location !== 'undefined' && /^https?:/.test(location.protocol)) {
+    return new URL('api/state', location.href.replace(/[^/]*$/, '')).toString();
+  }
+  return null;
+}
+
+async function startSync() {
+  const adres = syncAdres();
+  if (!adres) return false;
+  try {
+    const r = await fetch(adres, { headers: { accept: 'application/json' } });
+    if (!r.ok) return false;
+    const opAfstand = await r.json();
+    sync.actief = true; sync.adres = adres; sync.laatst = Date.now();
+    if (opAfstand && (opAfstand.gewijzigdOp || 0) > (S.gewijzigdOp || 0)) {
+      neemOver(opAfstand);
+      teller += 1;
+      meldLuisteraars();
+    } else {
+      duwNaarServer();
+    }
+    return true;
+  } catch (e) { sync.fout = String(e.message || e); return false; }
+}
+
+let duwTimer = null;
+function duwNaarServer() {
+  if (!sync.actief || !sync.adres) return;
+  clearTimeout(duwTimer);
+  duwTimer = setTimeout(async () => {
+    sync.bezig = true;
+    try {
+      await fetch(sync.adres, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(exporteer()) });
+      sync.laatst = Date.now(); sync.fout = null;
+    } catch (e) { sync.fout = String(e.message || e); }
+    sync.bezig = false;
+  }, 1200);
+}
+
+// ----------------------------------------------------------------- planning
+let planCache = null;
+function plan() {
+  if (!S.wedstrijd) return null;
+  if (!planCache) planCache = planWedstrijd(S.wedstrijd, S.team.spelers);
+  return planCache;
+}
+
+/** Zet het schema vast in de wedstrijd zelf (zodat historie bewaard blijft). */
+function leginSchema() {
+  const p = plan();
+  if (p) S.wedstrijd.blokken = p.blokken;
+}
+
+function genereer({ nieuweSeed = false } = {}) {
+  wijzig((s) => {
+    if (!s.wedstrijd) return;
+    if (nieuweSeed) s.wedstrijd.opties.seed = Math.floor(Math.random() * 1e6);
+    s.wedstrijd.blokken = maakBlokken(s.wedstrijd);
+    s.wedstrijd.pins = {};
+    planCache = null;
+    const p = planWedstrijd(s.wedstrijd, s.team.spelers);
+    s.wedstrijd.blokken = p.blokken;
+  });
+}
+
+function herplanNu(opSec, wijzigingen = []) {
+  wijzig((s) => {
+    const res = herplan(s.wedstrijd, s.team.spelers, { opSec, wijzigingen });
+    s.wedstrijd = { ...s.wedstrijd, ...res.match };
+  }, { terugdraaibaar: true });
+}
+
+function bevestigWissel(blokIndex, opSec) {
+  wijzig((s) => {
+    const res = wisselUitgevoerd(s.wedstrijd, s.team.spelers, blokIndex, opSec);
+    s.wedstrijd = { ...s.wedstrijd, ...res.match };
+  }, { terugdraaibaar: true });
+}
+
+// --------------------------------------------------------------------- klok
+function klokStand(w = S.wedstrijd) {
+  if (!w) return 0;
+  const k = w.klok;
+  const sec = k.loopt && k.sindsMs ? k.verstreken + (Date.now() - k.sindsMs) / 1000 : k.verstreken;
+  return Math.max(0, Math.min(sec, totaleSpeeltijd(w)));
+}
+function klokStart() {
+  wijzig((s) => { s.wedstrijd.klok = { ...s.wedstrijd.klok, loopt: true, sindsMs: Date.now(), pauzeReden: null };
+    if (s.wedstrijd.status === 'opzet') s.wedstrijd.status = 'bezig'; });
+}
+function klokPauze(reden = null) {
+  wijzig((s) => { s.wedstrijd.klok = { verstreken: klokStand(s.wedstrijd), loopt: false, sindsMs: null, pauzeReden: reden }; });
+}
+/** Periode afgelopen: klok precies op de grens zetten en stoppen, in één stap. */
+function klokAutoPauze(grens, reden) {
+  wijzig((s) => {
+    s.wedstrijd.klok = { verstreken: grens, loopt: false, sindsMs: null, pauzeReden: reden, laatsteGrens: grens };
+  });
+}
+function klokZet(sec) {
+  wijzig((s) => { s.wedstrijd.klok = { ...s.wedstrijd.klok, verstreken: Math.max(0, sec), sindsMs: s.wedstrijd.klok.loopt ? Date.now() : null }; });
+}
+
+// ---------------------------------------------------------------- archiveren
+/** Sluit de wedstrijd af en verwerk de speeltijd in het seizoenssaldo. */
+function rondAf() {
+  wijzig((s) => {
+    const w = s.wedstrijd;
+    if (!w) return;
+    const p = planWedstrijd(w, s.team.spelers);
+    const gemiddeld = p.statistieken.reduce((a, x) => a + x.speelSec, 0) / (p.statistieken.length || 1);
+    for (const st of p.statistieken) {
+      const speler = s.team.spelers.find((q) => q.id === st.spelerId);
+      if (speler) speler.saldoSec = Math.round((speler.saldoSec || 0) + (st.speelSec - gemiddeld));
+    }
+    s.archief.unshift({
+      id: w.id, datum: w.datum, tegenstander: w.tegenstander, thuis: w.thuis,
+      formationId: w.formationId, periodes: w.periodes, periodeMin: w.periodeMin,
+      statistieken: p.statistieken, blokken: w.blokken, selectie: w.selectie,
+    });
+    s.archief = s.archief.slice(0, 60);
+    s.wedstrijd = null;
+    s.ui.scherm = 'archief';
+  }, { terugdraaibaar: true });
+}
+
+// ------------------------------------------------------------------ delen
+/** Comprimeert het team + schema in een URL-fragment, zodat je het kunt appen. */
+async function deelLink() {
+  const kern = {
+    t: S.team.naam,
+    s: S.team.spelers.filter((p) => (S.wedstrijd?.selectie || []).includes(p.id))
+      .map((p) => [p.id, p.naam, p.nummer, p.keeper ? 1 : 0, (p.posities || []).join('')]),
+    w: S.wedstrijd && {
+      d: S.wedstrijd.datum, o: S.wedstrijd.tegenstander, f: S.wedstrijd.formationId,
+      p: S.wedstrijd.periodes, m: S.wedstrijd.periodeMin, b: S.wedstrijd.blokkenPerPeriode,
+      sel: S.wedstrijd.selectie, bl: (S.wedstrijd.blokken || []).map((x) => [x.vanSec, x.totSec, x.opstelling]),
+    },
+  };
+  const json = JSON.stringify(kern);
+  let bytes = new TextEncoder().encode(json);
+  if (typeof CompressionStream === 'function') {
+    try {
+      const cs = new CompressionStream('deflate-raw');
+      const stroom = new Blob([bytes]).stream().pipeThrough(cs);
+      bytes = new Uint8Array(await new Response(stroom).arrayBuffer());
+      return `${schoonAdres()}#z=${naarBase64Url(bytes)}`;
+    } catch (e) { /* val terug op onverpakt */ }
+  }
+  return `${schoonAdres()}#j=${naarBase64Url(bytes)}`;
+}
+
+async function leesDeelLink(hash) {
+  const m = /[#&](z|j)=([A-Za-z0-9\-_]+)/.exec(hash || '');
+  if (!m) return null;
+  let bytes = vanBase64Url(m[2]);
+  if (m[1] === 'z') {
+    const ds = new DecompressionStream('deflate-raw');
+    bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer());
+  }
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+const schoonAdres = () => (typeof location === 'undefined' ? '' : location.href.split('#')[0]);
+function naarBase64Url(bytes) {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function vanBase64Url(t) {
+  const s = atob(t.replace(/-/g, '+').replace(/_/g, '/'));
+  const u = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+  return u;
+}
+
+
+
+return { uid, nieuweSpeler, nieuweWedstrijd, abonneer, stempel, wijzig, kanTerug, draaiTerug, bewaarNu, exporteer, neemOver, laadLokaal, startSync, plan, leginSchema, genereer, herplanNu, bevestigWissel, klokStand, klokStart, klokPauze, klokAutoPauze, klokZet, rondAf, deelLink, leesDeelLink, SLEUTEL, VERSIE, S, sync, FORMATIONS, getFormation, formationsForSize, totaleSpeeltijd };
+};
+__defs["lib/schedule.js"] = function () {
+// De wisselschema-motor.
+//
+// Het schema wordt in twee lagen opgelost:
+//
+//   1. WIE speelt er in welk blok?  -> eerlijkheidsprobleem, opgelost met een
+//      greedy startoplossing plus local search op een kostenfunctie.
+//   2. WAAR staat iedereen?         -> toewijzingsprobleem, exact opgelost met
+//      het Hongaars algoritme (speler x positie kostenmatrix).
+//
+// Die scheiding is belangrijk: speeltijd is een verdelingsvraag over de hele
+// wedstrijd, positie is een vraag per blok. Samen oplossen maakt het onnodig
+// hard en veel slechter uitlegbaar.
+//
+// Alles rekent in seconden vanaf de aftrap (alleen speeltijd, geen rust).
+
+const { hungarian } = __mod("lib/hungarian.js");
+const { getFormation, slotsForCount } = __mod("lib/formations.js");
+
+const STANDAARD_OPTIES = {
+  eerlijkheid: 1,        // gewicht op kwadratische afwijking van de eerlijke speeltijd (per minuut^2)
+  rustGewicht: 25,       // strafpunten als iemand twee blokken achter elkaar op de bank zit
+  geenKeeperStraf: 500,  // strafpunten als er geen keeper op het veld staat
+  vormAccent: 0,         // 0 = iedereen even veel, 1 = sterkte telt maximaal mee
+  saldoGewicht: 0.6,     // hoe sterk het seizoenssaldo meeweegt (0 = niet)
+  herstarts: 6,
+  maxRondes: 12,
+  seed: 20240101,
+};
+
+// ---------------------------------------------------------------- hulpjes
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+let blokTeller = 0;
+function blokId() {
+  blokTeller += 1;
+  return `b${Date.now().toString(36)}${blokTeller.toString(36)}`;
+}
+
+const klem = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+/** Beschikbaarheidsvenster van een speler, met defaults. */
+function venster(match, spelerId) {
+  const v = (match.beschikbaar || {})[spelerId] || {};
+  return { vanaf: v.vanaf ?? 0, tot: v.tot ?? Infinity };
+}
+
+/** Staat deze speler dit blok tot je beschikking? Getoetst op het midden van het blok. */
+function beschikbaarIn(match, spelerId, blok) {
+  const v = venster(match, spelerId);
+  const midden = (blok.vanSec + blok.totSec) / 2;
+  return v.vanaf <= midden && v.tot >= midden;
+}
+
+function totaleSpeeltijd(match) {
+  return match.periodes * match.periodeMin * 60;
+}
+
+// ---------------------------------------------------------- blokken bouwen
+
+/** Verse blokindeling op basis van kwarten en wisselmomenten per kwart. */
+function maakBlokken(match) {
+  const perBlok = Math.round((match.periodeMin * 60) / match.blokkenPerPeriode);
+  const blokken = [];
+  let t = 0;
+  for (let p = 0; p < match.periodes; p++) {
+    for (let d = 0; d < match.blokkenPerPeriode; d++) {
+      const laatste = d === match.blokkenPerPeriode - 1;
+      const tot = laatste ? (p + 1) * match.periodeMin * 60 : t + perBlok;
+      blokken.push({
+        id: blokId(), periode: p, deel: d,
+        vanSec: t, totSec: tot,
+        vast: false, opstelling: {}, bank: [],
+      });
+      t = tot;
+    }
+  }
+  return blokken;
+}
+
+/**
+ * Splitst het blok waar tSec middenin valt in twee stukken. Het eerste stuk
+ * houdt de opstelling (dat is immers wat er gespeeld is), het tweede stuk is
+ * vrij om opnieuw in te vullen. Dit is de kern van het herplannen: een speler
+ * die op minuut 23 uitvalt maakt van kwart 2 twee deelblokken.
+ */
+function splitsOp(blokken, tSec, minStuk = 30) {
+  const uit = [];
+  for (const b of blokken) {
+    if (tSec > b.vanSec + minStuk && tSec < b.totSec - minStuk) {
+      uit.push({ ...b, totSec: tSec, opstelling: { ...b.opstelling }, bank: [...b.bank] });
+      uit.push({ ...b, id: blokId(), deel: b.deel, vanSec: tSec, vast: false, opstelling: { ...b.opstelling }, bank: [...b.bank] });
+    } else {
+      uit.push({ ...b, opstelling: { ...b.opstelling }, bank: [...b.bank] });
+    }
+  }
+  return uit;
+}
+
+/**
+ * Alles wat voorbij is wordt historie: vast, niet meer herplanbaar.
+ * De marge zorgt dat een blok dat toch al bijna afgelopen was volledig als
+ * gespeeld telt, in plaats van met terugwerkende kracht te worden herschreven.
+ */
+function vergrendelTot(blokken, tSec, marge = 30) {
+  return blokken.map((b) => (b.totSec <= tSec + marge ? { ...b, vast: true } : b));
+}
+
+/**
+ * Verschuift de grens tussen blok i en i+1 naar de werkelijke wisseltijd.
+ * Je wisselt nooit precies op de seconde; dit houdt de boekhouding eerlijk
+ * zonder de kwartgrenzen te verschuiven.
+ */
+function verlegGrens(blokken, index, tSec) {
+  if (index < 0 || index >= blokken.length - 1) return blokken;
+  const onder = blokken[index].vanSec + 10;
+  const boven = blokken[index + 1].totSec - 10;
+  const t = klem(tSec, onder, boven);
+  return blokken.map((b, i) => {
+    if (i === index) return { ...b, totSec: t };
+    if (i === index + 1) return { ...b, vanSec: t };
+    return b;
+  });
+}
+
+// ------------------------------------------------------- laag 1: wie speelt
+
+function bepaalDoelen(match, spelers, blokken, capaciteit, opties) {
+  const totaalVeldSec = blokken.reduce((s, b, i) => s + (b.totSec - b.vanSec) * capaciteit[i], 0);
+
+  const sterktes = spelers.map((p) => p.sterkte ?? 3);
+  const gemSterkte = sterktes.reduce((a, b) => a + b, 0) / (sterktes.length || 1);
+
+  const gewichten = spelers.map((p) => {
+    let g = blokken.reduce((s, b) => s + (beschikbaarIn(match, p.id, b) ? b.totSec - b.vanSec : 0), 0);
+    // Accent op basisspelers: alleen als de coach de schuif bewust opendraait.
+    g *= 1 + opties.vormAccent * (((p.sterkte ?? 3) - gemSterkte) / 4);
+    return Math.max(0, g);
+  });
+  const somGewicht = gewichten.reduce((a, b) => a + b, 0) || 1;
+
+  const doelen = new Map();
+  spelers.forEach((p, i) => doelen.set(p.id, (totaalVeldSec * gewichten[i]) / somGewicht));
+
+  // Seizoenssaldo als zacht duwtje: wie voorstaat speelt vandaag iets minder.
+  // Begrensd op een half blok, zodat het nooit een hele wedstrijd scheeftrekt.
+  if (opties.saldoGewicht > 0 && blokken.length) {
+    const blokDuur = (blokken[0].totSec - blokken[0].vanSec) || 600;
+    const maxCorr = blokDuur / 2;
+    const ruw = spelers.map((p) => klem(-(p.saldoSec || 0) * opties.saldoGewicht, -maxCorr, maxCorr));
+    const gem = ruw.reduce((a, b) => a + b, 0) / (ruw.length || 1);
+    spelers.forEach((p, i) => doelen.set(p.id, doelen.get(p.id) + (ruw[i] - gem)));
+  }
+  return { doelen, totaalVeldSec };
+}
+
+function kostenVan(aanwezig, ctx) {
+  const { blokken, spelers, doelen, opties, beschikbaarMatrix, heeftKeepers, capaciteit } = ctx;
+  let c = 0;
+
+  // 1. eerlijke speeltijd
+  const gespeeld = new Map(spelers.map((p) => [p.id, 0]));
+  for (let i = 0; i < blokken.length; i++) {
+    const duur = blokken[i].totSec - blokken[i].vanSec;
+    for (const id of aanwezig[i]) if (gespeeld.has(id)) gespeeld.set(id, gespeeld.get(id) + duur);
+  }
+  for (const p of spelers) {
+    const dev = (gespeeld.get(p.id) - doelen.get(p.id)) / 60;
+    c += opties.eerlijkheid * dev * dev;
+  }
+
+  // 2. niet twee blokken achter elkaar op de bank
+  for (let s = 0; s < spelers.length; s++) {
+    let reeks = 0;
+    for (let i = 0; i < blokken.length; i++) {
+      if (!beschikbaarMatrix[s][i]) { reeks = 0; continue; }
+      if (aanwezig[i].has(spelers[s].id)) reeks = 0;
+      else { reeks += 1; if (reeks >= 2) c += opties.rustGewicht; }
+    }
+  }
+
+  // 3. er hoort een keeper op het veld te staan
+  if (heeftKeepers) {
+    for (let i = 0; i < blokken.length; i++) {
+      if (capaciteit[i] <= 0) continue;
+      let ok = false;
+      for (const id of aanwezig[i]) {
+        const p = spelers.find((q) => q.id === id);
+        if (p && p.keeper) { ok = true; break; }
+      }
+      if (!ok) c += opties.geenKeeperStraf;
+    }
+  }
+  return c;
+}
+
+function losWieOp(ctx, rng) {
+  const { blokken, spelers, doelen, capaciteit, openIdx, gepind, beschikbaarMatrix } = ctx;
+  const idx = new Map(spelers.map((p, i) => [p.id, i]));
+
+  const startAanwezig = () => ctx.basisAanwezig.map((s) => new Set(s));
+
+  const kandidatenVoor = (i) =>
+    spelers.filter((p, s) => beschikbaarMatrix[s][i] && !gepind[i].has(p.id));
+
+  // --- greedy startoplossing: wie het verst achterloopt komt erin
+  const greedy = () => {
+    const aanwezig = startAanwezig();
+    const gespeeld = new Map(spelers.map((p) => [p.id, 0]));
+    for (let i = 0; i < blokken.length; i++) {
+      const duur = blokken[i].totSec - blokken[i].vanSec;
+      if (!openIdx.includes(i)) {
+        for (const id of aanwezig[i]) if (gespeeld.has(id)) gespeeld.set(id, gespeeld.get(id) + duur);
+        continue;
+      }
+      const nodig = capaciteit[i] - aanwezig[i].size;
+      const kand = kandidatenVoor(i)
+        .filter((p) => !aanwezig[i].has(p.id))
+        .map((p) => {
+          const tekort = doelen.get(p.id) - gespeeld.get(p.id);
+          const zatVorige = i > 0 && !aanwezig[i - 1].has(p.id) && beschikbaarMatrix[idx.get(p.id)][i - 1];
+          return { p, score: tekort + (zatVorige ? duur * 0.75 : 0) + rng() * 30 };
+        })
+        .sort((a, b) => b.score - a.score);
+      for (let k = 0; k < nodig && k < kand.length; k++) aanwezig[i].add(kand[k].p.id);
+      for (const id of aanwezig[i]) if (gespeeld.has(id)) gespeeld.set(id, gespeeld.get(id) + duur);
+    }
+    return aanwezig;
+  };
+
+  const willekeurig = () => {
+    const aanwezig = startAanwezig();
+    for (const i of openIdx) {
+      const kand = kandidatenVoor(i).filter((p) => !aanwezig[i].has(p.id));
+      for (let k = kand.length - 1; k > 0; k--) {
+        const j = Math.floor(rng() * (k + 1));
+        [kand[k], kand[j]] = [kand[j], kand[k]];
+      }
+      const nodig = capaciteit[i] - aanwezig[i].size;
+      for (let k = 0; k < nodig && k < kand.length; k++) aanwezig[i].add(kand[k].id);
+    }
+    return aanwezig;
+  };
+
+  // --- local search: ruil een veldspeler tegen een bankspeler zolang dat helpt
+  const verbeter = (aanwezig) => {
+    let beste = kostenVan(aanwezig, ctx);
+    for (let ronde = 0; ronde < ctx.opties.maxRondes; ronde++) {
+      let verbeterd = false;
+      for (const i of openIdx) {
+        const veld = [...aanwezig[i]].filter((id) => !gepind[i].has(id));
+        const bank = kandidatenVoor(i).filter((p) => !aanwezig[i].has(p.id)).map((p) => p.id);
+        for (const a of veld) {
+          for (const b of bank) {
+            if (!aanwezig[i].has(a) || aanwezig[i].has(b)) continue;
+            aanwezig[i].delete(a); aanwezig[i].add(b);
+            const k = kostenVan(aanwezig, ctx);
+            if (k < beste - 1e-9) { beste = k; verbeterd = true; }
+            else { aanwezig[i].delete(b); aanwezig[i].add(a); }
+          }
+        }
+      }
+      if (!verbeterd) break;
+    }
+    return beste;
+  };
+
+  let besteOpl = greedy();
+  let besteKosten = verbeter(besteOpl);
+  for (let r = 0; r < ctx.opties.herstarts; r++) {
+    const kand = willekeurig();
+    const k = verbeter(kand);
+    if (k < besteKosten - 1e-9) { besteKosten = k; besteOpl = kand; }
+  }
+  return { aanwezig: besteOpl, kosten: besteKosten };
+}
+
+// ------------------------------------------------- laag 2: waar staat iedereen
+
+function kiesKeepers(blokken, aanwezig, spelers, formatie, rng) {
+  const heeftKeeperSlot = formatie.slots.some((s) => s.role === 'K');
+  if (!heeftKeeperSlot) return { keeperPer: blokken.map(() => null), zonderKeeper: [] };
+
+  const opId = new Map(spelers.map((p) => [p.id, p]));
+  const telling = new Map();
+  const keeperPer = [];
+  const zonderKeeper = [];
+  let vorige = null;
+
+  for (let i = 0; i < blokken.length; i++) {
+    const b = blokken[i];
+    if (b.vast) {
+      const keeperSlot = formatie.slots.find((s) => s.role === 'K');
+      const id = b.opstelling[keeperSlot.id] || null;
+      if (id) telling.set(id, (telling.get(id) || 0) + 1);
+      keeperPer.push(id);
+      vorige = id ? { id, periode: b.periode } : null;
+      continue;
+    }
+    const opVeld = [...aanwezig[i]].map((id) => opId.get(id)).filter(Boolean);
+    let kandidaten = opVeld.filter((p) => p.keeper);
+    if (!kandidaten.length) { kandidaten = opVeld; if (opVeld.length) zonderKeeper.push(i); }
+    if (!kandidaten.length) { keeperPer.push(null); continue; }
+
+    const gescoord = kandidaten.map((p) => {
+      let s = (telling.get(p.id) || 0) * 100;
+      // binnen hetzelfde kwart niet van keeper wisselen
+      if (vorige && vorige.id === p.id && vorige.periode === b.periode) s -= 1000;
+      // en liever niet twee kwarten achter elkaar in het doel
+      else if (vorige && vorige.id === p.id) s += 60;
+      return { p, s: s + rng() * 5 };
+    }).sort((a, b2) => a.s - b2.s);
+
+    const keeper = gescoord[0].p;
+    telling.set(keeper.id, (telling.get(keeper.id) || 0) + 1);
+    keeperPer.push(keeper.id);
+    vorige = { id: keeper.id, periode: b.periode };
+  }
+  return { keeperPer, zonderKeeper };
+}
+
+function wijsPositiesToe(blokken, aanwezig, spelers, formatie, keeperPer, gepind) {
+  const opId = new Map(spelers.map((p) => [p.id, p]));
+  const slotTelling = new Map(); // "spelerId|slotId" -> hoe vaak al
+  let vorigeOpstelling = null;
+  const uit = [];
+
+  for (let i = 0; i < blokken.length; i++) {
+    const b = blokken[i];
+    if (b.vast) {
+      for (const [slotId, pid] of Object.entries(b.opstelling)) {
+        const k = `${pid}|${slotId}`;
+        slotTelling.set(k, (slotTelling.get(k) || 0) + 1);
+      }
+      uit.push({ ...b });
+      vorigeOpstelling = b.opstelling;
+      continue;
+    }
+
+    const opVeld = [...aanwezig[i]];
+    const slots = slotsForCount(formatie, opVeld.length);
+    const pin = gepind[i];
+
+    // Waar stond iedereen net? Zonder die referentie herverdeelt het algoritme
+    // bij elke herberekening het hele elftal - dat is langs de lijn onwerkbaar.
+    // Eerst het vorige blok (dat staat nu echt op het veld), anders wat er
+    // voor dit blok al gepland stond.
+    const eigenOud = Object.keys(b.opstelling).length ? b.opstelling : null;
+    const referentie = vorigeOpstelling || eigenOud;
+
+    // Gepinde spelers krijgen hun slot; de rest wordt exact toegewezen.
+    const vastSlot = new Map();
+    for (const [slotId, pid] of pin.entries()) if (opVeld.includes(pid)) vastSlot.set(pid, slotId);
+
+    const vrijeSpelers = opVeld.filter((id) => !vastSlot.has(id));
+    const bezet = new Set(vastSlot.values());
+    const vrijeSlots = slots.filter((s) => !bezet.has(s.id));
+
+    const n = Math.min(vrijeSpelers.length, vrijeSlots.length);
+    const opstelling = {};
+    for (const [pid, slotId] of vastSlot.entries()) opstelling[slotId] = pid;
+
+    if (n > 0) {
+      const matrix = vrijeSpelers.slice(0, n).map((pid) => {
+        const p = opId.get(pid) || { posities: [] };
+        return vrijeSlots.map((slot) => {
+          let c = 0;
+          if (slot.role === 'K') c += keeperPer[i] === pid ? 0 : 5000;
+          else if (keeperPer[i] === pid) c += 5000;
+          else {
+            const voorkeur = p.posities || [];
+            if (voorkeur.length) c += voorkeur.includes(slot.role) ? 0 : 18;
+          }
+          const vorigSlotId = referentie && Object.keys(referentie).find((sid) => referentie[sid] === pid);
+          if (vorigSlotId === slot.id) {
+            c -= 14; // blijven staan is bijna altijd beter dan een mooiere positie
+          } else if (vorigSlotId) {
+            const vorigSlot = formatie.slots.find((s) => s.id === vorigSlotId);
+            if (vorigSlot && vorigSlot.role === slot.role) c -= 5;
+          } else if (eigenOud && referentie !== eigenOud) {
+            // Invaller: zet hem op de plek die voor dit blok al voor hem klaarlag.
+            const gepland = Object.keys(eigenOud).find((sid) => eigenOud[sid] === pid);
+            if (gepland === slot.id) c -= 6;
+          }
+          c += (slotTelling.get(`${pid}|${slot.id}`) || 0) * 1.5;
+          return c;
+        });
+      });
+      const toewijzing = hungarian(matrix);
+      toewijzing.forEach((kolom, rij) => {
+        if (kolom >= 0) opstelling[vrijeSlots[kolom].id] = vrijeSpelers[rij];
+      });
+    }
+
+    for (const [slotId, pid] of Object.entries(opstelling)) {
+      const k = `${pid}|${slotId}`;
+      slotTelling.set(k, (slotTelling.get(k) || 0) + 1);
+    }
+
+    const opVeldSet = new Set(Object.values(opstelling));
+    const bank = spelers.filter((p) => !opVeldSet.has(p.id)).map((p) => p.id);
+    uit.push({ ...b, opstelling, bank });
+    vorigeOpstelling = opstelling;
+  }
+  return uit;
+}
+
+// ------------------------------------------------------------- hoofdingang
+
+/**
+ * Bouwt (of herbouwt) het wisselschema.
+ * Vaste blokken blijven onaangeroerd - dat is gespeelde historie.
+ *
+ * @param {object} match
+ * @param {Array} alleSpelers  de complete selectie van het team
+ * @returns {{blokken, waarschuwingen, statistieken, wissels, kosten}}
+ */
+function planWedstrijd(match, alleSpelers, opties = {}) {
+  const o = { ...STANDAARD_OPTIES, ...(match.opties || {}), ...opties };
+  const formatie = getFormation(match.formationId);
+  const spelers = (match.selectie || [])
+    .map((id) => alleSpelers.find((p) => p.id === id))
+    .filter(Boolean);
+
+  let blokken = (match.blokken && match.blokken.length ? match.blokken : maakBlokken(match))
+    .map((b) => ({ ...b, opstelling: { ...b.opstelling }, bank: [...(b.bank || [])] }));
+
+  if (!spelers.length) {
+    return { blokken, waarschuwingen: [{ ernst: 'info', tekst: 'Nog geen spelers geselecteerd voor deze wedstrijd.' }], statistieken: [], wissels: [], kosten: 0 };
+  }
+
+  const beschikbaarMatrix = spelers.map((p) => blokken.map((b) => beschikbaarIn(match, p.id, b)));
+  const capaciteit = blokken.map((b, i) => {
+    if (b.vast) return Object.keys(b.opstelling).length;
+    const aantal = beschikbaarMatrix.reduce((s, rij) => s + (rij[i] ? 1 : 0), 0);
+    return Math.min(formatie.slots.length, aantal);
+  });
+
+  const pinsPerBlok = blokken.map((b) => {
+    const m = new Map();
+    const pin = (match.pins || {})[b.id] || {};
+    for (const [slotId, pid] of Object.entries(pin)) if (spelers.some((p) => p.id === pid)) m.set(slotId, pid);
+    return m;
+  });
+  const gepind = pinsPerBlok.map((m) => new Set(m.values()));
+
+  const basisAanwezig = blokken.map((b, i) => {
+    if (b.vast) return new Set(Object.values(b.opstelling));
+    return new Set(gepind[i]);
+  });
+  const openIdx = blokken.map((b, i) => (b.vast ? -1 : i)).filter((i) => i >= 0);
+
+  const { doelen } = bepaalDoelen(match, spelers, blokken, capaciteit, o);
+  const heeftKeepers = spelers.some((p) => p.keeper) && formatie.slots.some((s) => s.role === 'K');
+
+  const ctx = { blokken, spelers, doelen, opties: o, beschikbaarMatrix, capaciteit, openIdx, gepind, basisAanwezig, heeftKeepers };
+  const rng = mulberry32(o.seed);
+  const { aanwezig, kosten } = losWieOp(ctx, rng);
+
+  const { keeperPer, zonderKeeper } = kiesKeepers(blokken, aanwezig, spelers, formatie, rng);
+  blokken = wijsPositiesToe(blokken, aanwezig, spelers, formatie, keeperPer, pinsPerBlok);
+
+  const stats = statistieken(blokken, spelers, formatie);
+  const waarschuwingen = maakWaarschuwingen({ match, blokken, spelers, formatie, stats, capaciteit, zonderKeeper, beschikbaarMatrix, doelen });
+
+  return { blokken, waarschuwingen, statistieken: stats, wissels: wisselLijst(blokken, spelers, formatie), kosten };
+}
+
+// ------------------------------------------------------------- afgeleide info
+
+function statistieken(blokken, spelers, formatie) {
+  const keeperSlots = new Set(formatie.slots.filter((s) => s.role === 'K').map((s) => s.id));
+  const totaal = blokken.reduce((s, b) => s + (b.totSec - b.vanSec), 0);
+
+  return spelers.map((p) => {
+    let speelSec = 0, keeperSec = 0, blokkenGespeeld = 0, bankBlokken = 0, langsteBank = 0, reeks = 0;
+    const perRol = { K: 0, V: 0, M: 0, A: 0 };
+    for (const b of blokken) {
+      const duur = b.totSec - b.vanSec;
+      const slotId = Object.keys(b.opstelling).find((sid) => b.opstelling[sid] === p.id);
+      if (slotId) {
+        speelSec += duur; blokkenGespeeld += 1; reeks = 0;
+        if (keeperSlots.has(slotId)) keeperSec += duur;
+        const slot = formatie.slots.find((s) => s.id === slotId);
+        if (slot) perRol[slot.role] += duur;
+      } else {
+        bankBlokken += 1; reeks += 1; langsteBank = Math.max(langsteBank, reeks);
+      }
+    }
+    return {
+      spelerId: p.id, naam: p.naam,
+      speelSec, bankSec: totaal - speelSec, keeperSec,
+      blokken: blokkenGespeeld, bankBlokken, langsteBankReeks: langsteBank, perRol,
+    };
+  }).sort((a, b) => b.speelSec - a.speelSec);
+}
+
+/** Per wisselmoment: wie eruit, wie erin, en wie er van positie verandert. */
+function wisselLijst(blokken, spelers, formatie) {
+  const naam = new Map(spelers.map((p) => [p.id, p.naam]));
+  const slotVan = (opst, pid) => Object.keys(opst).find((sid) => opst[sid] === pid);
+  const label = (sid) => (formatie.slots.find((s) => s.id === sid) || {}).label || sid;
+
+  const uit = [];
+  for (let i = 1; i < blokken.length; i++) {
+    const vorig = blokken[i - 1], nu = blokken[i];
+    const vorigeSpelers = new Set(Object.values(vorig.opstelling));
+    const nieuweSpelers = new Set(Object.values(nu.opstelling));
+
+    const eruit = [...vorigeSpelers].filter((id) => !nieuweSpelers.has(id));
+    const erin = [...nieuweSpelers].filter((id) => !vorigeSpelers.has(id));
+    const verplaatst = [...nieuweSpelers]
+      .filter((id) => vorigeSpelers.has(id) && slotVan(vorig.opstelling, id) !== slotVan(nu.opstelling, id))
+      .map((id) => ({ spelerId: id, naam: naam.get(id), van: label(slotVan(vorig.opstelling, id)), naar: label(slotVan(nu.opstelling, id)) }));
+
+    uit.push({
+      blokIndex: i, blokId: nu.id, opSec: nu.vanSec, periode: nu.periode,
+      eruit: eruit.map((id) => ({ spelerId: id, naam: naam.get(id), van: label(slotVan(vorig.opstelling, id)) })),
+      erin: erin.map((id) => ({ spelerId: id, naam: naam.get(id), naar: label(slotVan(nu.opstelling, id)) })),
+      verplaatst,
+    });
+  }
+  return uit;
+}
+
+function maakWaarschuwingen({ match, blokken, spelers, formatie, stats, capaciteit, zonderKeeper }) {
+  const w = [];
+  const kwart = (b) => `kwart ${b.periode + 1}`;
+
+  for (const i of zonderKeeper) {
+    w.push({ ernst: 'hoog', tekst: `Geen echte keeper beschikbaar in ${kwart(blokken[i])} - er staat nu een veldspeler op doel.` });
+  }
+  blokken.forEach((b, i) => {
+    if (!b.vast && capaciteit[i] > 0 && capaciteit[i] < formatie.slots.length) {
+      w.push({ ernst: 'hoog', tekst: `Te weinig spelers in ${kwart(b)}: je speelt met ${capaciteit[i]} in plaats van ${formatie.slots.length}.` });
+    }
+  });
+
+  // Spelers die uit de wedstrijd zijn gehaald of later aansloten tellen niet mee
+  // in de eerlijkheidscontrole: hun korte speeltijd is een feit, geen planfout.
+  const heleWedstrijd = totaleSpeeltijd(match);
+  const deeltijd = new Set((match.selectie || []).filter((id) => {
+    const v = venster(match, id);
+    return v.tot < heleWedstrijd - 1 || v.vanaf > 1;
+  }));
+
+  const volledig = stats.filter((s) => s.speelSec > 0 && !deeltijd.has(s.spelerId));
+  if (volledig.length > 1) {
+    const max = volledig[0], laagste = volledig[volledig.length - 1];
+    const verschilMin = (max.speelSec - laagste.speelSec) / 60;
+    const blokDuur = blokken.length ? (blokken[0].totSec - blokken[0].vanSec) / 60 : 10;
+    if (verschilMin > blokDuur * 1.2) {
+      w.push({ ernst: 'midden', tekst: `Speeltijd loopt uiteen: ${max.naam} ${Math.round(max.speelSec / 60)} min, ${laagste.naam} ${Math.round(laagste.speelSec / 60)} min.` });
+    }
+  }
+  for (const s of stats) {
+    if (deeltijd.has(s.spelerId)) continue;
+    if (s.speelSec === 0) w.push({ ernst: 'hoog', tekst: `${s.naam} komt in dit schema helemaal niet in actie.` });
+    else if (s.langsteBankReeks >= 2) w.push({ ernst: 'midden', tekst: `${s.naam} zit ${s.langsteBankReeks} blokken achter elkaar op de bank.` });
+  }
+
+  for (const id of deeltijd) {
+    const p = spelers.find((q) => q.id === id);
+    if (!p) continue;
+    const v = venster(match, id);
+    const s = stats.find((x) => x.spelerId === id);
+    const gespeeldMin = Math.round((s ? s.speelSec : 0) / 60);
+    if (v.tot < heleWedstrijd - 1) {
+      w.push({ ernst: 'info', tekst: `${p.naam} is op ${Math.round(v.tot / 60)} min uit de wedstrijd gehaald (${gespeeldMin} min gespeeld) - het schema is hierop aangepast.` });
+    } else {
+      w.push({ ernst: 'info', tekst: `${p.naam} sloot aan vanaf ${Math.round(v.vanaf / 60)} min (${gespeeldMin} min gespeeld).` });
+    }
+  }
+  return w;
+}
+
+
+// ------------------------------------------------------ herplannen tijdens de wedstrijd
+
+/**
+ * Bevriest de wedstrijd op `opSec`, verwerkt de wijzigingen en plant de rest
+ * opnieuw. Dit is de enige route waarlangs de wedstrijd tijdens het spelen
+ * verandert - of het nu een geplande wissel, een blessure of een late
+ * binnenkomer is.
+ *
+ * wijzigingen: [{ type: 'uit' | 'erin' | 'terug', spelerId }]
+ *   uit   - speler stopt nu (blessure, moe, rode kaart)
+ *   erin  - speler sluit nu aan (kwam te laat)
+ *   terug - eerder uitgevallen speler kan toch weer verder
+ */
+function herplan(match, alleSpelers, { opSec = 0, wijzigingen = [], opties = {} } = {}) {
+  let blokken = match.blokken && match.blokken.length ? match.blokken : maakBlokken(match);
+  if (opSec > 0) {
+    blokken = splitsOp(blokken, opSec);
+    blokken = vergrendelTot(blokken, opSec);
+  }
+
+  const beschikbaar = { ...(match.beschikbaar || {}) };
+  const selectie = [...(match.selectie || [])];
+
+  for (const wz of wijzigingen) {
+    const huidig = beschikbaar[wz.spelerId] || {};
+    if (wz.type === 'uit') {
+      beschikbaar[wz.spelerId] = { vanaf: huidig.vanaf ?? 0, tot: opSec };
+    } else if (wz.type === 'erin') {
+      if (!selectie.includes(wz.spelerId)) selectie.push(wz.spelerId);
+      beschikbaar[wz.spelerId] = { vanaf: opSec, tot: huidig.tot ?? Infinity };
+    } else if (wz.type === 'terug') {
+      beschikbaar[wz.spelerId] = { vanaf: huidig.vanaf ?? 0, tot: Infinity };
+    }
+  }
+
+  const bijgewerkt = { ...match, blokken, beschikbaar, selectie };
+  const resultaat = planWedstrijd(bijgewerkt, alleSpelers, opties);
+  return { match: { ...bijgewerkt, blokken: resultaat.blokken }, ...resultaat };
+}
+
+/**
+ * Registreert dat de wissel op de grens na `blokIndex` werkelijk op `tSec`
+ * is uitgevoerd. Je wisselt nooit precies op de seconde; dit houdt de
+ * speeltijdboekhouding eerlijk zonder de kwartgrenzen te verschuiven.
+ */
+function wisselUitgevoerd(match, alleSpelers, blokIndex, tSec) {
+  let blokken = verlegGrens(match.blokken, blokIndex, tSec);
+  blokken = vergrendelTot(blokken, tSec);
+  const bijgewerkt = { ...match, blokken };
+  const resultaat = planWedstrijd(bijgewerkt, alleSpelers);
+  return { match: { ...bijgewerkt, blokken: resultaat.blokken }, ...resultaat };
+}
+
+/** Welk blok is op tijdstip t aan de beurt? */
+function blokOp(blokken, tSec) {
+  for (let i = 0; i < blokken.length; i++) {
+    if (tSec < blokken[i].totSec || i === blokken.length - 1) return i;
+  }
+  return blokken.length - 1;
+}
+
+return { mulberry32, blokId, venster, beschikbaarIn, totaleSpeeltijd, maakBlokken, splitsOp, vergrendelTot, verlegGrens, planWedstrijd, statistieken, wisselLijst, herplan, wisselUitgevoerd, blokOp, STANDAARD_OPTIES };
+};
+__defs["lib/hungarian.js"] = function () {
+// Hongaars algoritme (Kuhn-Munkres, O(n^3) variant met potentialen).
+// Lost het toewijzingsprobleem exact op: welke speler op welke positie,
+// zodanig dat de totale "kosten" minimaal zijn.
+//
+// cost: matrix van n rijen x m kolommen (m >= n), getallen.
+// Retourneert een array `assign` waarbij assign[rij] = kolom.
+
+function hungarian(cost) {
+  const n = cost.length;
+  if (n === 0) return [];
+  const m = cost[0].length;
+  if (m < n) throw new Error('hungarian: meer rijen dan kolommen');
+
+  const INF = Infinity;
+  const u = new Array(n + 1).fill(0);
+  const v = new Array(m + 1).fill(0);
+  const p = new Array(m + 1).fill(0); // p[kolom] = gekoppelde rij (1-based)
+  const way = new Array(m + 1).fill(0);
+
+  for (let i = 1; i <= n; i++) {
+    p[0] = i;
+    let j0 = 0;
+    const minv = new Array(m + 1).fill(INF);
+    const used = new Array(m + 1).fill(false);
+
+    do {
+      used[j0] = true;
+      const i0 = p[j0];
+      let delta = INF;
+      let j1 = -1;
+      for (let j = 1; j <= m; j++) {
+        if (used[j]) continue;
+        const cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+        if (cur < minv[j]) { minv[j] = cur; way[j] = j0; }
+        if (minv[j] < delta) { delta = minv[j]; j1 = j; }
+      }
+      for (let j = 0; j <= m; j++) {
+        if (used[j]) { u[p[j]] += delta; v[j] -= delta; }
+        else minv[j] -= delta;
+      }
+      j0 = j1;
+    } while (p[j0] !== 0);
+
+    do {
+      const j1 = way[j0];
+      p[j0] = p[j1];
+      j0 = j1;
+    } while (j0);
+  }
+
+  const assign = new Array(n).fill(-1);
+  for (let j = 1; j <= m; j++) if (p[j] > 0) assign[p[j] - 1] = j - 1;
+  return assign;
+}
+
+return { hungarian };
+};
+__defs["lib/formations.js"] = function () {
+// Opstellingen per speelvorm.
+//
+// Veldcoordinaten: x 0..100 (links -> rechts), y 0..100 (eigen doel -> doel tegenstander).
+// De app tekent het veld staand (portret), eigen doel onderaan.
+//
+// Rollen: K = keeper, V = verdediger, M = middenvelder, A = aanvaller.
+// `dropOrder` bepaalt welke positie als eerste vervalt als je met te weinig
+// spelers staat (blessure zonder wissel op de bank). Aanvaller eruit, keeper
+// en centrale verdediging blijven.
+
+const ROLES = {
+  K: { key: 'K', naam: 'Keeper', kort: 'K' },
+  V: { key: 'V', naam: 'Verdediger', kort: 'V' },
+  M: { key: 'M', naam: 'Middenvelder', kort: 'M' },
+  A: { key: 'A', naam: 'Aanvaller', kort: 'A' },
+};
+
+const F = (id, naam, speelvorm, slots, dropOrder) => ({ id, naam, speelvorm, slots, dropOrder });
+const S = (id, label, role, x, y) => ({ id, label, role, x, y });
+
+const FORMATIONS = [
+  // ---- 4 tegen 4 (JO7) - zonder keeper ----
+  F('4-2-2', '2-2', 4, [
+    S('vl', 'VL', 'V', 30, 30), S('vr', 'VR', 'V', 70, 30),
+    S('al', 'AL', 'A', 30, 70), S('ar', 'AR', 'A', 70, 70),
+  ], ['ar', 'al', 'vr']),
+
+  F('4-1-2-1', '1-2-1 (met keeper)', 4, [
+    S('k', 'K', 'K', 50, 9),
+    S('vl', 'VL', 'V', 32, 36), S('vr', 'VR', 'V', 68, 36),
+    S('sp', 'SP', 'A', 50, 76),
+  ], ['sp', 'vr']),
+
+  // ---- 6 tegen 6 (JO8 / JO9) ----
+  F('6-1-2-2-1', '1-2-2-1', 6, [
+    S('k', 'K', 'K', 50, 8),
+    S('vl', 'VL', 'V', 28, 30), S('vr', 'VR', 'V', 72, 30),
+    S('ml', 'ML', 'M', 28, 58), S('mr', 'MR', 'M', 72, 58),
+    S('sp', 'SP', 'A', 50, 82),
+  ], ['sp', 'mr', 'vr', 'ml']),
+
+  F('6-1-3-2', '1-3-2', 6, [
+    S('k', 'K', 'K', 50, 8),
+    S('vl', 'VL', 'V', 20, 32), S('vc', 'VC', 'V', 50, 27), S('vr', 'VR', 'V', 80, 32),
+    S('al', 'AL', 'A', 34, 72), S('ar', 'AR', 'A', 66, 72),
+  ], ['ar', 'vr', 'al', 'vl']),
+
+  F('6-1-2-3', '1-2-3', 6, [
+    S('k', 'K', 'K', 50, 8),
+    S('vl', 'VL', 'V', 32, 30), S('vr', 'VR', 'V', 68, 30),
+    S('al', 'AL', 'A', 20, 68), S('ac', 'AC', 'A', 50, 76), S('ar', 'AR', 'A', 80, 68),
+  ], ['ar', 'al', 'vr', 'ac']),
+
+  F('6-1-1-3-1', '1-1-3-1', 6, [
+    S('k', 'K', 'K', 50, 8),
+    S('lm', 'LM', 'V', 50, 26),
+    S('ml', 'ML', 'M', 22, 54), S('mc', 'MC', 'M', 50, 56), S('mr', 'MR', 'M', 78, 54),
+    S('sp', 'SP', 'A', 50, 84),
+  ], ['sp', 'mr', 'ml', 'mc']),
+
+  // ---- 7 tegen 7 ----
+  F('7-1-3-2-1', '1-3-2-1', 7, [
+    S('k', 'K', 'K', 50, 7),
+    S('vl', 'VL', 'V', 22, 28), S('vc', 'VC', 'V', 50, 24), S('vr', 'VR', 'V', 78, 28),
+    S('ml', 'ML', 'M', 33, 55), S('mr', 'MR', 'M', 67, 55),
+    S('sp', 'SP', 'A', 50, 83),
+  ], ['sp', 'mr', 'vr', 'ml']),
+
+  F('7-1-2-3-1', '1-2-3-1', 7, [
+    S('k', 'K', 'K', 50, 7),
+    S('vl', 'VL', 'V', 32, 27), S('vr', 'VR', 'V', 68, 27),
+    S('ml', 'ML', 'M', 20, 55), S('mc', 'MC', 'M', 50, 53), S('mr', 'MR', 'M', 80, 55),
+    S('sp', 'SP', 'A', 50, 83),
+  ], ['sp', 'mr', 'ml', 'vr']),
+
+  // ---- 8 tegen 8 (JO10 / JO11) ----
+  F('8-1-3-3-1', '1-3-3-1', 8, [
+    S('k', 'K', 'K', 50, 7),
+    S('vl', 'VL', 'V', 22, 27), S('vc', 'VC', 'V', 50, 23), S('vr', 'VR', 'V', 78, 27),
+    S('ml', 'ML', 'M', 22, 55), S('mc', 'MC', 'M', 50, 57), S('mr', 'MR', 'M', 78, 55),
+    S('sp', 'SP', 'A', 50, 84),
+  ], ['sp', 'mr', 'vr', 'ml', 'vl']),
+
+  F('8-1-3-2-2', '1-3-2-2', 8, [
+    S('k', 'K', 'K', 50, 7),
+    S('vl', 'VL', 'V', 22, 27), S('vc', 'VC', 'V', 50, 23), S('vr', 'VR', 'V', 78, 27),
+    S('ml', 'ML', 'M', 32, 54), S('mr', 'MR', 'M', 68, 54),
+    S('al', 'AL', 'A', 32, 82), S('ar', 'AR', 'A', 68, 82),
+  ], ['ar', 'al', 'mr', 'vr', 'ml']),
+
+  F('8-1-2-3-2', '1-2-3-2', 8, [
+    S('k', 'K', 'K', 50, 7),
+    S('vl', 'VL', 'V', 33, 26), S('vr', 'VR', 'V', 67, 26),
+    S('ml', 'ML', 'M', 20, 54), S('mc', 'MC', 'M', 50, 52), S('mr', 'MR', 'M', 80, 54),
+    S('al', 'AL', 'A', 33, 82), S('ar', 'AR', 'A', 67, 82),
+  ], ['ar', 'al', 'mr', 'ml', 'vr']),
+
+  F('8-1-3-1-3', '1-3-1-3', 8, [
+    S('k', 'K', 'K', 50, 7),
+    S('vl', 'VL', 'V', 22, 27), S('vc', 'VC', 'V', 50, 23), S('vr', 'VR', 'V', 78, 27),
+    S('mc', 'MC', 'M', 50, 53),
+    S('al', 'AL', 'A', 22, 80), S('ac', 'AC', 'A', 50, 86), S('ar', 'AR', 'A', 78, 80),
+  ], ['ar', 'al', 'ac', 'vr', 'vl']),
+
+  // ---- 11 tegen 11 ----
+  F('11-1-4-3-3', '1-4-3-3', 11, [
+    S('k', 'K', 'K', 50, 5),
+    S('lb', 'LB', 'V', 14, 25), S('cvl', 'CVL', 'V', 38, 20), S('cvr', 'CVR', 'V', 62, 20), S('rb', 'RB', 'V', 86, 25),
+    S('ml', 'ML', 'M', 28, 50), S('mc', 'MC', 'M', 50, 44), S('mr', 'MR', 'M', 72, 50),
+    S('al', 'LB2', 'A', 18, 78), S('sp', 'SP', 'A', 50, 86), S('ar', 'RB2', 'A', 82, 78),
+  ], ['ar', 'al', 'mr', 'ml', 'rb', 'lb']),
+
+  F('11-1-4-4-2', '1-4-4-2', 11, [
+    S('k', 'K', 'K', 50, 5),
+    S('lb', 'LB', 'V', 14, 25), S('cvl', 'CVL', 'V', 38, 20), S('cvr', 'CVR', 'V', 62, 20), S('rb', 'RB', 'V', 86, 25),
+    S('ml', 'ML', 'M', 14, 52), S('mcl', 'MCL', 'M', 38, 48), S('mcr', 'MCR', 'M', 62, 48), S('mr', 'MR', 'M', 86, 52),
+    S('al', 'SPL', 'A', 38, 82), S('ar', 'SPR', 'A', 62, 82),
+  ], ['ar', 'mr', 'ml', 'al', 'rb', 'lb']),
+
+  F('11-1-3-4-3', '1-3-4-3', 11, [
+    S('k', 'K', 'K', 50, 5),
+    S('vl', 'VL', 'V', 25, 22), S('vc', 'VC', 'V', 50, 18), S('vr', 'VR', 'V', 75, 22),
+    S('ml', 'ML', 'M', 12, 50), S('mcl', 'MCL', 'M', 38, 46), S('mcr', 'MCR', 'M', 62, 46), S('mr', 'MR', 'M', 88, 50),
+    S('al', 'AL', 'A', 20, 80), S('sp', 'SP', 'A', 50, 86), S('ar', 'AR', 'A', 80, 80),
+  ], ['ar', 'al', 'mr', 'ml', 'vr']),
+
+  F('11-1-4-2-3-1', '1-4-2-3-1', 11, [
+    S('k', 'K', 'K', 50, 5),
+    S('lb', 'LB', 'V', 14, 25), S('cvl', 'CVL', 'V', 38, 20), S('cvr', 'CVR', 'V', 62, 20), S('rb', 'RB', 'V', 86, 25),
+    S('mcl', 'MCL', 'M', 38, 42), S('mcr', 'MCR', 'M', 62, 42),
+    S('ml', 'ML', 'M', 18, 66), S('mc', 'MC', 'M', 50, 64), S('mr', 'MR', 'M', 82, 66),
+    S('sp', 'SP', 'A', 50, 87),
+  ], ['mr', 'ml', 'sp', 'rb', 'lb']),
+];
+
+const SPEELVORMEN = [...new Set(FORMATIONS.map((f) => f.speelvorm))].sort((a, b) => a - b);
+
+function getFormation(id) {
+  return FORMATIONS.find((f) => f.id === id) || FORMATIONS.find((f) => f.speelvorm === 6);
+}
+
+function formationsForSize(size) {
+  return FORMATIONS.filter((f) => f.speelvorm === size);
+}
+
+// Slots voor een blok waarin je met minder spelers staat dan de speelvorm toelaat.
+// We laten posities vervallen volgens dropOrder, zodat de resterende opstelling
+// nog steeds logisch is (je gooit de spits eruit, niet je laatste verdediger).
+function slotsForCount(formation, count) {
+  const slots = formation.slots.slice();
+  if (count >= slots.length) return slots;
+  const teDroppen = slots.length - count;
+  const gedropt = new Set(formation.dropOrder.slice(0, teDroppen));
+  let rest = slots.filter((s) => !gedropt.has(s.id));
+  // Veiligheidsklep als dropOrder te kort is: gooi achteraan weg, maar hou de keeper.
+  while (rest.length > count) {
+    const idx = rest.map((s, i) => [s, i]).filter(([s]) => s.role !== 'K').pop();
+    if (!idx) break;
+    rest.splice(idx[1], 1);
+  }
+  return rest;
+}
+
+return { getFormation, formationsForSize, slotsForCount, ROLES, FORMATIONS, SPEELVORMEN };
+};
+__defs["app/scherm-team.js"] = function () {
+// Scherm: het team. Spelers toevoegen, plakken of uploaden.
+
+const { h, icoon, toonSheet, bevestig, melding, saldoTekst, initialen, downloadBestand } = __mod("app/ui.js");
+const { S, wijzig, nieuweSpeler, uid, exporteer, neemOver } = __mod("app/store.js");
+
+const ROLNAAM = { V: 'Verdediging', M: 'Middenveld', A: 'Aanval' };
+
+function schermTeam() {
+  const spelers = S.team.spelers;
+  const wrap = h('div', {});
+
+  wrap.appendChild(h('div', { class: 'kaart' },
+    h('label', { class: 'veld', style: { marginBottom: '0' } },
+      h('span', {}, 'Teamnaam'),
+      h('input', { type: 'text', value: S.team.naam, placeholder: 'JO9-1',
+        onchange: (e) => wijzig((s) => { s.team.naam = e.target.value.trim() || 'Mijn team'; }) }))));
+
+  const lijst = h('div', { class: 'kaart' });
+  lijst.appendChild(h('div', { class: 'kaart-kop' },
+    h('h2', {}, `Spelers`),
+    h('span', { class: 'mini' }, `${spelers.length} in de selectie`)));
+
+  if (!spelers.length) {
+    lijst.appendChild(h('div', { class: 'leeg' },
+      h('p', {}, 'Nog geen spelers.'),
+      h('div', { class: 'knoprij', style: { justifyContent: 'center' } },
+        h('button', { class: 'knop primair', onclick: () => plakSheet() }, 'Namen plakken'),
+        h('button', { class: 'knop', onclick: voorbeeldTeam }, 'Voorbeeldteam'))));
+  } else {
+    for (const p of spelers) lijst.appendChild(spelerRij(p));
+  }
+  wrap.appendChild(lijst);
+
+  wrap.appendChild(h('div', { class: 'knoprij' },
+    h('button', { class: 'knop primair', onclick: () => bewerkSpeler(null) }, icoon('plus', 18), 'Speler'),
+    h('button', { class: 'knop', onclick: () => plakSheet() }, 'Plakken'),
+    h('button', { class: 'knop', onclick: bestandSheet }, 'Bestand')));
+
+  if (spelers.length) {
+    wrap.appendChild(h('div', { class: 'tussenkop' }, 'Speeltijd over het seizoen'));
+    wrap.appendChild(saldoKaart());
+  }
+  return wrap;
+}
+
+function spelerRij(p) {
+  const merk = [];
+  if (p.keeper) merk.push(h('span', { class: 'vlag K' }, 'KEEPER'));
+  for (const r of p.posities || []) merk.push(h('span', { class: `vlag ${r}` }, ROLNAAM[r] || r));
+
+  const saldo = Math.round((p.saldoSec || 0) / 60);
+  return h('div', { class: 'spelerrij', role: 'button', tabindex: '0',
+    onclick: () => bewerkSpeler(p),
+    onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); bewerkSpeler(p); } } },
+    h('div', { class: 'bal' }, p.nummer || initialen(p.naam)),
+    h('div', { class: 'naam' }, p.naam,
+      merk.length ? h('small', {}, ...merk.map((m, i) => [i ? ' ' : '', m]).flat()) : h('small', {}, 'geen voorkeur')),
+    h('span', { class: `saldo ${saldo > 2 ? 'plus' : saldo < -2 ? 'min' : ''}` }, saldo === 0 ? '' : `${saldoTekst(p.saldoSec)} min`));
+}
+
+function saldoKaart() {
+  const gesorteerd = [...S.team.spelers].sort((a, b) => (a.saldoSec || 0) - (b.saldoSec || 0));
+  const max = Math.max(60, ...gesorteerd.map((p) => Math.abs(p.saldoSec || 0)));
+  const kaart = h('div', { class: 'kaart' });
+  kaart.appendChild(h('p', { class: 'uitleg' },
+    'Hoeveel iemand voor- of achterloopt op de gemiddelde speeltijd. Wie achterloopt krijgt bij het maken van een nieuw schema voorrang.'));
+  for (const p of gesorteerd) {
+    const v = p.saldoSec || 0;
+    const breedte = (Math.abs(v) / max) * 50;
+    kaart.appendChild(h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' } },
+      h('span', { style: { width: '82px', fontSize: '.84rem', fontWeight: '600', overflow: 'hidden',
+        textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, p.naam),
+      h('div', { style: { flex: '1', height: '18px', position: 'relative', background: 'var(--vlak-2)',
+        borderRadius: '5px', overflow: 'hidden' } },
+        h('i', { style: { position: 'absolute', left: '50%', top: '0', bottom: '0', width: '1px', background: 'var(--rand)' } }),
+        h('i', { style: {
+          position: 'absolute', top: '3px', bottom: '3px', borderRadius: '3px',
+          background: v >= 0 ? 'var(--rol-V)' : 'var(--waarschuwing)',
+          left: v >= 0 ? '50%' : `${50 - breedte}%`, width: `${Math.max(breedte, v === 0 ? 0 : 1.5)}%`,
+        } })),
+      h('span', { class: 'saldo', style: { width: '46px', textAlign: 'right' } }, `${saldoTekst(v)}m`)));
+  }
+  kaart.appendChild(h('button', { class: 'knop stil klein', style: { marginTop: '8px' },
+    onclick: () => bevestig('Saldo wissen?', 'Iedereen begint weer op nul. Het archief blijft staan.',
+      () => wijzig((s) => { for (const p of s.team.spelers) p.saldoSec = 0; }, { terugdraaibaar: true }),
+      { knop: 'Wissen' }) }, 'Saldo op nul zetten'));
+  return kaart;
+}
+
+// ------------------------------------------------------------------ bewerken
+function bewerkSpeler(bestaand) {
+  const p = bestaand ? { ...bestaand } : nieuweSpeler();
+  toonSheet(bestaand ? p.naam || 'Speler' : 'Nieuwe speler', (c, sluit) => {
+    const naamVeld = h('input', { type: 'text', value: p.naam, placeholder: 'Voornaam', autocomplete: 'off' });
+    const nrVeld = h('input', { type: 'text', value: p.nummer, placeholder: '7', inputmode: 'numeric' });
+
+    c.appendChild(h('div', { class: 'rij2' },
+      h('label', { class: 'veld' }, h('span', {}, 'Naam'), naamVeld),
+      h('label', { class: 'veld' }, h('span', {}, 'Rugnummer'), nrVeld)));
+
+    const keeperKnop = h('button', { class: 'schakel', 'aria-pressed': String(!!p.keeper), 'aria-label': 'Kan keepen',
+      onclick: () => { p.keeper = !p.keeper; keeperKnop.setAttribute('aria-pressed', String(p.keeper)); } }, h('i', {}));
+    c.appendChild(h('div', { class: 'strook' },
+      h('div', { class: 'kop2' }, 'Kan keepen', h('small', {}, 'Alleen deze spelers worden op doel gezet')),
+      keeperKnop));
+
+    c.appendChild(h('div', { class: 'tussenkop' }, 'Voorkeurspositie'));
+    c.appendChild(h('p', { class: 'uitleg' }, 'Laat leeg als het niet uitmaakt; dan zet het schema deze speler overal in.'));
+    const posRij = h('div', { class: 'chiprij' });
+    for (const [r, naam] of Object.entries(ROLNAAM)) {
+      const knop = h('button', { class: 'chip', 'aria-pressed': String((p.posities || []).includes(r)),
+        onclick: () => {
+          const aan = !(p.posities || []).includes(r);
+          p.posities = aan ? [...(p.posities || []), r] : (p.posities || []).filter((x) => x !== r);
+          knop.setAttribute('aria-pressed', String(aan));
+        } }, h('i', { class: 'dot' }), naam);
+      posRij.appendChild(knop);
+    }
+    c.appendChild(posRij);
+
+    const sterkteUit = h('b', {}, String(p.sterkte ?? 3));
+    c.appendChild(h('details', { style: { marginTop: '14px' } },
+      h('summary', { class: 'mini', style: { cursor: 'pointer', padding: '6px 0' } }, 'Meer instellingen'),
+      h('div', { class: 'strook' },
+        h('div', { class: 'kop2' }, 'Inzetbaarheid', h('small', {}, 'Telt alleen mee als je bij de wedstrijd accent op basisspelers zet')),
+        h('div', { class: 'tel' }, sterkteUit, h('span', { class: 'mini' }, '/ 5'))),
+      h('input', { type: 'range', class: 'schuif', min: '1', max: '5', step: '1', value: String(p.sterkte ?? 3),
+        oninput: (e) => { p.sterkte = Number(e.target.value); sterkteUit.textContent = e.target.value; } })));
+
+    c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '18px' } },
+      bestaand ? h('button', { class: 'knop gevaar', onclick: () => {
+        sluit();
+        bevestig('Speler verwijderen?', `${p.naam} verdwijnt uit het team.`, () => {
+          wijzig((s) => { s.team.spelers = s.team.spelers.filter((q) => q.id !== p.id); }, { terugdraaibaar: true });
+        }, { knop: 'Verwijderen', gevaar: true });
+      } }, 'Verwijderen') : null,
+      h('button', { class: 'knop primair', style: { flex: '2' }, onclick: () => {
+        p.naam = naamVeld.value.trim();
+        p.nummer = nrVeld.value.trim();
+        if (!p.naam) { melding('Vul een naam in'); return; }
+        wijzig((s) => {
+          const i = s.team.spelers.findIndex((q) => q.id === p.id);
+          if (i >= 0) s.team.spelers[i] = p; else s.team.spelers.push(p);
+        });
+        sluit();
+      } }, 'Opslaan')));
+  });
+}
+
+// -------------------------------------------------------------- invoerhulpen
+/**
+ * Leest een geplakte of geüploade lijst. Eén speler per regel; extra velden
+ * gescheiden door komma, puntkomma of tab, in willekeurige volgorde:
+ *   Daan
+ *   Sem, 7, keeper
+ *   Luuk; 4; V M
+ */
+function leesSpelers(tekst) {
+  const uit = [];
+  for (const ruweRegel of String(tekst).split(/\r?\n/)) {
+    const regel = ruweRegel.trim();
+    if (!regel || /^(naam|speler|name)\b/i.test(regel)) continue;
+    const delen = regel.split(/[,;\t]/).map((d) => d.trim()).filter(Boolean);
+    if (!delen.length) continue;
+    const p = nieuweSpeler(delen[0]);
+    for (const d of delen.slice(1)) {
+      if (/^\d{1,2}$/.test(d)) p.nummer = d;
+      else if (/^(k|keeper|doelman|doelvrouw|gk)$/i.test(d)) p.keeper = true;
+      else {
+        const rollen = d.toUpperCase().replace(/[^VMAK ]/g, '').split(/\s*/).filter((x) => 'VMA'.includes(x));
+        if (rollen.length) p.posities = [...new Set([...p.posities, ...rollen])];
+        if (/K/.test(d.toUpperCase()) && d.length <= 4) p.keeper = true;
+      }
+    }
+    uit.push(p);
+  }
+  return uit;
+}
+
+function plakSheet() {
+  toonSheet('Namen plakken', (c, sluit) => {
+    c.appendChild(h('p', { class: 'uitleg' },
+      'Eén speler per regel. Je mag er rugnummer, "keeper" en voorkeursposities (V/M/A) achter zetten, gescheiden door een komma.'));
+    const ta = h('textarea', { placeholder: 'Daan, 1, keeper\nSem, 4, V\nLuuk\nNoud, 8, M\nTijn\nBram, 9, A\nFinn' });
+    c.appendChild(ta);
+    c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '12px' } },
+      h('button', { class: 'knop', onclick: sluit }, 'Annuleren'),
+      h('button', { class: 'knop primair', style: { flex: '2' }, onclick: () => {
+        const nieuw = leesSpelers(ta.value);
+        if (!nieuw.length) { melding('Geen namen gevonden'); return; }
+        wijzig((s) => { s.team.spelers.push(...nieuw); }, { terugdraaibaar: true });
+        sluit();
+        melding(`${nieuw.length} speler${nieuw.length === 1 ? '' : 's'} toegevoegd`);
+      } }, 'Toevoegen')));
+  });
+}
+
+function bestandSheet() {
+  toonSheet('Bestand', (c, sluit) => {
+    c.appendChild(h('p', { class: 'uitleg' },
+      'Een eerder gemaakte back-up (.json) of een simpele namenlijst (.csv of .txt).'));
+    const invoer = h('input', { type: 'file', accept: '.json,.csv,.txt,application/json,text/csv,text/plain',
+      style: { padding: '12px' },
+      onchange: async (e) => {
+        const bestand = e.target.files[0];
+        if (!bestand) return;
+        const tekst = await bestand.text();
+        if (/\.json$/i.test(bestand.name) || tekst.trim().startsWith('{')) {
+          try {
+            const data = JSON.parse(tekst);
+            bevestig('Back-up terugzetten?', 'Je huidige team, wedstrijd en archief worden vervangen.', () => {
+              wijzig(() => { neemOver(data); });
+              sluit(); melding('Back-up teruggezet');
+            }, { knop: 'Terugzetten', gevaar: true });
+          } catch (err) { melding('Dit JSON-bestand is niet leesbaar'); }
+        } else {
+          const nieuw = leesSpelers(tekst);
+          if (!nieuw.length) { melding('Geen namen gevonden'); return; }
+          wijzig((s) => { s.team.spelers.push(...nieuw); }, { terugdraaibaar: true });
+          sluit(); melding(`${nieuw.length} spelers toegevoegd`);
+        }
+      } });
+    c.appendChild(invoer);
+    c.appendChild(h('div', { class: 'tussenkop' }, 'Back-up maken'));
+    c.appendChild(h('button', { class: 'knop breed', onclick: () => {
+      downloadBestand(`wisselschema-${S.team.naam.replace(/\W+/g, '-').toLowerCase()}.json`, JSON.stringify(exporteer(), null, 2));
+      melding('Back-up gedownload');
+    } }, 'Alles downloaden als JSON'));
+  });
+}
+
+function voorbeeldTeam() {
+  wijzig((s) => {
+    s.team.naam = 'JO9-1';
+    s.team.spelers = leesSpelers(
+      'Daan, 1, keeper\nSem, 4, keeper\nLuuk, 2, V\nNoud, 6, M\nTijn, 8, M\nBram, 9, A\nFinn, 11, A');
+  }, { terugdraaibaar: true });
+  melding('Voorbeeldteam geladen - pas het gerust aan');
+}
+
+return { schermTeam, bewerkSpeler, leesSpelers };
+};
+__defs["app/scherm-opzet.js"] = function () {
+// Scherm: wedstrijd klaarzetten. Wie is er vandaag, hoe spelen we, hoe lang.
+
+const { h, icoon, melding, datumTekst, bevestig } = __mod("app/ui.js");
+const { S, wijzig, nieuweWedstrijd, genereer } = __mod("app/store.js");
+const { FORMATIONS, SPEELVORMEN, formationsForSize, getFormation } = __mod("lib/formations.js");
+const { tekenMiniVeld } = __mod("app/veld.js");
+
+const PRESET_MIN = [10, 12.5, 15, 20, 25];
+
+function schermOpzet(ganaar) {
+  const w = S.wedstrijd;
+  if (!w) return geenWedstrijd(ganaar);
+  if (!S.team.spelers.length) {
+    return h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
+      h('p', {}, 'Voeg eerst spelers toe aan je team.'),
+      h('button', { class: 'knop primair', onclick: () => ganaar('team') }, 'Naar het team')));
+  }
+
+  const wrap = h('div', {});
+  const bezig = w.status === 'bezig';
+
+  // Elke wijziging hier gooit het schema weg en laat het opnieuw berekenen.
+  // Tijdens een lopende wedstrijd zou dat ook de al gespeelde tijd wissen,
+  // dus daar vragen we eerst.
+  const doeZet = (fn) => wijzig((s) => { fn(s.wedstrijd); s.wedstrijd.blokken = null; s.wedstrijd.pins = {}; },
+    { terugdraaibaar: true });
+  const zet = (fn) => {
+    if (!bezig) { doeZet(fn); return; }
+    bevestig('De wedstrijd is bezig',
+      'Als je de opzet nu aanpast, vervalt het huidige schema en de gespeelde tijd. Wil je in plaats daarvan iemand wisselen, gebruik dan het live-scherm.',
+      () => doeZet(fn), { knop: 'Toch aanpassen', gevaar: true });
+  };
+
+  if (bezig) {
+    wrap.appendChild(h('div', { class: 'melding midden' },
+      h('span', { class: 'ico' }, '!'),
+      h('span', {}, 'Deze wedstrijd loopt. Wijzigingen hier gooien het schema en de gespeelde tijd weg.')));
+    wrap.appendChild(h('button', { class: 'knop primair breed', style: { marginBottom: '14px' },
+      onclick: () => ganaar('live') }, 'Terug naar de wedstrijd'));
+  }
+
+  // ---- tegenstander en datum
+  wrap.appendChild(h('div', { class: 'kaart' },
+    h('div', { class: 'rij2' },
+      h('label', { class: 'veld' }, h('span', {}, 'Tegenstander'),
+        h('input', { type: 'text', value: w.tegenstander, placeholder: 'SV Voorbeeld',
+          onchange: (e) => wijzig((s) => { s.wedstrijd.tegenstander = e.target.value; }) })),
+      h('label', { class: 'veld' }, h('span', {}, 'Datum'),
+        h('input', { type: 'date', value: w.datum,
+          onchange: (e) => wijzig((s) => { s.wedstrijd.datum = e.target.value; }) }))),
+    h('div', { class: 'segment' },
+      ...[[true, 'Thuis'], [false, 'Uit']].map(([v, l]) =>
+        h('button', { 'aria-pressed': String(w.thuis === v), onclick: () => wijzig((s) => { s.wedstrijd.thuis = v; }) }, l)))));
+
+  // ---- aanwezigheid
+  const aanwezig = new Set(w.selectie);
+  const kaartAanwezig = h('div', { class: 'kaart' });
+  kaartAanwezig.appendChild(h('div', { class: 'kaart-kop' },
+    h('h2', {}, 'Wie speelt er vandaag?'),
+    h('span', { class: 'mini' }, `${aanwezig.size} van ${S.team.spelers.length}`)));
+  const rij = h('div', { class: 'chiprij' });
+  for (const p of S.team.spelers) {
+    rij.appendChild(h('button', { class: 'chip', 'aria-pressed': String(aanwezig.has(p.id)),
+      onclick: () => zet((m) => {
+        m.selectie = aanwezig.has(p.id) ? m.selectie.filter((x) => x !== p.id) : [...m.selectie, p.id];
+        delete m.beschikbaar[p.id];
+      }) },
+      h('i', { class: 'dot' }), p.naam, p.keeper ? h('span', { class: 'vlag K' }, 'K') : null));
+  }
+  kaartAanwezig.appendChild(rij);
+  kaartAanwezig.appendChild(h('div', { class: 'knoprij', style: { marginTop: '10px' } },
+    h('button', { class: 'knop klein stil', onclick: () => zet((m) => { m.selectie = S.team.spelers.map((p) => p.id); }) }, 'Iedereen'),
+    h('button', { class: 'knop klein stil', onclick: () => zet((m) => { m.selectie = []; }) }, 'Niemand')));
+  wrap.appendChild(kaartAanwezig);
+
+  // ---- speelvorm en opstelling
+  const kaartVorm = h('div', { class: 'kaart' });
+  kaartVorm.appendChild(h('h2', {}, 'Speelvorm'));
+  kaartVorm.appendChild(h('p', { class: 'uitleg' }, 'Hoeveel spelers staan er bij jullie op het veld?'));
+  kaartVorm.appendChild(h('div', { class: 'segment' },
+    ...SPEELVORMEN.map((n) => h('button', { 'aria-pressed': String(w.speelvorm === n),
+      onclick: () => zet((m) => { m.speelvorm = n; m.formationId = formationsForSize(n)[0].id; }) }, `${n}-tal`))));
+
+  kaartVorm.appendChild(h('div', { class: 'tussenkop' }, 'Opstelling'));
+  const opstellingen = h('div', { style: { display: 'flex', gap: '10px', overflowX: 'auto',
+    padding: '2px 0 6px', margin: '0 -4px', scrollSnapType: 'x mandatory' } });
+  for (const f of formationsForSize(w.speelvorm)) {
+    const gekozen = f.id === w.formationId;
+    opstellingen.appendChild(h('button', {
+      class: 'knop', 'aria-pressed': String(gekozen),
+      style: { flex: 'none', flexDirection: 'column', height: 'auto', padding: '8px', gap: '6px',
+        scrollSnapAlign: 'start', borderColor: gekozen ? 'var(--accent)' : 'var(--rand)',
+        borderWidth: gekozen ? '2px' : '1px', background: gekozen ? 'var(--accent-zacht)' : 'var(--vlak)' },
+      onclick: () => zet((m) => { m.formationId = f.id; }) },
+      tekenMiniVeld(f.id, 54),
+      h('span', { style: { fontSize: '.8rem' } }, f.naam)));
+  }
+  kaartVorm.appendChild(opstellingen);
+  wrap.appendChild(kaartVorm);
+
+  // ---- speeltijd
+  const kaartTijd = h('div', { class: 'kaart' });
+  kaartTijd.appendChild(h('h2', {}, 'Speeltijd'));
+  kaartTijd.appendChild(h('div', { class: 'rij2', style: { marginTop: '10px' } },
+    h('label', { class: 'veld' }, h('span', {}, 'Aantal perioden'),
+      h('div', { class: 'segment' }, ...[2, 3, 4].map((n) =>
+        h('button', { 'aria-pressed': String(w.periodes === n), onclick: () => zet((m) => { m.periodes = n; }) }, String(n))))),
+    h('label', { class: 'veld' }, h('span', {}, 'Minuten per periode'),
+      h('select', { onchange: (e) => zet((m) => { m.periodeMin = Number(e.target.value); }) },
+        ...PRESET_MIN.map((m2) => h('option', { value: String(m2), selected: w.periodeMin === m2 }, `${m2} min`)),
+        PRESET_MIN.includes(w.periodeMin) ? null : h('option', { value: String(w.periodeMin), selected: true }, `${w.periodeMin} min`)))));
+
+  kaartTijd.appendChild(h('label', { class: 'veld' },
+    h('span', {}, 'Wisselmomenten per periode'),
+    h('div', { class: 'segment' },
+      ...[[1, 'Eén: bij de rust'], [2, 'Twee: ook halverwege']].map(([n, l]) =>
+        h('button', { 'aria-pressed': String(w.blokkenPerPeriode === n), onclick: () => zet((m) => { m.blokkenPerPeriode = n; }) }, l)))));
+  kaartTijd.appendChild(h('p', { class: 'uitleg' },
+    `Totaal ${w.periodes * w.periodeMin} minuten, verdeeld over ${w.periodes * w.blokkenPerPeriode} blokken van ${Math.round(w.periodeMin / w.blokkenPerPeriode * 10) / 10} minuten.`));
+  wrap.appendChild(kaartTijd);
+
+  // ---- verdeling
+  const accent = w.opties.vormAccent ?? 0;
+  const accentUit = h('span', { class: 'mini' }, accentTekst(accent));
+  const kaartVerdeling = h('div', { class: 'kaart' });
+  kaartVerdeling.appendChild(h('div', { class: 'kaart-kop' }, h('h3', {}, 'Verdeling van de speeltijd'), accentUit));
+  kaartVerdeling.appendChild(h('input', { type: 'range', class: 'schuif', min: '0', max: '100', step: '10',
+    value: String(Math.round(accent * 100)),
+    oninput: (e) => { accentUit.textContent = accentTekst(Number(e.target.value) / 100); },
+    onchange: (e) => wijzig((s) => { s.wedstrijd.opties.vormAccent = Number(e.target.value) / 100; }) }));
+  kaartVerdeling.appendChild(h('div', { style: { display: 'flex', justifyContent: 'space-between' } },
+    h('span', { class: 'mini' }, 'Iedereen evenveel'), h('span', { class: 'mini' }, 'Accent op basisspelers')));
+  if (accent > 0.05) {
+    kaartVerdeling.appendChild(h('div', { class: 'melding midden', style: { marginTop: '10px' } },
+      h('span', { class: 'ico' }, '!'),
+      h('span', {}, 'In de jeugd tot en met JO12 is gelijke speeltijd het uitgangspunt van de KNVB. Gebruik dit met mate.')));
+  }
+  wrap.appendChild(kaartVerdeling);
+
+  // ---- actie
+  const genoeg = aanwezig.size >= 2;
+  const maakSchema = () => { genereer({ nieuweSeed: true }); ganaar('schema'); melding('Wisselschema gemaakt'); };
+  wrap.appendChild(h('button', { class: 'knop primair breed groot', disabled: !genoeg,
+    onclick: () => {
+      if (!bezig) { maakSchema(); return; }
+      bevestig('De wedstrijd is bezig', 'Een nieuw schema wist de gespeelde tijd van deze wedstrijd.',
+        maakSchema, { knop: 'Nieuw schema', gevaar: true });
+    } },
+    icoon('fluit', 20), w.blokken ? 'Schema opnieuw maken' : 'Maak het wisselschema'));
+  if (!genoeg) wrap.appendChild(h('p', { class: 'uitleg', style: { textAlign: 'center', marginTop: '8px' } },
+    'Selecteer minstens twee spelers.'));
+
+  wrap.appendChild(h('button', { class: 'knop stil breed', style: { marginTop: '14px' },
+    onclick: () => bevestig('Wedstrijd weggooien?', 'De opzet en het schema van deze wedstrijd verdwijnen.',
+      () => { wijzig((s) => { s.wedstrijd = null; }, { terugdraaibaar: true }); }, { knop: 'Weggooien', gevaar: true }) },
+    'Deze wedstrijd weggooien'));
+  return wrap;
+}
+
+const accentTekst = (v) => (v < 0.05 ? 'volledig gelijk' : v < 0.35 ? 'licht accent' : v < 0.7 ? 'duidelijk accent' : 'sterk accent');
+
+function geenWedstrijd(ganaar) {
+  const wrap = h('div', {});
+  wrap.appendChild(h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
+    h('h2', { style: { marginBottom: '6px' } }, 'Geen wedstrijd klaargezet'),
+    h('p', {}, 'Zet een wedstrijd klaar en laat de app het wisselschema maken.'),
+    h('button', { class: 'knop primair groot', style: { marginTop: '8px' }, onclick: () => {
+      const vorige = S.archief[0];
+      wijzig((s) => { s.wedstrijd = nieuweWedstrijd(vorige ? { ...vorige } : null); s.wedstrijd.selectie = s.team.spelers.map((p) => p.id); });
+    } }, icoon('plus', 20), 'Nieuwe wedstrijd'))));
+
+  if (S.archief.length) {
+    wrap.appendChild(h('div', { class: 'tussenkop' }, 'Laatst gespeeld'));
+    for (const a of S.archief.slice(0, 3)) {
+      wrap.appendChild(h('div', { class: 'kaart', style: { padding: '11px 14px' } },
+        h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center' } },
+          h('div', { class: 'naam', style: { flex: '1', fontWeight: '600' } },
+            a.tegenstander || 'Onbekende tegenstander',
+            h('small', { style: { display: 'block', fontSize: '.76rem', color: 'var(--zacht)' } },
+              `${datumTekst(a.datum)} · ${a.thuis ? 'thuis' : 'uit'} · ${getFormation(a.formationId).naam}`)),
+          h('button', { class: 'knop klein', onclick: () => ganaar('archief') }, 'Bekijk'))));
+    }
+  }
+  return wrap;
+}
+
+return { schermOpzet };
+};
+__defs["app/veld.js"] = function () {
+// Het speelveld als SVG. Staand formaat, eigen doel onderaan - zoals je er
+// als coach zelf naar kijkt vanaf de zijlijn.
+
+const { svgEl, initialen, voornaam } = __mod("app/ui.js");
+const { getFormation, slotsForCount } = __mod("lib/formations.js");
+
+const B = 100, H = 150; // veldafmetingen in tekeneenheden
+const vx = (x) => x;
+const vy = (y) => H - (y / 100) * H;
+
+function belijning() {
+  const l = (props) => svgEl('rect', { class: 'lijn', ...props });
+  return [
+    // Gras loopt door tot buiten de lijnen, zodat namen die net achter het doel
+    // vallen (de keeper) op groen staan in plaats van op de kaartachtergrond.
+    svgEl('rect', { class: 'gras-b', x: -9, y: -6, width: B + 18, height: H + 24 }),
+    // grasbanen
+    ...[0, 1, 2, 3, 4, 5].map((i) => svgEl('rect', {
+      class: i % 2 ? 'gras-b' : 'gras-a', x: 0, y: (i * H) / 6, width: B, height: H / 6,
+    })),
+    l({ x: 0.5, y: 0.5, width: B - 1, height: H - 1, rx: 1 }),
+    svgEl('line', { class: 'lijn', x1: 0, y1: H / 2, x2: B, y2: H / 2 }),
+    svgEl('circle', { class: 'lijn', cx: B / 2, cy: H / 2, r: 13 }),
+    svgEl('circle', { cx: B / 2, cy: H / 2, r: 1.1, fill: 'rgba(255,255,255,.5)' }),
+    // eigen helft (onder)
+    l({ x: 22, y: H - 22, width: 56, height: 22 }),
+    l({ x: 37, y: H - 8, width: 26, height: 8 }),
+    // helft tegenstander (boven)
+    l({ x: 22, y: 0, width: 56, height: 22 }),
+    l({ x: 37, y: 0, width: 26, height: 8 }),
+    // doelen
+    svgEl('rect', { x: 42, y: H, width: 16, height: 2.6, fill: 'rgba(255,255,255,.75)' }),
+    svgEl('rect', { x: 42, y: -2.6, width: 16, height: 2.6, fill: 'rgba(255,255,255,.75)' }),
+  ];
+}
+
+const ROLKLEUR = { K: 'var(--rol-K)', V: 'var(--rol-V)', M: 'var(--rol-M)', A: 'var(--rol-A)' };
+
+/**
+ * @param {object} blok        blok met `opstelling`
+ * @param {Array}  spelers     alle spelers (voor naam en rugnummer)
+ * @param {string} formationId
+ * @param {object} opties      { markeer:Set<id>, opTik(spelerId, slotId), toonNamen }
+ */
+function tekenVeld(blok, spelers, formationId, opties = {}) {
+  const formatie = getFormation(formationId);
+  const opstelling = blok?.opstelling || {};
+  const bezet = Object.keys(opstelling);
+  const slots = slotsForCount(formatie, bezet.length).filter((s) => opstelling[s.id]);
+  const zoek = (id) => spelers.find((p) => p.id === id);
+  const markeer = opties.markeer || new Set();
+
+  const pionnen = slots.map((slot) => {
+    const speler = zoek(opstelling[slot.id]);
+    if (!speler) return null;
+    const cx = vx(slot.x), cy = vy(slot.y);
+    const uitgelicht = markeer.has(speler.id);
+    const groep = svgEl('g', {
+      style: opties.opTik ? 'cursor:pointer' : '',
+      onclick: opties.opTik ? () => opties.opTik(speler.id, slot.id) : null,
+      role: opties.opTik ? 'button' : null,
+      'aria-label': `${speler.naam}, ${slot.label}`,
+    },
+      uitgelicht ? svgEl('circle', { cx, cy, r: 11.5, fill: 'none', stroke: '#fff', 'stroke-width': 1.6, opacity: .9 }) : null,
+      svgEl('circle', { class: 'pion', cx, cy, r: 8.2, fill: ROLKLEUR[slot.role] || '#555' }),
+      svgEl('text', { class: 'nr', x: cx, y: cy }, speler.nummer || initialen(speler.naam)),
+      opties.toonNamen === false ? null : svgEl('text', { class: 'naam', x: cx, y: cy + 14.5 }, voornaam(speler.naam)),
+      svgEl('text', { class: 'pos', x: cx, y: cy - 10.6 }, slot.label));
+    return groep;
+  }).filter(Boolean);
+
+  return svgEl('svg', {
+    class: 'veld', viewBox: `-9 -6 ${B + 18} ${H + 24}`, role: 'img',
+    'aria-label': `Opstelling ${formatie.naam}`,
+  }, ...belijning(), ...pionnen);
+}
+
+/** Klein veldje om een opstelling te kiezen: alleen stippen, geen namen. */
+function tekenMiniVeld(formationId, grootte = 62) {
+  const f = getFormation(formationId);
+  return svgEl('svg', { viewBox: `-6 -6 ${B + 12} ${H + 12}`, width: grootte, height: grootte * 1.44,
+    class: 'veld', 'aria-hidden': 'true' },
+    svgEl('rect', { class: 'gras-a', x: 0, y: 0, width: B, height: H }),
+    svgEl('line', { class: 'lijn', x1: 0, y1: H / 2, x2: B, y2: H / 2 }),
+    ...f.slots.map((s) => svgEl('circle', { cx: vx(s.x), cy: vy(s.y), r: 6.5, fill: ROLKLEUR[s.role] })));
+}
+
+return { tekenVeld, tekenMiniVeld };
+};
+__defs["app/scherm-schema.js"] = function () {
+// Scherm: het wisselschema. Raster om in één oogopslag te zien wie wanneer
+// speelt, plus per blok de opstelling en de wisselinstructie.
+
+const { h, icoon, toonSheet, melding, minutenTekst, mmss, kopieer, bevestig, voornaam } = __mod("app/ui.js");
+const { S, wijzig, plan, genereer, deelLink, klokStart } = __mod("app/store.js");
+const { getFormation, slotsForCount } = __mod("lib/formations.js");
+const { tekenVeld } = __mod("app/veld.js");
+
+let gekozenBlok = 0;
+
+function blokLabel(blok, w) {
+  const p = `K${blok.periode + 1}`;
+  return w.blokkenPerPeriode > 1 ? `${p}${'abcd'[blok.deel] || blok.deel + 1}` : p;
+}
+
+function schermSchema(ganaar) {
+  const w = S.wedstrijd;
+  if (!w || !w.blokken) {
+    return h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
+      h('p', {}, 'Er is nog geen schema.'),
+      h('button', { class: 'knop primair', onclick: () => ganaar('opzet') }, 'Wedstrijd klaarzetten')));
+  }
+
+  const p = plan();
+  const formatie = getFormation(w.formationId);
+  const spelers = w.selectie.map((id) => S.team.spelers.find((q) => q.id === id)).filter(Boolean);
+  const wrap = h('div', {});
+
+  // ---- waarschuwingen
+  if (p.waarschuwingen.length) {
+    const doos = h('div', { style: { marginBottom: '12px' } });
+    for (const m of p.waarschuwingen) {
+      doos.appendChild(h('div', { class: `melding ${m.ernst}` },
+        h('span', { class: 'ico' }, m.ernst === 'hoog' ? '!' : m.ernst === 'midden' ? '!' : 'i'),
+        h('span', {}, m.tekst)));
+    }
+    wrap.appendChild(doos);
+  }
+
+  // ---- raster
+  const kaart = h('div', { class: 'kaart' });
+  kaart.appendChild(h('div', { class: 'kaart-kop' },
+    h('h2', {}, 'Wisselschema'),
+    h('span', { class: 'mini' }, `${w.periodes * w.periodeMin} min`)));
+  kaart.appendChild(h('div', { class: 'schema-wrap' }, rasterTabel(w, p, spelers, formatie)));
+  kaart.appendChild(h('p', { class: 'uitleg', style: { marginTop: '10px', marginBottom: '0' } },
+    'Tik op een vakje om iemand te ruilen. Een dikke rand betekent dat je het blok zelf hebt vastgezet.'));
+  wrap.appendChild(kaart);
+
+  // ---- blok voor blok
+  gekozenBlok = Math.min(gekozenBlok, p.blokken.length - 1);
+  const kiezer = h('div', { class: 'segment', style: { marginBottom: '12px', overflowX: 'auto' } });
+  p.blokken.forEach((b, i) => {
+    kiezer.appendChild(h('button', { 'aria-pressed': String(i === gekozenBlok),
+      style: { minWidth: '58px', flex: 'none' },
+      onclick: () => { gekozenBlok = i; hertekenDetail(); } },
+      blokLabel(b, w), h('small', { style: { display: 'block', fontSize: '.64rem', opacity: '.7' } },
+        `${Math.round(b.vanSec / 60)}-${Math.round(b.totSec / 60)}`)));
+  });
+  wrap.appendChild(kiezer);
+
+  const detail = h('div', {});
+  wrap.appendChild(detail);
+  const hertekenDetail = () => {
+    detail.replaceChildren(blokDetail(w, p, spelers, formatie, gekozenBlok));
+    [...kiezer.children].forEach((k, i) => k.setAttribute('aria-pressed', String(i === gekozenBlok)));
+  };
+  hertekenDetail();
+
+  // ---- acties
+  wrap.appendChild(h('div', { class: 'knoprij niet-printen', style: { marginTop: '14px' } },
+    h('button', { class: 'knop', onclick: () => { genereer({ nieuweSeed: true }); melding('Nieuw schema gemaakt'); } },
+      icoon('vernieuw', 18), 'Andere variant'),
+    h('button', { class: 'knop', onclick: deelSheet }, icoon('deel', 18), 'Delen'),
+    h('button', { class: 'knop', onclick: () => window.print() }, 'Printen')));
+
+  wrap.appendChild(h('button', { class: 'knop primair breed groot niet-printen', style: { marginTop: '10px' },
+    onclick: () => {
+      if (w.status === 'opzet') wijzig((s) => { s.wedstrijd.status = 'bezig'; });
+      ganaar('live');
+    } }, icoon('live', 20), w.status === 'bezig' ? 'Terug naar de wedstrijd' : 'Wedstrijd starten'));
+  return wrap;
+}
+
+// ------------------------------------------------------------------- raster
+function rasterTabel(w, p, spelers, formatie) {
+  const kopRij = h('tr', {}, h('th', { class: 'sp' }, 'Speler'),
+    ...p.blokken.map((b) => h('th', {}, blokLabel(b, w),
+      h('small', { style: { display: 'block', fontWeight: '500', opacity: '.75' } }, `${Math.round(b.vanSec / 60)}'`))),
+    h('th', {}, 'Tot.'));
+
+  const lijf = h('tbody', {});
+  for (const st of p.statistieken) {
+    const speler = spelers.find((q) => q.id === st.spelerId);
+    const cellen = p.blokken.map((b, i) => {
+      const slotId = Object.keys(b.opstelling).find((sid) => b.opstelling[sid] === st.spelerId);
+      const slot = slotId ? formatie.slots.find((s) => s.id === slotId) : null;
+      const gepind = !!(w.pins || {})[b.id];
+      const speeltNiet = !kanSpelen(w, st.spelerId, b);
+      const knop = h('button', {
+        class: `cel ${slot ? slot.role : speeltNiet ? 'weg' : 'bank'}${gepind ? ' vast' : ''}`,
+        disabled: b.vast,
+        title: `${st.naam} · ${blokLabel(b, w)}`,
+        onclick: () => ruilSheet(w, p, i, st.spelerId),
+      }, slot ? slot.label : speeltNiet ? '–' : 'bank');
+      return h('td', {}, knop);
+    });
+    lijf.appendChild(h('tr', {},
+      h('td', { class: 'sp' }, voornaam(st.naam)),
+      ...cellen,
+      h('td', { class: 'tot' }, minutenTekst(st.speelSec))));
+  }
+  return h('table', { class: 'schema' }, h('thead', {}, kopRij), lijf);
+}
+
+const kanSpelen = (w, spelerId, blok) => {
+  const v = (w.beschikbaar || {})[spelerId] || {};
+  const midden = (blok.vanSec + blok.totSec) / 2;
+  return (v.vanaf ?? 0) <= midden && (v.tot ?? Infinity) >= midden;
+};
+
+// -------------------------------------------------------------- blokdetail
+function blokDetail(w, p, spelers, formatie, i) {
+  const blok = p.blokken[i];
+  const wissel = p.wissels.find((x) => x.blokIndex === i);
+  const kaart = h('div', { class: 'kaart' });
+
+  kaart.appendChild(h('div', { class: 'kaart-kop' },
+    h('h3', {}, `${blokLabel(blok, w)} · ${Math.round(blok.vanSec / 60)}-${Math.round(blok.totSec / 60)} min`),
+    (w.pins || {})[blok.id]
+      ? h('button', { class: 'knop klein stil', onclick: () => wijzig((s) => { delete s.wedstrijd.pins[blok.id]; }) }, 'Losmaken')
+      : null,
+    blok.vast ? h('span', { class: 'vlag' }, 'GESPEELD') : null));
+
+  if (wissel && (wissel.eruit.length || wissel.erin.length || wissel.verplaatst.length)) {
+    kaart.appendChild(wisselKaart(wissel));
+  } else if (i === 0) {
+    kaart.appendChild(h('p', { class: 'uitleg' }, 'Beginopstelling.'));
+  }
+
+  kaart.appendChild(tekenVeld(blok, S.team.spelers, w.formationId, {
+    opTik: blok.vast ? null : (spelerId) => ruilSheet(w, p, i, spelerId),
+  }));
+
+  const opVeld = new Set(Object.values(blok.opstelling));
+  const bank = spelers.filter((q) => !opVeld.has(q.id));
+  if (bank.length) {
+    kaart.appendChild(h('div', { class: 'tussenkop' }, 'Op de bank'));
+    kaart.appendChild(h('div', { class: 'chiprij' },
+      ...bank.map((q) => {
+        const uit = !kanSpelen(w, q.id, blok);
+        return h('button', { class: 'chip', disabled: blok.vast || uit,
+          style: uit ? { opacity: '.45' } : {},
+          onclick: () => ruilSheet(w, p, i, q.id) },
+          h('i', { class: 'dot' }), q.naam, uit ? h('span', { class: 'mini' }, '· niet inzetbaar') : null);
+      })));
+  }
+  return kaart;
+}
+
+function wisselKaart(wissel) {
+  const doos = h('div', { class: 'wissel' });
+  doos.appendChild(h('div', { class: 'wanneer' }, `Wissel op ${mmss(wissel.opSec)}`));
+  for (const x of wissel.eruit) {
+    doos.appendChild(h('div', { class: 'beweging uit' }, h('span', { class: 'pijl' }, '↓'),
+      h('b', {}, x.naam), h('span', {}, `van ${x.van}`)));
+  }
+  for (const x of wissel.erin) {
+    doos.appendChild(h('div', { class: 'beweging erin' }, h('span', { class: 'pijl' }, '↑'),
+      h('b', {}, x.naam), h('span', {}, `naar ${x.naar}`)));
+  }
+  for (const x of wissel.verplaatst) {
+    doos.appendChild(h('div', { class: 'beweging schuif' }, h('span', { class: 'pijl' }, '↔'),
+      h('b', {}, x.naam), h('span', {}, `${x.van} → ${x.naar}`)));
+  }
+  return doos;
+}
+
+// ---------------------------------------------------------------- handmatig
+/** Ruil twee spelers binnen één blok en zet dat blok daarmee vast. */
+function ruilSheet(w, p, blokIndex, spelerId) {
+  const blok = p.blokken[blokIndex];
+  if (blok.vast) { melding('Dit blok is al gespeeld'); return; }
+
+  const ik = S.team.spelers.find((q) => q.id === spelerId);
+  const mijnSlot = Object.keys(blok.opstelling).find((sid) => blok.opstelling[sid] === spelerId);
+  const anderen = w.selectie
+    .map((id) => S.team.spelers.find((q) => q.id === id))
+    .filter((q) => q && q.id !== spelerId && kanSpelen(w, q.id, blok));
+
+  toonSheet(`${ik.naam} ruilen`, (c, sluit) => {
+    c.appendChild(h('p', { class: 'uitleg' }, mijnSlot
+      ? `Staat nu opgesteld in ${blokLabel(blok, w)}. Kies met wie je ruilt.`
+      : `Zit in ${blokLabel(blok, w)} op de bank. Kies wie eruit gaat.`));
+    const lijst = h('div', {});
+    for (const q of anderen) {
+      const zijnSlot = Object.keys(blok.opstelling).find((sid) => blok.opstelling[sid] === q.id);
+      const formatie = getFormation(w.formationId);
+      const label = zijnSlot ? (formatie.slots.find((s) => s.id === zijnSlot) || {}).label : 'bank';
+      if (!mijnSlot && !zijnSlot) continue; // twee bankzitters ruilen heeft geen effect
+      lijst.appendChild(h('button', { class: 'spelerrij', style: { width: '100%', textAlign: 'left', background: 'none', border: 0, borderBottom: '1px solid var(--rand)' },
+        onclick: () => { ruil(w, blok, spelerId, q.id); sluit(); melding(`${ik.naam} en ${q.naam} geruild`); } },
+        h('div', { class: 'bal' }, label),
+        h('div', { class: 'naam' }, q.naam)));
+    }
+    c.appendChild(lijst);
+    if (!lijst.children.length) c.appendChild(h('div', { class: 'leeg' }, 'Niemand om mee te ruilen.'));
+  });
+}
+
+function ruil(w, blok, a, b) {
+  wijzig((s) => {
+    const m = s.wedstrijd;
+    const i = m.blokken.findIndex((x) => x.id === blok.id);
+    if (i < 0) return;
+    const opstelling = { ...m.blokken[i].opstelling };
+    const slotA = Object.keys(opstelling).find((sid) => opstelling[sid] === a);
+    const slotB = Object.keys(opstelling).find((sid) => opstelling[sid] === b);
+    if (slotA && slotB) { opstelling[slotA] = b; opstelling[slotB] = a; }
+    else if (slotA) opstelling[slotA] = b;
+    else if (slotB) opstelling[slotB] = a;
+    m.blokken[i] = { ...m.blokken[i], opstelling };
+    // Vastzetten, anders draait de volgende herberekening de ruil meteen terug.
+    m.pins = { ...m.pins, [blok.id]: opstelling };
+  }, { terugdraaibaar: true });
+}
+
+// -------------------------------------------------------------------- delen
+function deelSheet() {
+  toonSheet('Schema delen', async (c, sluit) => {
+    c.appendChild(h('p', { class: 'uitleg' },
+      'Het hele schema zit in de link verpakt. Wie hem opent ziet precies dit schema - er komt geen server aan te pas.'));
+    const link = await deelLink();
+    const veld = h('input', { type: 'text', value: link, readonly: true, onclick: (e) => e.target.select() });
+    c.appendChild(veld);
+    c.appendChild(h('p', { class: 'mini', style: { marginTop: '6px' } }, `${link.length} tekens`));
+    c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '12px' } },
+      navigator.share ? h('button', { class: 'knop primair', onclick: async () => {
+        try { await navigator.share({ title: 'Wisselschema', text: `Wisselschema ${S.team.naam}`, url: link }); sluit(); }
+        catch (e) { /* gebruiker brak af */ }
+      } }, 'Versturen') : null,
+      h('button', { class: 'knop', onclick: async () => {
+        melding(await kopieer(link) ? 'Link gekopieerd' : 'Kopiëren lukte niet - selecteer de tekst zelf');
+      } }, 'Kopiëren'),
+      h('button', { class: 'knop', onclick: () => { sluit(); tekstSheet(); } }, 'Als tekst')));
+  });
+}
+
+/** Platte tekst voor in de groepsapp - vaak handiger dan een link. */
+function tekstSheet() {
+  const w = S.wedstrijd;
+  const p = plan();
+  const formatie = getFormation(w.formationId);
+  const regels = [`${S.team.naam}${w.tegenstander ? ` - ${w.tegenstander}` : ''} (${w.datum})`, ''];
+  p.blokken.forEach((b) => {
+    const slots = slotsForCount(formatie, Object.keys(b.opstelling).length);
+    const opstelling = slots.filter((s) => b.opstelling[s.id])
+      .map((s) => `${s.label} ${voornaam((S.team.spelers.find((q) => q.id === b.opstelling[s.id]) || {}).naam)}`);
+    const opVeld = new Set(Object.values(b.opstelling));
+    const bank = w.selectie.filter((id) => !opVeld.has(id))
+      .map((id) => voornaam((S.team.spelers.find((q) => q.id === id) || {}).naam));
+    regels.push(`${blokLabel(b, w)} (${Math.round(b.vanSec / 60)}-${Math.round(b.totSec / 60)} min)`);
+    regels.push(`  ${opstelling.join(', ')}`);
+    if (bank.length) regels.push(`  bank: ${bank.join(', ')}`);
+  });
+  regels.push('', 'Speeltijd:');
+  for (const st of p.statistieken) regels.push(`  ${voornaam(st.naam)}: ${minutenTekst(st.speelSec)}`);
+  const tekst = regels.join('\n');
+
+  toonSheet('Als tekst', (c) => {
+    c.appendChild(h('textarea', { readonly: true, style: { minHeight: '260px', fontFamily: 'ui-monospace, monospace', fontSize: '.8rem' }, value: tekst }));
+    c.appendChild(h('button', { class: 'knop primair breed', style: { marginTop: '10px' },
+      onclick: async () => melding(await kopieer(tekst) ? 'Gekopieerd' : 'Kopiëren lukte niet') }, 'Kopiëren'));
+  });
+}
+
+return { blokLabel, schermSchema, ruilSheet };
+};
+__defs["app/scherm-live.js"] = function () {
+// Scherm: de wedstrijd zelf. Klok, huidige opstelling, en de twee knoppen
+// waar het langs de lijn om draait: "wissel gedaan" en "speler eruit".
+
+const { h, icoon, toonSheet, bevestig, melding, mmss, minutenTekst, piep, tril, voornaam } = __mod("app/ui.js");
+const { S, wijzig, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug } = __mod("app/store.js");
+const { getFormation } = __mod("lib/formations.js");
+const { totaleSpeeltijd } = __mod("lib/schedule.js");
+const { tekenVeld } = __mod("app/veld.js");
+const { blokLabel } = __mod("app/scherm-schema.js");
+
+let tikkers = [];
+const gemeld = new Set();
+
+function tikLive() { for (const f of tikkers) f(); }
+
+/** Het blok dat nu gespeeld wordt: het eerste dat nog niet is afgetekend. */
+function actiefBlokIndex(blokken) {
+  const i = blokken.findIndex((b) => !b.vast);
+  return i < 0 ? blokken.length - 1 : i;
+}
+
+function schermLive(ganaar, herteken) {
+  tikkers = [];
+  const w = S.wedstrijd;
+  if (!w || !w.blokken) {
+    return h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
+      h('p', {}, 'Nog geen wedstrijd om te spelen.'),
+      h('button', { class: 'knop primair', onclick: () => ganaar('opzet') }, 'Wedstrijd klaarzetten')));
+  }
+
+  const p = plan();
+  const totaal = totaleSpeeltijd(w);
+  const idx = actiefBlokIndex(p.blokken);
+  const blok = p.blokken[idx];
+  const komendeWissel = p.wissels[idx] || null;
+  const wrap = h('div', {});
+
+  // ------------------------------------------------------------- klokkaart
+  const klokEl = h('div', { class: 'klok' }, '0:00');
+  const kwartEl = h('div', { class: 'kwartlabel' }, '');
+  const balk = h('div', { class: 'balk' }, h('i', { style: { width: '0%' } }));
+  const restEl = h('div', { class: 'tot-wissel' });
+  const startKnop = h('button', { class: 'knop primair groot', style: { flex: '2' } });
+
+  const klokKaart = h('div', { class: 'kaart klok-kaart' }, kwartEl, klokEl, balk, restEl,
+    h('div', { class: 'knoprij', style: { marginTop: '12px' } },
+      h('button', { class: 'knop groot', onclick: klokSheet }, 'Bijstellen'),
+      startKnop));
+  klokEl.style.cursor = 'pointer';
+  klokEl.addEventListener('click', klokSheet);
+  wrap.appendChild(klokKaart);
+
+  // ------------------------------------------------------ wisselmelding
+  const alarmVak = h('div', {});
+  wrap.appendChild(alarmVak);
+
+  // ------------------------------------------------------ huidige opstelling
+  const veldKaart = h('div', { class: 'kaart' });
+  veldKaart.appendChild(h('div', { class: 'kaart-kop' },
+    h('h2', {}, `Nu op het veld`),
+    h('span', { class: 'mini' }, `${blokLabel(blok, w)} · tot ${Math.round(blok.totSec / 60)} min`)));
+  veldKaart.appendChild(tekenVeld(blok, S.team.spelers, w.formationId));
+
+  const opVeld = new Set(Object.values(blok.opstelling));
+  const bank = w.selectie.map((id) => S.team.spelers.find((q) => q.id === id))
+    .filter((q) => q && !opVeld.has(q.id));
+  if (bank.length) {
+    veldKaart.appendChild(h('div', { class: 'tussenkop' }, 'Bank'));
+    veldKaart.appendChild(h('div', { class: 'chiprij' }, ...bank.map((q) => {
+      const uit = ((w.beschikbaar || {})[q.id] || {}).tot < totaal;
+      return h('span', { class: 'chip', style: uit ? { opacity: '.5' } : {} },
+        h('i', { class: 'dot' }), q.naam, uit ? h('span', { class: 'mini' }, '· eruit') : null);
+    })));
+  }
+  wrap.appendChild(veldKaart);
+
+  // ------------------------------------------------------------- knoppen
+  wrap.appendChild(h('div', { class: 'knoprij' },
+    h('button', { class: 'knop gevaar groot', style: { flex: '1 1 100%' }, onclick: () => uitvalSheet(p, idx) },
+      '🚑 Speler kan niet verder'),
+    h('button', { class: 'knop', onclick: () => erbijSheet(p) }, 'Speler erbij'),
+    h('button', { class: 'knop', onclick: () => ganaar('schema') }, 'Heel schema'),
+    kanTerug() ? h('button', { class: 'knop', onclick: () => { draaiTerug(); melding('Laatste stap teruggedraaid'); } },
+      icoon('terug', 17), 'Ongedaan') : null));
+
+  // ------------------------------------------------------------- speeltijd
+  const tijdKaart = h('div', { class: 'kaart', style: { marginTop: '12px' } });
+  tijdKaart.appendChild(h('h3', {}, 'Speeltijd vandaag'));
+  const maxSec = Math.max(1, ...p.statistieken.map((s) => s.speelSec));
+  for (const st of p.statistieken) {
+    tijdKaart.appendChild(h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '3px 0' } },
+      h('span', { style: { width: '78px', fontSize: '.84rem', fontWeight: '600', overflow: 'hidden',
+        textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, voornaam(st.naam)),
+      h('div', { style: { flex: '1', height: '16px', background: 'var(--vlak-2)', borderRadius: '5px', overflow: 'hidden' } },
+        h('i', { style: { display: 'block', height: '100%', width: `${(st.speelSec / maxSec) * 100}%`,
+          background: opVeld.has(st.spelerId) ? 'var(--accent)' : 'var(--bank)', borderRadius: '5px' } })),
+      h('span', { class: 'saldo', style: { width: '48px', textAlign: 'right' } }, minutenTekst(st.speelSec))));
+  }
+  wrap.appendChild(tijdKaart);
+
+  wrap.appendChild(h('button', { class: 'knop breed', style: { marginTop: '10px' },
+    onclick: () => bevestig('Wedstrijd afronden?',
+      'De gespeelde minuten worden bijgeschreven in het seizoenssaldo en de wedstrijd gaat naar het archief.',
+      () => { rondAf(); ganaar('archief'); melding('Wedstrijd opgeslagen'); }, { knop: 'Afronden' }) },
+    'Wedstrijd afronden'));
+
+  // ------------------------------------------------------------- de klok
+  function ververs() {
+    const t = klokStand();
+    const loopt = w.klok.loopt;
+    klokEl.textContent = mmss(t);
+    klokEl.classList.toggle('pauze', !loopt);
+
+    const periode = Math.min(w.periodes - 1, Math.floor(t / (w.periodeMin * 60)));
+    kwartEl.textContent = w.klok.pauzeReden === 'rust'
+      ? `rust na periode ${periode + (t >= (periode + 1) * w.periodeMin * 60 ? 1 : 0)}`
+      : w.klok.pauzeReden === 'einde' ? 'einde wedstrijd'
+      : `periode ${periode + 1} van ${w.periodes}${loopt ? '' : ' · gepauzeerd'}`;
+
+    const rest = blok.totSec - t;
+    const deel = Math.max(0, Math.min(1, (t - blok.vanSec) / Math.max(1, blok.totSec - blok.vanSec)));
+    balk.firstChild.style.width = `${deel * 100}%`;
+    balk.classList.toggle('bijna', rest <= 120 && rest > 0);
+    balk.classList.toggle('nu', rest <= 0);
+
+    restEl.replaceChildren(rest > 0
+      ? h('span', {}, 'nog ', h('b', {}, mmss(rest)), ' tot de wissel')
+      : h('span', {}, komendeWissel ? 'wisselen!' : 'einde wedstrijd'));
+
+    startKnop.replaceChildren(loopt ? '⏸ Pauze' : t === 0 ? '▶ Aftrap' : '▶ Verder');
+    startKnop.onclick = () => (loopt ? klokPauze('hand') : klokStart());
+
+    // Automatisch stoppen aan het eind van een periode; de klok loopt in het
+    // echt ook niet door tijdens het limonadekwartier.
+    const periodeEinde = (periode + 1) * w.periodeMin * 60;
+    if (loopt && t >= periodeEinde && periodeEinde > (w.klok.laatsteGrens ?? -1)) {
+      klokAutoPauze(periodeEinde, periodeEinde >= totaal ? 'einde' : 'rust');
+      sein();
+    }
+
+    // Wisselmelding
+    const sleutel = `${w.id}:${blok.id}`;
+    if (rest <= 0 && !gemeld.has(sleutel)) { gemeld.add(sleutel); sein(); }
+    toonAlarm(rest <= 0);
+  }
+
+  function sein() {
+    if (S.instellingen.geluid) piep({ aantal: 3 });
+    if (S.instellingen.trillen) tril([180, 90, 180, 90, 260]);
+  }
+
+  function toonAlarm(actief) {
+    const alWeergegeven = alarmVak.dataset.aan === String(actief);
+    if (alWeergegeven) return;
+    alarmVak.dataset.aan = String(actief);
+    alarmVak.replaceChildren();
+    if (!actief) return;
+
+    if (!komendeWissel) {
+      alarmVak.appendChild(h('div', { class: 'kaart alarmkaart', style: { textAlign: 'center' } },
+        h('h2', {}, 'Einde wedstrijd'),
+        h('p', { class: 'uitleg' }, 'Rond de wedstrijd af om de speeltijd bij te schrijven.')));
+      return;
+    }
+    const kaart = h('div', { class: 'kaart alarmkaart' });
+    kaart.appendChild(h('h2', { style: { textAlign: 'center', marginBottom: '10px' } }, '🔔 Wisselen'));
+    for (const x of komendeWissel.eruit) {
+      kaart.appendChild(h('div', { class: 'beweging uit' }, h('span', { class: 'pijl' }, '↓'),
+        h('b', {}, x.naam), h('span', {}, `eruit (${x.van})`)));
+    }
+    for (const x of komendeWissel.erin) {
+      kaart.appendChild(h('div', { class: 'beweging erin' }, h('span', { class: 'pijl' }, '↑'),
+        h('b', {}, x.naam), h('span', {}, `erin als ${x.naar}`)));
+    }
+    for (const x of komendeWissel.verplaatst) {
+      kaart.appendChild(h('div', { class: 'beweging schuif' }, h('span', { class: 'pijl' }, '↔'),
+        h('b', {}, x.naam), h('span', {}, `${x.van} → ${x.naar}`)));
+    }
+    kaart.appendChild(h('button', { class: 'knop primair breed groot', style: { marginTop: '12px' },
+      onclick: () => {
+        bevestigWissel(idx, klokStand());
+        melding('Wissel genoteerd');
+        herteken();
+      } }, 'Wissel uitgevoerd'));
+    alarmVak.appendChild(kaart);
+  }
+
+  function klokSheet() {
+    toonSheet('Klok bijstellen', (c, sluit) => {
+      c.appendChild(h('p', { class: 'uitleg' }, 'De scheidsrechter houdt de echte tijd bij. Loopt jouw klok uit de pas, zet hem dan gelijk.'));
+      c.appendChild(h('div', { class: 'rij2' },
+        ...[[-60, '−1 min'], [-10, '−10 sec'], [10, '+10 sec'], [60, '+1 min']].map(([d, l]) =>
+          h('button', { class: 'knop', onclick: () => { klokZet(klokStand() + d); sluit(); } }, l))));
+      c.appendChild(h('div', { class: 'tussenkop' }, 'Naar het begin van'));
+      c.appendChild(h('div', { class: 'knoprij' },
+        ...Array.from({ length: w.periodes }, (_, i) => h('button', { class: 'knop klein',
+          onclick: () => { klokZet(i * w.periodeMin * 60); sluit(); } }, `periode ${i + 1}`))));
+    });
+  }
+
+  tikkers.push(ververs);
+  ververs();
+  return wrap;
+}
+
+// --------------------------------------------------------------- uitval
+function uitvalSheet(p, idx) {
+  const w = S.wedstrijd;
+  const t = klokStand();
+  const totaal = totaleSpeeltijd(w);
+  const inzetbaar = w.selectie
+    .map((id) => S.team.spelers.find((q) => q.id === id))
+    .filter(Boolean)
+    .filter((q) => (((w.beschikbaar || {})[q.id] || {}).tot ?? totaal) >= totaal);
+
+  toonSheet('Wie kan niet verder?', (c, sluit) => {
+    c.appendChild(h('p', { class: 'uitleg' },
+      `Het schema wordt vanaf ${mmss(t)} opnieuw berekend. Alles wat al gespeeld is blijft staan.`));
+    const lijst = h('div', {});
+    const blok = p.blokken[idx];
+    for (const q of inzetbaar) {
+      const slotId = Object.keys(blok.opstelling).find((sid) => blok.opstelling[sid] === q.id);
+      const slot = slotId ? getFormation(w.formationId).slots.find((s) => s.id === slotId) : null;
+      const st = p.statistieken.find((x) => x.spelerId === q.id);
+      lijst.appendChild(h('button', {
+        class: 'spelerrij', style: { width: '100%', textAlign: 'left', background: 'none', border: 0, borderBottom: '1px solid var(--rand)' },
+        onclick: () => { sluit(); doeUitval(q, t); } },
+        h('div', { class: 'bal' }, slot ? slot.label : 'bank'),
+        h('div', { class: 'naam' }, q.naam,
+          h('small', {}, `${st ? minutenTekst(st.speelSec) : '0 min'} gespeeld`))));
+    }
+    c.appendChild(lijst);
+  });
+}
+
+function doeUitval(speler, t) {
+  const voor = plan();
+  const voorVeld = new Set(Object.values(voor.blokken[actiefBlokIndex(voor.blokken)].opstelling));
+
+  herplanNu(t, [{ type: 'uit', spelerId: speler.id }]);
+
+  const na = plan();
+  const naIdx = actiefBlokIndex(na.blokken);
+  const naBlok = na.blokken[naIdx];
+  const formatie = getFormation(S.wedstrijd.formationId);
+  const erin = Object.values(naBlok.opstelling).filter((id) => !voorVeld.has(id));
+  const verschoven = Object.entries(naBlok.opstelling)
+    .filter(([sid, id]) => voorVeld.has(id) && voor.blokken[actiefBlokIndex(voor.blokken)].opstelling[sid] !== id)
+    .map(([sid, id]) => ({ id, slot: formatie.slots.find((s) => s.id === sid) }));
+
+  const naam = (id) => (S.team.spelers.find((q) => q.id === id) || {}).naam;
+  toonSheet(`${speler.naam} gaat eruit`, (c, sluit) => {
+    c.appendChild(h('div', { class: 'wissel' },
+      h('div', { class: 'wanneer' }, `Doe dit nu · ${mmss(t)}`),
+      h('div', { class: 'beweging uit' }, h('span', { class: 'pijl' }, '↓'), h('b', {}, speler.naam), h('span', {}, 'eraf')),
+      ...erin.map((id) => {
+        const sid = Object.keys(naBlok.opstelling).find((s) => naBlok.opstelling[s] === id);
+        const slot = formatie.slots.find((s) => s.id === sid);
+        return h('div', { class: 'beweging erin' }, h('span', { class: 'pijl' }, '↑'), h('b', {}, naam(id)),
+          h('span', {}, `erin als ${slot ? slot.label : '?'}`));
+      }),
+      ...verschoven.map((x) => h('div', { class: 'beweging schuif' }, h('span', { class: 'pijl' }, '↔'),
+        h('b', {}, naam(x.id)), h('span', {}, `nu ${x.slot ? x.slot.label : '?'}`))),
+      !erin.length && !verschoven.length
+        ? h('p', { class: 'uitleg', style: { marginTop: '8px', marginBottom: 0 } }, 'Er is niemand meer op de bank - jullie spelen verder met één man minder.')
+        : null));
+    c.appendChild(h('div', { class: 'tussenkop' }, 'Rest van de wedstrijd'));
+    c.appendChild(h('p', { class: 'uitleg' }, 'Het hele schema is opnieuw verdeeld over de spelers die er nog zijn.'));
+    c.appendChild(h('div', { class: 'knoprij' },
+      h('button', { class: 'knop', onclick: () => { draaiTerug(); sluit(); melding('Teruggedraaid'); } }, 'Toch niet'),
+      h('button', { class: 'knop primair', style: { flex: '2' }, onclick: sluit }, 'Duidelijk')));
+  });
+}
+
+function erbijSheet(p) {
+  const w = S.wedstrijd;
+  const t = klokStand();
+  const totaal = totaleSpeeltijd(w);
+  const uitgevallen = w.selectie.filter((id) => (((w.beschikbaar || {})[id] || {}).tot ?? totaal) < totaal);
+  const nogNiet = S.team.spelers.filter((q) => !w.selectie.includes(q.id));
+
+  toonSheet('Speler erbij', (c, sluit) => {
+    if (!uitgevallen.length && !nogNiet.length) {
+      c.appendChild(h('div', { class: 'leeg' }, 'Iedereen doet al mee.'));
+      return;
+    }
+    c.appendChild(h('p', { class: 'uitleg' }, `Deze speler doet vanaf ${mmss(t)} weer mee en wordt in het resterende schema ingepast.`));
+    const lijst = h('div', {});
+    for (const id of uitgevallen) {
+      const q = S.team.spelers.find((x) => x.id === id);
+      if (!q) continue;
+      lijst.appendChild(h('button', { class: 'spelerrij', style: { width: '100%', textAlign: 'left', background: 'none', border: 0, borderBottom: '1px solid var(--rand)' },
+        onclick: () => { herplanNu(t, [{ type: 'terug', spelerId: id }]); sluit(); melding(`${q.naam} doet weer mee`); } },
+        h('div', { class: 'bal' }, '↩'), h('div', { class: 'naam' }, q.naam, h('small', {}, 'was eruit gehaald'))));
+    }
+    for (const q of nogNiet) {
+      lijst.appendChild(h('button', { class: 'spelerrij', style: { width: '100%', textAlign: 'left', background: 'none', border: 0, borderBottom: '1px solid var(--rand)' },
+        onclick: () => { herplanNu(t, [{ type: 'erin', spelerId: q.id }]); sluit(); melding(`${q.naam} sluit aan`); } },
+        h('div', { class: 'bal' }, '+'), h('div', { class: 'naam' }, q.naam, h('small', {}, 'stond niet in de selectie'))));
+    }
+    c.appendChild(lijst);
+  });
+}
+
+return { tikLive, actiefBlokIndex, schermLive };
+};
+__defs["app/scherm-archief.js"] = function () {
+// Scherm: gespeelde wedstrijden en instellingen.
+
+const { h, icoon, toonSheet, bevestig, melding, datumTekst, minutenTekst, saldoTekst, voornaam, downloadBestand } = __mod("app/ui.js");
+const { S, wijzig, exporteer, neemOver, startSync, sync } = __mod("app/store.js");
+const { getFormation } = __mod("lib/formations.js");
+
+function schermArchief() {
+  const wrap = h('div', {});
+
+  if (!S.archief.length) {
+    wrap.appendChild(h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
+      h('p', {}, 'Nog geen gespeelde wedstrijden.'),
+      h('p', { class: 'mini' }, 'Na het afronden van een wedstrijd komt hij hier te staan, en wordt de speeltijd bijgeschreven in het seizoenssaldo.'))));
+  } else {
+    for (const a of S.archief) wrap.appendChild(archiefKaart(a));
+  }
+
+  wrap.appendChild(h('div', { class: 'tussenkop' }, 'Instellingen'));
+  wrap.appendChild(instellingenKaart());
+  wrap.appendChild(overKaart());
+  return wrap;
+}
+
+function archiefKaart(a) {
+  const kaart = h('div', { class: 'kaart' });
+  kaart.appendChild(h('div', { class: 'kaart-kop' },
+    h('h3', {}, a.tegenstander || 'Onbekende tegenstander'),
+    h('span', { class: 'mini' }, datumTekst(a.datum))));
+  kaart.appendChild(h('p', { class: 'uitleg' },
+    `${a.thuis ? 'Thuis' : 'Uit'} · ${getFormation(a.formationId).naam} · ${a.periodes}×${a.periodeMin} min`));
+
+  const totaalSec = a.statistieken.reduce((n, s) => n + s.speelSec, 0);
+  kaart.appendChild(h('div', { class: 'tussenkop', style: { marginTop: '10px' } },
+    `Speeltijd · ${a.statistieken.length} spelers · ${minutenTekst(totaalSec / (a.statistieken.length || 1))} gemiddeld`));
+
+  const max = Math.max(1, ...a.statistieken.map((s) => s.speelSec));
+  for (const st of a.statistieken) {
+    kaart.appendChild(h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 0' } },
+      h('span', { style: { width: '76px', fontSize: '.82rem', fontWeight: '600', overflow: 'hidden',
+        textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, voornaam(st.naam)),
+      h('div', { style: { flex: '1', height: '14px', background: 'var(--vlak-2)', borderRadius: '4px', overflow: 'hidden' } },
+        h('i', { style: { display: 'block', height: '100%', width: `${(st.speelSec / max) * 100}%`,
+          background: 'var(--accent)', borderRadius: '4px' } })),
+      h('span', { class: 'saldo', style: { width: '46px', textAlign: 'right' } }, minutenTekst(st.speelSec)),
+      st.keeperSec ? h('span', { class: 'vlag K' }, 'K') : null));
+  }
+
+  kaart.appendChild(h('button', { class: 'knop stil klein', style: { marginTop: '8px' },
+    onclick: () => bevestig('Uit het archief halen?',
+      'De wedstrijd verdwijnt uit de lijst. Het seizoenssaldo verandert hier niet van.',
+      () => wijzig((s) => { s.archief = s.archief.filter((x) => x.id !== a.id); }, { terugdraaibaar: true }),
+      { knop: 'Verwijderen', gevaar: true }) }, 'Verwijderen'));
+  return kaart;
+}
+
+function instellingenKaart() {
+  const kaart = h('div', { class: 'kaart' });
+  const schakelaar = (sleutel, titel, uitleg) => {
+    const knop = h('button', { class: 'schakel', 'aria-pressed': String(!!S.instellingen[sleutel]), 'aria-label': titel,
+      onclick: () => wijzig((s) => { s.instellingen[sleutel] = !s.instellingen[sleutel]; }) }, h('i', {}));
+    return h('div', { class: 'strook' }, h('div', { class: 'kop2' }, titel, h('small', {}, uitleg)), knop);
+  };
+
+  kaart.appendChild(schakelaar('geluid', 'Geluidssignaal', 'Piept bij een wisselmoment'));
+  kaart.appendChild(schakelaar('trillen', 'Trillen', 'Handig als je telefoon in je jaszak zit'));
+  kaart.appendChild(schakelaar('schermAan', 'Scherm aan houden', 'Tijdens de wedstrijd gaat je scherm niet uit'));
+
+  kaart.appendChild(h('div', { class: 'strook' },
+    h('div', { class: 'kop2' }, 'Weergave', h('small', {}, 'Licht leest het best in de zon')),
+    h('select', { style: { width: 'auto', minWidth: '118px' },
+      onchange: (e) => wijzig((s) => { s.instellingen.thema = e.target.value; }) },
+      ...[['auto', 'Automatisch'], ['licht', 'Licht'], ['donker', 'Donker']].map(([v, l]) =>
+        h('option', { value: v, selected: S.instellingen.thema === v }, l)))));
+
+  kaart.appendChild(h('div', { class: 'tussenkop' }, 'Gegevens'));
+  kaart.appendChild(h('div', { class: 'knoprij' },
+    h('button', { class: 'knop klein', onclick: () => {
+      downloadBestand(`wisselschema-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(exporteer(), null, 2));
+      melding('Back-up gedownload');
+    } }, 'Back-up downloaden'),
+    h('button', { class: 'knop klein stil gevaar', onclick: () => bevestig('Alles wissen?',
+      'Team, wedstrijd en archief worden verwijderd. Dit kun je niet ongedaan maken.',
+      () => { wijzig(() => { neemOver({ team: { naam: 'Mijn team', spelers: [] }, wedstrijd: null, archief: [] }); }); melding('Alles gewist'); },
+      { knop: 'Alles wissen', gevaar: true }) }, 'Alles wissen')));
+
+  kaart.appendChild(h('div', { class: 'tussenkop' }, 'Synchroniseren'));
+  kaart.appendChild(h('p', { class: 'uitleg' },
+    sync.actief
+      ? `Verbonden met ${sync.adres}. Je team staat ook op de server, zodat je hem op je tablet terugvindt.`
+      : 'Optioneel. Draai je de app vanaf een server met opslag (zoals de Home Assistant-add-on), vul dan het adres in. Laat leeg om alles alleen op dit apparaat te houden.'));
+  const adresVeld = h('input', { type: 'text', value: S.instellingen.syncUrl || '', placeholder: 'https://wisselschema.thuis/api/state' });
+  kaart.appendChild(adresVeld);
+  kaart.appendChild(h('button', { class: 'knop klein', style: { marginTop: '8px' }, onclick: async () => {
+    wijzig((s) => { s.instellingen.syncUrl = adresVeld.value.trim(); });
+    melding(await startSync() ? 'Verbonden' : 'Geen verbinding - de app werkt gewoon lokaal door');
+  } }, 'Verbinding testen'));
+  return kaart;
+}
+
+function overKaart() {
+  return h('div', { class: 'kaart' },
+    h('h3', {}, 'Over deze app'),
+    h('p', { class: 'uitleg', style: { marginBottom: '4px' } },
+      'Het wisselschema draait volledig in je browser. Je gegevens blijven op je eigen apparaat staan; er wordt niets verstuurd tenzij je zelf een synchronisatieadres invult.'),
+    h('p', { class: 'mini' }, 'Werkt zonder internet. Sla de pagina op of zet hem op je beginscherm.'));
+}
+
+return { schermArchief };
+};
+const app = __mod("app/main.js");
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', app.start);
+else app.start();
+})();</script>
+</body>
+</html>
