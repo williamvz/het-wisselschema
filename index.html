@@ -255,6 +255,21 @@ table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; col
 .tot-wissel { font-size: .88rem; color: var(--zacht); font-weight: 600; }
 .tot-wissel b { color: var(--tekst); font-variant-numeric: tabular-nums; }
 
+.scorekaart { padding: 12px 14px 14px; }
+.stand { display: flex; align-items: center; justify-content: center; gap: 18px; margin-bottom: 10px; }
+.stand > div { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
+.stand b { font-size: 2.8rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.stand small { font-size: .74rem; font-weight: 700; color: var(--zacht); text-transform: uppercase; letter-spacing: .06em;
+  max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stand .streep { font-size: 2rem; color: var(--zacht); font-weight: 700; }
+.scoreknoppen { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.scoreknop { min-height: 84px; font-size: 1.25rem; font-weight: 800; border-radius: 16px; }
+.scoreknop.wij { background: var(--accent); border-color: var(--accent); color: #fff; }
+.scoreknop.zij { background: var(--alarm-zacht); border-color: transparent; color: var(--alarm); }
+.goalchip { min-height: 34px; font-size: .82rem; font-variant-numeric: tabular-nums; }
+.goalchip.wij { color: var(--accent); }
+.goalchip.zij { color: var(--alarm); }
+
 .alarmkaart { border: 2px solid var(--accent); background: var(--accent-zacht); animation: pulse 1.6s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { border-color: var(--accent); } 50% { border-color: transparent; } }
 @media (prefers-reduced-motion: reduce) { .alarmkaart { animation: none; } .knop:active { transform: none; } }
@@ -732,6 +747,7 @@ function nieuweWedstrijd(vorige = null) {
     status: 'opzet',
     klok: { loopt: false, verstreken: 0, sindsMs: null, pauzeReden: null },
     gebeurtenissen: [],
+    doelpunten: [],
   };
 }
 
@@ -914,6 +930,32 @@ function bevestigWissel(blokIndex, opSec) {
   }, { terugdraaibaar: true });
 }
 
+// -------------------------------------------------------------------- score
+/**
+ * Noteer een doelpunt op de huidige klokstand, met wie er op dat moment in
+ * het veld stond. Dat is het blok dat nog niet is afgetekend: zolang een
+ * wissel niet is uitgevoerd, staat de oude opstelling er echt nog.
+ */
+function noteerGoal(wie) {
+  wijzig((s) => {
+    const w = s.wedstrijd;
+    if (!w) return;
+    const blokken = plan()?.blokken || w.blokken || [];
+    const i = blokken.findIndex((b) => !b.vast);
+    const blok = blokken[i < 0 ? blokken.length - 1 : i];
+    w.doelpunten = [...(w.doelpunten || []), {
+      id: uid('g'), wie, sec: Math.round(klokStand(w)),
+      opVeld: blok ? Object.values(blok.opstelling).filter(Boolean) : [],
+    }];
+  }, { terugdraaibaar: true });
+}
+
+function schrapGoal(id) {
+  wijzig((s) => {
+    if (s.wedstrijd) s.wedstrijd.doelpunten = (s.wedstrijd.doelpunten || []).filter((d) => d.id !== id);
+  }, { terugdraaibaar: true });
+}
+
 // --------------------------------------------------------------------- klok
 function klokStand(w = S.wedstrijd) {
   if (!w) return 0;
@@ -954,6 +996,7 @@ function rondAf() {
       id: w.id, datum: w.datum, tegenstander: w.tegenstander, thuis: w.thuis,
       formationId: w.formationId, periodes: w.periodes, periodeMin: w.periodeMin,
       statistieken: p.statistieken, blokken: w.blokken, selectie: w.selectie,
+      doelpunten: w.doelpunten || [],
     });
     s.archief = s.archief.slice(0, 60);
     s.wedstrijd = null;
@@ -1013,7 +1056,7 @@ function vanBase64Url(t) {
 
 
 
-return { uid, nieuweSpeler, nieuweWedstrijd, abonneer, stempel, wijzig, kanTerug, draaiTerug, bewaarNu, exporteer, neemOver, laadLokaal, startSync, plan, leginSchema, genereer, herplanNu, bevestigWissel, klokStand, klokStart, klokPauze, klokAutoPauze, klokZet, rondAf, deelLink, leesDeelLink, SLEUTEL, VERSIE, S, sync, FORMATIONS, getFormation, formationsForSize, totaleSpeeltijd };
+return { uid, nieuweSpeler, nieuweWedstrijd, abonneer, stempel, wijzig, kanTerug, draaiTerug, bewaarNu, exporteer, neemOver, laadLokaal, startSync, plan, leginSchema, genereer, herplanNu, bevestigWissel, noteerGoal, schrapGoal, klokStand, klokStart, klokPauze, klokAutoPauze, klokZet, rondAf, deelLink, leesDeelLink, SLEUTEL, VERSIE, S, sync, FORMATIONS, getFormation, formationsForSize, totaleSpeeltijd };
 };
 __defs["lib/schedule.js"] = function () {
 // De wisselschema-motor.
@@ -2693,11 +2736,12 @@ __defs["app/scherm-live.js"] = function () {
 // waar het langs de lijn om draait: "wissel gedaan" en "speler eruit".
 
 const { h, icoon, toonSheet, bevestig, melding, mmss, minutenTekst, piep, tril, voornaam } = __mod("app/ui.js");
-const { S, wijzig, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug } = __mod("app/store.js");
+const { S, wijzig, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal } = __mod("app/store.js");
 const { getFormation } = __mod("lib/formations.js");
 const { totaleSpeeltijd } = __mod("lib/schedule.js");
 const { tekenVeld } = __mod("app/veld.js");
 const { blokLabel } = __mod("app/scherm-schema.js");
+const { stand, plusMin, verloop, goalMinuut } = __mod("lib/score.js");
 
 let tikkers = [];
 const gemeld = new Set();
@@ -2741,6 +2785,9 @@ function schermLive(ganaar, herteken) {
   klokEl.addEventListener('click', klokSheet);
   wrap.appendChild(klokKaart);
 
+  // ------------------------------------------------------------- score
+  wrap.appendChild(scoreKaart(w));
+
   // ------------------------------------------------------ wisselmelding
   const alarmVak = h('div', {});
   wrap.appendChild(alarmVak);
@@ -2778,6 +2825,7 @@ function schermLive(ganaar, herteken) {
   const tijdKaart = h('div', { class: 'kaart', style: { marginTop: '12px' } });
   tijdKaart.appendChild(h('h3', {}, 'Speeltijd vandaag'));
   const maxSec = Math.max(1, ...p.statistieken.map((s) => s.speelSec));
+  const pm = (w.doelpunten || []).length ? plusMin(w.doelpunten) : null;
   for (const st of p.statistieken) {
     tijdKaart.appendChild(h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '3px 0' } },
       h('span', { style: { width: '78px', fontSize: '.84rem', fontWeight: '600', overflow: 'hidden',
@@ -2785,8 +2833,11 @@ function schermLive(ganaar, herteken) {
       h('div', { style: { flex: '1', height: '16px', background: 'var(--vlak-2)', borderRadius: '5px', overflow: 'hidden' } },
         h('i', { style: { display: 'block', height: '100%', width: `${(st.speelSec / maxSec) * 100}%`,
           background: opVeld.has(st.spelerId) ? 'var(--accent)' : 'var(--bank)', borderRadius: '5px' } })),
-      h('span', { class: 'saldo', style: { width: '48px', textAlign: 'right' } }, minutenTekst(st.speelSec))));
+      h('span', { class: 'saldo', style: { width: '48px', textAlign: 'right' } }, minutenTekst(st.speelSec)),
+      pm ? plusMinLabel(pm[st.spelerId]) : null));
   }
+  if (pm) tijdKaart.appendChild(h('p', { class: 'mini', style: { margin: '8px 0 0' } },
+    'Rechts: doelpunten voor en tegen terwijl de speler in het veld stond.'));
   wrap.appendChild(tijdKaart);
 
   wrap.appendChild(h('button', { class: 'knop breed', style: { marginTop: '10px' },
@@ -2894,6 +2945,44 @@ function schermLive(ganaar, herteken) {
   return wrap;
 }
 
+// ---------------------------------------------------------------- score
+function scoreKaart(w) {
+  const { wij, zij } = stand(w.doelpunten);
+  const kaart = h('div', { class: 'kaart scorekaart' });
+  kaart.appendChild(h('div', { class: 'stand', 'aria-label': `Stand ${wij} tegen ${zij}` },
+    h('div', {}, h('b', {}, String(wij)), h('small', {}, 'wij')),
+    h('span', { class: 'streep' }, '–'),
+    h('div', {}, h('b', {}, String(zij)), h('small', {}, w.tegenstander || 'zij'))));
+  kaart.appendChild(h('div', { class: 'scoreknoppen' },
+    h('button', { class: 'knop scoreknop wij', onclick: () => { noteerGoal('wij'); tril(60); } }, '⚽ Goal'),
+    h('button', { class: 'knop scoreknop zij', onclick: () => { noteerGoal('zij'); tril(60); } }, 'Tegengoal')));
+
+  const lijst = verloop(w.doelpunten);
+  if (lijst.length) {
+    kaart.appendChild(h('div', { class: 'chiprij', style: { marginTop: '10px' } }, ...lijst.map((d) =>
+      h('button', { class: `chip goalchip ${d.wie}`, onclick: () => goalSheet(d) },
+        `${goalMinuut(d.sec)}' · ${d.wij}-${d.zij}`))));
+  }
+  return kaart;
+}
+
+function goalSheet(d) {
+  const naam = (id) => voornaam((S.team.spelers.find((q) => q.id === id) || {}).naam);
+  toonSheet(`${d.wie === 'wij' ? 'Goal' : 'Tegengoal'} · ${mmss(d.sec)}`, (c, sluit) => {
+    c.appendChild(h('div', { class: 'tussenkop', style: { marginTop: 0 } }, 'Op het veld'));
+    c.appendChild(h('p', {}, d.opVeld.map(naam).join(', ') || 'onbekend'));
+    c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '12px' } },
+      h('button', { class: 'knop gevaar', onclick: () => { schrapGoal(d.id); sluit(); melding('Doelpunt weggehaald'); } }, 'Weghalen'),
+      h('button', { class: 'knop primair', style: { flex: '2' }, onclick: sluit }, 'Klopt')));
+  });
+}
+
+function plusMinLabel(r) {
+  const saldo = r ? r.saldo : 0;
+  return h('span', { class: `saldo ${saldo > 0 ? 'plus' : saldo < 0 ? 'min' : ''}`, style: { width: '30px', textAlign: 'right' },
+    title: r ? `${r.voor} voor, ${r.tegen} tegen` : 'geen doelpunten' }, saldo > 0 ? `+${saldo}` : String(saldo));
+}
+
 // --------------------------------------------------------------- uitval
 function uitvalSheet(p, idx) {
   const w = S.wedstrijd;
@@ -2993,7 +3082,49 @@ function erbijSheet(p) {
   });
 }
 
-return { tikLive, actiefBlokIndex, schermLive };
+return { tikLive, actiefBlokIndex, schermLive, plusMinLabel };
+};
+__defs["lib/score.js"] = function () {
+// De stand bijhouden, en per speler tellen wat er gebeurde terwijl hij op
+// het veld stond. Zonder DOM, zodat het ook in Node getest kan worden.
+//
+// Een doelpunt: { id, wie: 'wij' | 'zij', sec, opVeld: [spelerId, ...] }.
+// `opVeld` is een momentopname: wie er stond toen de bal erin ging. Dat is
+// genoeg voor de vraag langs de lijn: "met welke opstelling scoren we, en
+// wanneer krijgen we er een tegen?"
+
+function stand(doelpunten = []) {
+  let wij = 0, zij = 0;
+  for (const d of doelpunten) { if (d.wie === 'wij') wij++; else if (d.wie === 'zij') zij++; }
+  return { wij, zij };
+}
+
+/** Per speler: doelpunten voor en tegen terwijl hij in het veld stond. */
+function plusMin(doelpunten = []) {
+  const uit = {};
+  for (const d of doelpunten) {
+    for (const id of d.opVeld || []) {
+      const r = (uit[id] ||= { voor: 0, tegen: 0, saldo: 0 });
+      if (d.wie === 'wij') r.voor++; else r.tegen++;
+      r.saldo = r.voor - r.tegen;
+    }
+  }
+  return uit;
+}
+
+/** Tussenstand na elk doelpunt, in volgorde van de klok. */
+function verloop(doelpunten = []) {
+  let wij = 0, zij = 0;
+  return [...doelpunten].sort((a, b) => a.sec - b.sec).map((d) => {
+    if (d.wie === 'wij') wij++; else zij++;
+    return { ...d, wij, zij };
+  });
+}
+
+/** Minuut zoals op het wedstrijdformulier: een goal na 0:30 is in de 1e minuut. */
+const goalMinuut = (sec) => Math.max(1, Math.ceil(sec / 60));
+
+return { stand, plusMin, verloop, goalMinuut };
 };
 __defs["app/scherm-archief.js"] = function () {
 // Scherm: gespeelde wedstrijden en instellingen.
@@ -3001,6 +3132,8 @@ __defs["app/scherm-archief.js"] = function () {
 const { h, icoon, toonSheet, bevestig, melding, datumTekst, minutenTekst, saldoTekst, voornaam, downloadBestand } = __mod("app/ui.js");
 const { S, wijzig, exporteer, neemOver, startSync, sync } = __mod("app/store.js");
 const { getFormation } = __mod("lib/formations.js");
+const { stand, plusMin, verloop, goalMinuut } = __mod("lib/score.js");
+const { plusMinLabel } = __mod("app/scherm-live.js");
 
 function schermArchief() {
   const wrap = h('div', {});
@@ -3024,8 +3157,22 @@ function archiefKaart(a) {
   kaart.appendChild(h('div', { class: 'kaart-kop' },
     h('h3', {}, a.tegenstander || 'Onbekende tegenstander'),
     h('span', { class: 'mini' }, datumTekst(a.datum))));
+  const goals = a.doelpunten || [];
+  const { wij, zij } = stand(goals);
   kaart.appendChild(h('p', { class: 'uitleg' },
+    goals.length ? h('b', { style: { color: 'var(--tekst)' } }, `${wij}-${zij} · `) : null,
     `${a.thuis ? 'Thuis' : 'Uit'} · ${getFormation(a.formationId).naam} · ${a.periodes}×${a.periodeMin} min`));
+  if (goals.length) {
+    const naam = (id) => voornaam((a.statistieken.find((x) => x.spelerId === id) || {}).naam);
+    kaart.appendChild(h('div', { class: 'tussenkop', style: { marginTop: '10px' } }, 'Doelpunten'));
+    for (const d of verloop(goals)) {
+      kaart.appendChild(h('div', { class: `beweging ${d.wie === 'wij' ? 'erin' : 'uit'}` },
+        h('span', { class: 'pijl', style: { width: '34px' } }, `${goalMinuut(d.sec)}'`),
+        h('b', {}, `${d.wij}-${d.zij}`),
+        h('span', {}, d.opVeld.map(naam).join(', '))));
+    }
+  }
+  const pm = goals.length ? plusMin(goals) : null;
 
   const totaalSec = a.statistieken.reduce((n, s) => n + s.speelSec, 0);
   kaart.appendChild(h('div', { class: 'tussenkop', style: { marginTop: '10px' } },
@@ -3040,7 +3187,8 @@ function archiefKaart(a) {
         h('i', { style: { display: 'block', height: '100%', width: `${(st.speelSec / max) * 100}%`,
           background: 'var(--accent)', borderRadius: '4px' } })),
       h('span', { class: 'saldo', style: { width: '46px', textAlign: 'right' } }, minutenTekst(st.speelSec)),
-      st.keeperSec ? h('span', { class: 'vlag K' }, 'K') : null));
+      pm ? plusMinLabel(pm[st.spelerId]) : null,
+      h('span', { style: { width: '24px', flex: 'none' } }, st.keeperSec ? h('span', { class: 'vlag K' }, 'K') : null)));
   }
 
   kaart.appendChild(h('button', { class: 'knop stil klein', style: { marginTop: '8px' },
