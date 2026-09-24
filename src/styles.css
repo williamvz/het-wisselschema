@@ -238,6 +238,21 @@ table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; col
 .tot-wissel { font-size: .88rem; color: var(--zacht); font-weight: 600; }
 .tot-wissel b { color: var(--tekst); font-variant-numeric: tabular-nums; }
 
+.scorekaart { padding: 12px 14px 14px; }
+.stand { display: flex; align-items: center; justify-content: center; gap: 18px; margin-bottom: 10px; }
+.stand > div { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
+.stand b { font-size: 2.8rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.stand small { font-size: .74rem; font-weight: 700; color: var(--zacht); text-transform: uppercase; letter-spacing: .06em;
+  max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stand .streep { font-size: 2rem; color: var(--zacht); font-weight: 700; }
+.scoreknoppen { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.scoreknop { min-height: 84px; font-size: 1.25rem; font-weight: 800; border-radius: 16px; }
+.scoreknop.wij { background: var(--accent); border-color: var(--accent); color: #fff; }
+.scoreknop.zij { background: var(--alarm-zacht); border-color: transparent; color: var(--alarm); }
+.goalchip { min-height: 34px; font-size: .82rem; font-variant-numeric: tabular-nums; }
+.goalchip.wij { color: var(--accent); }
+.goalchip.zij { color: var(--alarm); }
+
 .alarmkaart { border: 2px solid var(--accent); background: var(--accent-zacht); animation: pulse 1.6s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { border-color: var(--accent); } 50% { border-color: transparent; } }
 @media (prefers-reduced-motion: reduce) { .alarmkaart { animation: none; } .knop:active { transform: none; } }

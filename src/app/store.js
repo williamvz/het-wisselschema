@@ -35,6 +35,7 @@ export function nieuweWedstrijd(vorige = null) {
     status: 'opzet',
     klok: { loopt: false, verstreken: 0, sindsMs: null, pauzeReden: null },
     gebeurtenissen: [],
+    doelpunten: [],
   };
 }
 
@@ -217,6 +218,32 @@ export function bevestigWissel(blokIndex, opSec) {
   }, { terugdraaibaar: true });
 }
 
+// -------------------------------------------------------------------- score
+/**
+ * Noteer een doelpunt op de huidige klokstand, met wie er op dat moment in
+ * het veld stond. Dat is het blok dat nog niet is afgetekend: zolang een
+ * wissel niet is uitgevoerd, staat de oude opstelling er echt nog.
+ */
+export function noteerGoal(wie) {
+  wijzig((s) => {
+    const w = s.wedstrijd;
+    if (!w) return;
+    const blokken = plan()?.blokken || w.blokken || [];
+    const i = blokken.findIndex((b) => !b.vast);
+    const blok = blokken[i < 0 ? blokken.length - 1 : i];
+    w.doelpunten = [...(w.doelpunten || []), {
+      id: uid('g'), wie, sec: Math.round(klokStand(w)),
+      opVeld: blok ? Object.values(blok.opstelling).filter(Boolean) : [],
+    }];
+  }, { terugdraaibaar: true });
+}
+
+export function schrapGoal(id) {
+  wijzig((s) => {
+    if (s.wedstrijd) s.wedstrijd.doelpunten = (s.wedstrijd.doelpunten || []).filter((d) => d.id !== id);
+  }, { terugdraaibaar: true });
+}
+
 // --------------------------------------------------------------------- klok
 export function klokStand(w = S.wedstrijd) {
   if (!w) return 0;
@@ -257,6 +284,7 @@ export function rondAf() {
       id: w.id, datum: w.datum, tegenstander: w.tegenstander, thuis: w.thuis,
       formationId: w.formationId, periodes: w.periodes, periodeMin: w.periodeMin,
       statistieken: p.statistieken, blokken: w.blokken, selectie: w.selectie,
+      doelpunten: w.doelpunten || [],
     });
     s.archief = s.archief.slice(0, 60);
     s.wedstrijd = null;

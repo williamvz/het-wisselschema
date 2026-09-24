@@ -65,6 +65,23 @@ test('de app start, bouwt een schema en overleeft een uitval', async (t) => {
   const naStart = await pagina.locator('.klok').textContent();
   assert.notEqual(naStart, '0:00', `klok loopt (${naStart})`);
 
+  // --- score bijhouden
+  const veldVoorGoal = (await pagina.locator('svg.veld .naam').allTextContents()).map((x) => x.trim());
+  await pagina.getByRole('button', { name: '⚽ Goal' }).click();
+  await pagina.getByRole('button', { name: '⚽ Goal' }).click();
+  await pagina.getByRole('button', { name: 'Tegengoal' }).click();
+  await pagina.waitForTimeout(100);
+  assert.equal(await pagina.locator('.stand').getAttribute('aria-label'), 'Stand 2 tegen 1');
+  assert.equal(await pagina.locator('.goalchip').count(), 3, 'drie doelpunten in de lijst');
+
+  // tik op een doelpunt: je ziet wie er stond, en kunt hem weghalen
+  await pagina.locator('.goalchip').last().click();
+  const opVeldTekst = await pagina.locator('.overlay').textContent();
+  assert.ok(veldVoorGoal.every((n) => opVeldTekst.includes(n)), 'toont de opstelling op dat moment');
+  await pagina.locator('.overlay').getByRole('button', { name: 'Weghalen' }).click();
+  await pagina.waitForTimeout(100);
+  assert.equal(await pagina.locator('.stand').getAttribute('aria-label'), 'Stand 2 tegen 0');
+
   // --- onverwachte uitval
   await pagina.getByRole('button', { name: /Speler kan niet verder/ }).click();
   await pagina.waitForSelector('text=Wie kan niet verder?');
@@ -87,6 +104,8 @@ test('de app start, bouwt een schema en overleeft een uitval', async (t) => {
   await pagina.locator('.overlay').getByRole('button', { name: 'Afronden' }).click();
   await pagina.waitForSelector('text=Instellingen');
   assert.ok((await pagina.locator('#app').textContent()).includes('Speeltijd'), 'archief toont de speeltijd');
+  assert.ok((await pagina.locator('#app').textContent()).includes('2-0 · '), 'archief toont de eindstand');
+  assert.ok(await pagina.locator('#app .saldo.plus').count() >= 6, 'wie in het veld stond heeft een plus');
 
   assert.deepEqual(fouten, [], 'geen fouten in de console');
 });

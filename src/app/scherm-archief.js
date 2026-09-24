@@ -3,6 +3,8 @@
 import { h, icoon, toonSheet, bevestig, melding, datumTekst, minutenTekst, saldoTekst, voornaam, downloadBestand } from './ui.js';
 import { S, wijzig, exporteer, neemOver, startSync, sync } from './store.js';
 import { getFormation } from '../lib/formations.js';
+import { stand, plusMin, verloop, goalMinuut } from '../lib/score.js';
+import { plusMinLabel } from './scherm-live.js';
 
 export function schermArchief() {
   const wrap = h('div', {});
@@ -26,8 +28,22 @@ function archiefKaart(a) {
   kaart.appendChild(h('div', { class: 'kaart-kop' },
     h('h3', {}, a.tegenstander || 'Onbekende tegenstander'),
     h('span', { class: 'mini' }, datumTekst(a.datum))));
+  const goals = a.doelpunten || [];
+  const { wij, zij } = stand(goals);
   kaart.appendChild(h('p', { class: 'uitleg' },
+    goals.length ? h('b', { style: { color: 'var(--tekst)' } }, `${wij}-${zij} · `) : null,
     `${a.thuis ? 'Thuis' : 'Uit'} · ${getFormation(a.formationId).naam} · ${a.periodes}×${a.periodeMin} min`));
+  if (goals.length) {
+    const naam = (id) => voornaam((a.statistieken.find((x) => x.spelerId === id) || {}).naam);
+    kaart.appendChild(h('div', { class: 'tussenkop', style: { marginTop: '10px' } }, 'Doelpunten'));
+    for (const d of verloop(goals)) {
+      kaart.appendChild(h('div', { class: `beweging ${d.wie === 'wij' ? 'erin' : 'uit'}` },
+        h('span', { class: 'pijl', style: { width: '34px' } }, `${goalMinuut(d.sec)}'`),
+        h('b', {}, `${d.wij}-${d.zij}`),
+        h('span', {}, d.opVeld.map(naam).join(', '))));
+    }
+  }
+  const pm = goals.length ? plusMin(goals) : null;
 
   const totaalSec = a.statistieken.reduce((n, s) => n + s.speelSec, 0);
   kaart.appendChild(h('div', { class: 'tussenkop', style: { marginTop: '10px' } },
@@ -42,7 +58,8 @@ function archiefKaart(a) {
         h('i', { style: { display: 'block', height: '100%', width: `${(st.speelSec / max) * 100}%`,
           background: 'var(--accent)', borderRadius: '4px' } })),
       h('span', { class: 'saldo', style: { width: '46px', textAlign: 'right' } }, minutenTekst(st.speelSec)),
-      st.keeperSec ? h('span', { class: 'vlag K' }, 'K') : null));
+      pm ? plusMinLabel(pm[st.spelerId]) : null,
+      h('span', { style: { width: '24px', flex: 'none' } }, st.keeperSec ? h('span', { class: 'vlag K' }, 'K') : null)));
   }
 
   kaart.appendChild(h('button', { class: 'knop stil klein', style: { marginTop: '8px' },

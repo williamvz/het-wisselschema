@@ -33,6 +33,10 @@ geen account, geen internet nodig.
 - **Onverwachte wissel** — één knop, kies de speler, en je krijgt meteen te
   horen wie erin komt en wie doorschuift. De rest van de wedstrijd wordt
   opnieuw verdeeld over wie er nog staat.
+- **Score bijhouden** — twee grote knoppen in het live-scherm: goal of
+  tegengoal. Bij elk doelpunt onthoudt de app wie er op het veld stond. In het
+  archief zie je per speler de doelpunten voor en tegen terwijl hij speelde
+  (plus-min), zodat je ziet met welke opstelling het loopt.
 - **Seizoenssaldo** — na afloop wordt bijgehouden wie voor- of achterloopt op
   de gemiddelde speeltijd. Bij het volgende schema krijgt wie achterloopt
   voorrang.
@@ -98,7 +102,7 @@ schema compenseert vanzelf.
 ```bash
 npm install        # alleen nodig voor de tests
 npm run build      # src/ -> index.html (één bestand, geen bundler-afhankelijkheid)
-npm test           # 29 tests: motor, browser en add-on
+npm test           # 37 tests: motor, browser en add-on
 npm run check      # laadt alle modules, vangt import- en syntaxfouten
 npm run serve      # draait de add-on-server lokaal op poort 8099
 ```
