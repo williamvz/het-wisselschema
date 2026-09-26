@@ -1,5 +1,5 @@
 name: Het Wisselschema
-version: "1.0.0"
+version: "2.0.0"
 slug: wisselschema
 description: Wisselschema-assistent voor jeugdvoetbal - maakt het schema, bewaakt de wissels en herplant bij uitval.
 url: https://github.com/williamvz/het-wisselschema
@@ -14,7 +14,8 @@ boot: auto
 init: false
 
 # Via ingress verschijnt de app in de zijbalk van Home Assistant, met de
-# inlog van Home Assistant ervoor. Dat is de aanbevolen route.
+# inlog van Home Assistant ervoor. Daarbinnen heeft de app zijn eigen
+# accounts, zodat trainers zonder Home Assistant-account ook mee kunnen doen.
 ingress: true
 ingress_port: 8099
 panel_icon: mdi:soccer
@@ -22,14 +23,19 @@ panel_title: Wisselschema
 panel_admin: false
 
 # Standaard uit. Zet je hier een poort, dan is de app ook rechtstreeks
-# bereikbaar - handig voor een eigen domein via een reverse proxy, maar dan
-# zit er geen inlog meer voor. Zie de README.
+# bereikbaar - nodig om hem met de rest van de club te delen via een eigen
+# domein. De app heeft zijn eigen accounts, dus ook dan moet je inloggen.
+# Zie de README.
 ports:
   8099/tcp: null
 ports_description:
-  8099/tcp: Rechtstreekse toegang, zonder inlog van Home Assistant
+  8099/tcp: Rechtstreekse toegang (met de accounts van de app zelf)
 
 options:
   allow_cors: true
+  public_url: ""
+  reset_password: false
 schema:
   allow_cors: bool
+  public_url: str?
+  reset_password: bool

@@ -71,7 +71,8 @@ export function schermLive(ganaar, herteken) {
   if (bank.length) {
     veldKaart.appendChild(h('div', { class: 'tussenkop' }, 'Bank'));
     veldKaart.appendChild(h('div', { class: 'chiprij' }, ...bank.map((q) => {
-      const uit = ((w.beschikbaar || {})[q.id] || {}).tot < totaal;
+      // `tot` is null na een rondje door JSON (Infinity bestaat daar niet): dan speelt hij gewoon mee.
+      const uit = ((((w.beschikbaar || {})[q.id] || {}).tot) ?? Infinity) < totaal;
       return h('span', { class: 'chip', style: uit ? { opacity: '.5' } : {} },
         h('i', { class: 'dot' }), q.naam, uit ? h('span', { class: 'mini' }, '· eruit') : null);
     })));

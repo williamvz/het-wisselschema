@@ -1,7 +1,7 @@
 // Scherm: het team. Spelers toevoegen, plakken of uploaden.
 
 import { h, icoon, toonSheet, bevestig, melding, saldoTekst, initialen, downloadBestand } from './ui.js';
-import { S, wijzig, nieuweSpeler, uid, exporteer, neemOver } from './store.js';
+import { S, wijzig, nieuweSpeler, uid, exporteer, neemOver, lokaleGegevens } from './store.js';
 
 const ROLNAAM = { V: 'Verdediging', M: 'Middenveld', A: 'Aanval' };
 
@@ -221,6 +221,23 @@ function bestandSheet() {
         }
       } });
     c.appendChild(invoer);
+
+    // Wie de app al zonder account gebruikte, heeft zijn team op de telefoon
+    // staan. Na het inloggen hoeft dat niet opnieuw ingetypt te worden.
+    const lokaal = lokaleGegevens();
+    if (lokaal && (lokaal.team?.spelers?.length || lokaal.archief?.length)) {
+      const n = lokaal.team.spelers.length;
+      c.appendChild(h('div', { class: 'tussenkop' }, 'Van dit apparaat'));
+      c.appendChild(h('p', { class: 'uitleg' },
+        `Op dit apparaat staat nog ${lokaal.team.naam} van voor het inloggen: ${n} speler${n === 1 ? '' : 's'}, ${(lokaal.archief || []).length} gespeelde wedstrijden.`));
+      c.appendChild(h('button', { class: 'knop breed', onclick: () => bevestig(`${lokaal.team.naam} overnemen?`,
+        `Spelers, wedstrijd en archief van ${S.team.naam} worden vervangen door die van dit apparaat, voor alle trainers van het team.`, () => {
+          wijzig(() => { neemOver({ team: { ...lokaal.team, naam: S.team.naam }, wedstrijd: lokaal.wedstrijd ?? null, archief: lokaal.archief || [] }); },
+            { terugdraaibaar: true });
+          sluit(); melding('Overgenomen');
+        }, { knop: 'Overnemen', gevaar: true }) }, `Overnemen in ${S.team.naam}`));
+    }
+
     c.appendChild(h('div', { class: 'tussenkop' }, 'Back-up maken'));
     c.appendChild(h('button', { class: 'knop breed', onclick: () => {
       downloadBestand(`wisselschema-${S.team.naam.replace(/\W+/g, '-').toLowerCase()}.json`, JSON.stringify(exporteer(), null, 2));

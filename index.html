@@ -100,6 +100,33 @@ input, select, textarea { font: inherit; color: inherit; }
   background: linear-gradient(140deg, var(--accent-fel), var(--accent));
   display: grid; place-items: center; color: #fff; font-weight: 800; font-size: .9rem; }
 
+/* ------------------------------------------------------------------ account */
+.teamknop { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; border-radius: 8px; }
+.teamknop strong::after { content: ' ▾'; font-size: .7em; color: var(--zacht); }
+.teamknop:focus-visible { outline: 2px solid var(--accent-fel); outline-offset: 2px; }
+.aanwezig { display: flex; padding-left: 6px; flex: none; }
+.aanwezig span { width: 28px; height: 28px; margin-left: -6px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent-zacht); color: var(--accent); border: 2px solid var(--bg); font-size: .66rem; font-weight: 800; }
+.accountknop { position: relative; width: 38px; height: 38px; flex: none; border-radius: 50%; cursor: pointer;
+  border: 1px solid var(--rand); background: var(--vlak); font-weight: 750; font-size: .78rem; color: var(--tekst); }
+.stip { position: absolute; right: -2px; bottom: -2px; width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid var(--bg); background: var(--bank); }
+.stip.los { position: static; display: inline-block; flex: none; border-color: var(--vlak); }
+.stip.ok { background: var(--accent-fel); }
+.stip.bezig { background: var(--waarschuwing); }
+.stip.fout { background: var(--alarm); }
+.balk-melding { align-items: center; }
+.balk-melding .knop { flex: none; }
+
+.inlog { max-width: 420px; margin: 0 auto; padding: max(6vh, 24px) 0 40px; }
+.inlog > .merk { width: 56px; height: 56px; border-radius: 16px; font-size: 1.4rem; margin: 0 auto 12px; }
+.inlog > h1 { text-align: center; margin-bottom: 6px; }
+.inlog > .uitleg { text-align: center; margin: 0 8px 18px; }
+.inlog label.veld small { display: block; margin-top: 5px; line-height: 1.35; }
+.fout { color: var(--alarm); font-size: .86rem; font-weight: 600; margin: 0 0 10px; }
+.fout:empty { display: none; }
+.centraal { text-align: center; }
+
 /* ------------------------------------------------------------------ kaarten */
 .kaart {
   background: var(--vlak); border: 1px solid var(--rand); border-radius: var(--r);
@@ -133,7 +160,7 @@ input, select, textarea { font: inherit; color: inherit; }
 /* ------------------------------------------------------------------ velden */
 label.veld { display: block; margin-bottom: 12px; }
 label.veld > span { display: block; font-size: .8rem; font-weight: 600; color: var(--zacht); margin-bottom: 5px; }
-input[type=text], input[type=date], input[type=number], select, textarea {
+input[type=text], input[type=password], input[type=date], input[type=number], select, textarea {
   width: 100%; min-height: 46px; padding: 10px 12px;
   background: var(--vlak-2); border: 1px solid var(--rand); border-radius: 11px;
 }
@@ -353,15 +380,18 @@ function __mod(naam) {
 __defs["app/main.js"] = function () {
 // De romp: kopbalk, schermkeuze, navigatie en het opstarten.
 
-const { h, icoon, leegmaken, toonSheet, melding, houdSchermAan, minutenTekst, voornaam, datumTekst } = __mod("app/ui.js");
-const { S, wijzig, abonneer, laadLokaal, startSync, plan, klokStand, leesDeelLink, nieuweSpeler, nieuweWedstrijd, bewaarNu } = __mod("app/store.js");
+const { h, icoon, leegmaken, toonSheet, melding, houdSchermAan, minutenTekst, voornaam } = __mod("app/ui.js");
+const { S, wijzig, abonneer, laadLokaal, plan, klokStand, leesDeelLink, nieuweSpeler, nieuweWedstrijd, bewaarNu } = __mod("app/store.js");
 const { getFormation } = __mod("lib/formations.js");
-const { totaleSpeeltijd } = __mod("lib/schedule.js");
+const { account, herstelAccount, verbind, wek, duwBijAfsluiten } = __mod("app/samenwerken.js");
+const { kopbalk } = __mod("app/kop.js");
 const { schermTeam } = __mod("app/scherm-team.js");
 const { schermOpzet } = __mod("app/scherm-opzet.js");
 const { schermSchema } = __mod("app/scherm-schema.js");
 const { schermLive, tikLive, actiefBlokIndex } = __mod("app/scherm-live.js");
 const { schermArchief } = __mod("app/scherm-archief.js");
+const { schermVerbinden, schermInloggen, schermInrichten, schermGeenTeam } = __mod("app/scherm-inloggen.js");
+const { schermBeheer, vergeetBeheer } = __mod("app/scherm-beheer.js");
 
 const SCHERMEN = [
   { id: 'team', naam: 'Team', ico: 'team' },
@@ -374,15 +404,9 @@ const SCHERMEN = [
 let wortel = null;
 
 function ganaar(scherm) {
+  if (scherm === 'beheer') vergeetBeheer(); // altijd vers ophalen
   wijzig((s) => { s.ui.scherm = scherm; });
   window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function ondertitel() {
-  const w = S.wedstrijd;
-  if (!w) return `${S.team.spelers.length} speler${S.team.spelers.length === 1 ? '' : 's'}`;
-  const tegen = w.tegenstander ? `${w.thuis ? 'thuis tegen' : 'uit bij'} ${w.tegenstander}` : datumTekst(w.datum);
-  return `${tegen} · ${getFormation(w.formationId).naam}`;
 }
 
 function wisselStaatOpen() {
@@ -398,20 +422,36 @@ function render() {
   document.documentElement.dataset.thema = thema === 'auto' ? '' : thema;
 
   leegmaken(wortel);
-  wortel.appendChild(h('header', { class: 'kop' },
-    h('div', { class: 'merk', 'aria-hidden': 'true' }, 'W'),
-    h('div', { class: 'titel' },
-      h('strong', {}, S.team.naam),
-      h('small', {}, ondertitel()))));
 
-  const scherm = S.ui.scherm || 'team';
+  // Nog niet binnen: een scherm zonder kopbalk en navigatie.
+  if (['verbinden', 'inloggen', 'inrichten'].includes(account.modus)) {
+    wortel.appendChild(account.modus === 'verbinden' ? schermVerbinden()
+      : account.modus === 'inloggen' ? schermInloggen() : schermInrichten());
+    document.getElementById('nav')?.remove();
+    houdSchermAan(false);
+    return;
+  }
+
+  for (const deel of kopbalk(ganaar)) wortel.appendChild(deel);
+
+  let scherm = S.ui.scherm || 'team';
+  const zonderTeam = account.modus === 'team' && !account.teamId;
+  if (scherm === 'beheer' && !account.gebruiker?.beheerder) scherm = 'team';
   const inhoud =
-    scherm === 'team' ? schermTeam()
+    scherm === 'beheer' ? schermBeheer(ganaar)
+    : zonderTeam ? schermGeenTeam(ganaar)
+    : scherm === 'team' ? schermTeam()
     : scherm === 'opzet' ? schermOpzet(ganaar)
     : scherm === 'schema' ? schermSchema(ganaar)
     : scherm === 'live' ? schermLive(ganaar, render)
-    : schermArchief();
+    : schermArchief(ganaar);
   wortel.appendChild(inhoud);
+
+  if (zonderTeam) {
+    document.getElementById('nav')?.remove();
+    houdSchermAan(false);
+    return;
+  }
 
   const open = wisselStaatOpen();
   const nav = h('nav', { class: 'nav niet-printen', 'aria-label': 'Hoofdnavigatie' });
@@ -463,11 +503,18 @@ async function verwerkDeelLink() {
     }
     c.appendChild(h('div', { class: 'schema-wrap' }, h('table', { class: 'schema' }, h('thead', {}, kop), lijf)));
 
+    // Overnemen kan alleen als duidelijk is waar het heen gaat: dit apparaat,
+    // of het team dat open staat.
+    const kanOvernemen = account.modus === 'lokaal' || (account.modus === 'team' && !!account.teamId);
+    if (account.modus === 'team' && account.teamId) {
+      c.appendChild(h('p', { class: 'mini', style: { marginTop: '10px' } }, `Overnemen zet dit schema klaar bij ${S.team.naam}.`));
+    }
     c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '16px' } },
-      h('button', { class: 'knop', onclick: sluit }, 'Alleen bekijken'),
-      h('button', { class: 'knop primair', style: { flex: '2' }, onclick: () => {
+      h('button', { class: 'knop', onclick: sluit }, kanOvernemen ? 'Alleen bekijken' : 'Sluiten'),
+      !kanOvernemen ? null : h('button', { class: 'knop primair', style: { flex: '2' }, onclick: () => {
         wijzig((s) => {
-          s.team.naam = data.t || s.team.naam;
+          // Een clubteam heet zoals de club het noemt; lokaal nemen we de naam over.
+          if (account.modus !== 'team') s.team.naam = data.t || s.team.naam;
           for (const sp of spelers) if (!s.team.spelers.some((q) => q.id === sp.id)) s.team.spelers.push(sp);
           const w = nieuweWedstrijd();
           Object.assign(w, {
@@ -494,24 +541,34 @@ async function verwerkDeelLink() {
 async function start() {
   wortel = document.getElementById('app');
   laadLokaal();
+  herstelAccount(); // wie eerder inlogde, ziet meteen zijn team - ook zonder bereik
+  abonneer(render);
   render();
 
-  const gedeeld = await verwerkDeelLink();
-  if (!gedeeld) startSync().then((ok) => { if (ok) render(); });
+  // Eerst weten of er een server is: een gedeeld schema overnemen kan pas
+  // als duidelijk is in welk team het terechtkomt.
+  if (account.modus === 'verbinden') await verbind();
+  else verbind();
+  await verwerkDeelLink();
 
   setInterval(() => { if (S.ui.scherm === 'live' && S.wedstrijd) tikLive(); }, 250);
 
   // Terugkomen uit de achtergrond: de klok loopt door op wandkloktijd, dus
-  // even bijwerken zodat het scherm meteen weer klopt.
+  // even bijwerken zodat het scherm meteen weer klopt. En wat de anderen
+  // intussen deden, meteen ophalen in plaats van op het volgende antwoord
+  // van de server te wachten.
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) { tikLive(); houdSchermAan(S.instellingen.schermAan && S.ui.scherm === 'live' && !!S.wedstrijd?.klok?.loopt); }
+    if (!document.hidden) {
+      tikLive();
+      wek();
+      houdSchermAan(S.instellingen.schermAan && S.ui.scherm === 'live' && !!S.wedstrijd?.klok?.loopt);
+    }
   });
-  window.addEventListener('pagehide', bewaarNu);
+  window.addEventListener('online', wek);
+  window.addEventListener('pagehide', () => { bewaarNu(); duwBijAfsluiten(); });
   window.addEventListener('beforeunload', (e) => {
     if (S.wedstrijd?.klok?.loopt) { bewaarNu(); e.preventDefault(); e.returnValue = ''; }
   });
-
-  abonneer(render);
 }
 
 return { ganaar, render, start };
@@ -576,6 +633,11 @@ function initialen(naam) {
   return (d.length > 1 ? d[0][0] + d[d.length - 1][0] : d[0].slice(0, 2)).toUpperCase();
 }
 const voornaam = (naam) => String(naam || '').trim().split(/\s+/)[0] || '?';
+/** Voor teams is het getal het herkenbare deel: JO9-1 wordt "9-1", JO11-2 "11-2". */
+function teamInitialen(naam) {
+  const m = /\d[\w-]*/.exec(String(naam || ''));
+  return m ? m[0].slice(0, 4) : initialen(naam);
+}
 
 const datumTekst = (iso) => {
   try {
@@ -707,17 +769,19 @@ async function kopieer(tekst) {
   }
 }
 
-return { h, svgEl, initialen, icoon, sluitSheet, toonSheet, bevestig, melding, piep, tril, houdSchermAan, downloadBestand, kopieer, leegmaken, mmss, minuten, minutenTekst, saldoTekst, voornaam, datumTekst };
+return { h, svgEl, initialen, teamInitialen, icoon, sluitSheet, toonSheet, bevestig, melding, piep, tril, houdSchermAan, downloadBestand, kopieer, leegmaken, mmss, minuten, minutenTekst, saldoTekst, voornaam, datumTekst };
 };
 __defs["app/store.js"] = function () {
-// Toestand, opslag en synchronisatie.
+// Toestand, opslag en tijd.
 //
-// Alles draait lokaal. localStorage is de waarheid; een server (de Home
-// Assistant-add-on) is optioneel en wordt alleen gebruikt als hij er is.
-// Zo blijft de app langs de lijn werken zonder netwerk.
+// Alles draait lokaal, zodat de app langs de lijn ook zonder netwerk werkt.
+// Zonder account is localStorage de enige opslag. Met een account komen de
+// teamgegevens van de server; dan neemt samenwerken.js het bewaren van het
+// team over, en houdt deze module alleen bij wat er in het geheugen staat.
 
 const { planWedstrijd, herplan, wisselUitgevoerd, maakBlokken, totaleSpeeltijd } = __mod("lib/schedule.js");
 const { FORMATIONS, getFormation, formationsForSize } = __mod("lib/formations.js");
+const { voegSamen } = __mod("lib/samenvoegen.js");
 
 const SLEUTEL = 'wisselschema.v1';
 const VERSIE = 1;
@@ -768,12 +832,32 @@ const luisteraars = new Set();
 function abonneer(fn) { luisteraars.add(fn); return () => luisteraars.delete(fn); }
 function stempel() { return teller; }
 
+// ---------------------------------------------------------------------- tijd
+// Met een server rekent de klok in servertijd. Dan lopen twee telefoons
+// gelijk, ook als de ene een halve minuut verkeerd staat. Zonder server is
+// het verschil nul.
+const tijd = { verschil: 0 };
+function zetKlokVerschil(ms) { tijd.verschil = Number.isFinite(ms) ? ms : 0; }
+function klokVerschil() { return tijd.verschil; }
+const nu = () => Date.now() + tijd.verschil;
+
 // Hertekenen gebeurt pas in de volgende frame. Dat is niet alleen zuiniger,
 // het voorkomt ook een venijnig probleem: een tik op een knop laat eerst het
 // invoerveld zijn focus verliezen, dat vuurt `change`, en als we daarop meteen
 // de hele DOM herbouwen is de knop verdwenen voordat de klik hem bereikt.
+//
+// Wijzigingen van een andere telefoon wachten bovendien tot je klaar bent met
+// typen: anders verdwijnt het veld onder je vingers.
 let meldingGepland = false;
-function meldLuisteraars() {
+let wachtOpTypen = false;
+function meldLuisteraars({ vanAfstand = false } = {}) {
+  if (vanAfstand && aanHetTypen()) {
+    if (!wachtOpTypen) {
+      wachtOpTypen = true;
+      document.activeElement.addEventListener('blur', () => { wachtOpTypen = false; meldLuisteraars(); }, { once: true });
+    }
+    return;
+  }
   if (meldingGepland) return;
   meldingGepland = true;
   const uitvoeren = () => { meldingGepland = false; for (const l of luisteraars) l(); };
@@ -781,10 +865,36 @@ function meldLuisteraars() {
   else setTimeout(uitvoeren, 0);
 }
 
+function aanHetTypen() {
+  if (typeof document === 'undefined') return false;
+  const el = document.activeElement;
+  if (!el || !el.closest || !el.closest('#app')) return false;
+  if (el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
+  return el.tagName === 'INPUT' && !['button', 'checkbox', 'radio', 'range', 'submit', 'file'].includes(el.type);
+}
+
+/** Opnieuw tekenen zonder dat er iets aan de gegevens verandert (bv. inloggen gelukt). */
+function herteken() { meldLuisteraars(); }
+
 /** Enige route waarlangs de toestand verandert: muteren, bewaren, hertekenen. */
 function wijzig(fn, opties = {}) {
-  if (opties.terugdraaibaar) bewaarMoment();
+  // Met een account ook bij gewone stappen vergelijken: dan staat de stip in
+  // de kopbalk meteen op "nog niet verstuurd", en niet pas als de
+  // verzending begint.
+  const voor = opties.terugdraaibaar || teamOpslag ? teamJson() : null;
+  const tijden = tijdInfo();
   const uitkomst = fn(S);
+  tijdstempels(tijden);
+  if (voor !== null) {
+    const na = teamJson();
+    if (na !== voor) {
+      if (opties.terugdraaibaar) {
+        momenten.push({ voor, na });
+        if (momenten.length > 40) momenten.shift();
+      }
+      if (teamOpslag) teamOpslag.gewijzigd();
+    }
+  }
   teller += 1;
   S.gewijzigdOp = Date.now();
   planCache = null;
@@ -793,36 +903,101 @@ function wijzig(fn, opties = {}) {
   return uitkomst;
 }
 
-// ------------------------------------------------------------- ongedaan maken
-const momenten = [];
-function bewaarMoment() {
-  if (!S.wedstrijd) return;
-  momenten.push(JSON.stringify({ wedstrijd: S.wedstrijd, spelers: S.team.spelers }));
-  if (momenten.length > 40) momenten.shift();
+// Als twee telefoons allebei de klok of het schema veranderden, wint de
+// laatste (zie samenvoegen.js). Daarvoor onthoudt de wedstrijd wanneer dat
+// was. Automatisch, zodat geen enkele knop het kan vergeten.
+function tijdInfo() {
+  const w = S.wedstrijd;
+  return w ? { id: w.id, klok: JSON.stringify(w.klok ?? null), schema: JSON.stringify([w.blokken ?? null, w.pins ?? null]) } : null;
 }
+function tijdstempels(voor) {
+  const w = S.wedstrijd;
+  if (!w) return;
+  const nieuw = !voor || voor.id !== w.id;
+  if (w.klok && (nieuw || JSON.stringify(w.klok) !== voor.klok)) w.klok = { ...w.klok, bijgewerkt: nu() };
+  if (nieuw || JSON.stringify([w.blokken ?? null, w.pins ?? null]) !== voor.schema) w.planMs = nu();
+}
+
+// ------------------------------------------------------------- teamgegevens
+// Het deel van de toestand dat bij een team hoort en met een server wordt
+// gedeeld. Instellingen en het scherm waar je staat zijn van dit apparaat.
+const teamJson = () => JSON.stringify({ team: S.team, wedstrijd: S.wedstrijd ?? null, archief: S.archief });
+function teamDeel() { return JSON.parse(teamJson()); }
+
+function zetTeam(bron) {
+  // Altijd een eigen kopie: wat er binnenkomt, is ook de basis waarmee de
+  // samenwerkmodule vergelijkt. Deelden ze een object, dan veranderde de
+  // basis stilletjes mee en werd een nieuwe goal nooit verstuurd.
+  const doc = JSON.parse(JSON.stringify(bron));
+  const team = doc.team && typeof doc.team === 'object' ? doc.team : {};
+  S.team = { ...team, naam: team.naam || 'Mijn team', spelers: Array.isArray(team.spelers) ? team.spelers : [] };
+  S.wedstrijd = doc.wedstrijd ?? null;
+  S.archief = Array.isArray(doc.archief) ? doc.archief : [];
+}
+
+/**
+ * Vervangt de teamgegevens: bij het openen van een ander team, of met wat er
+ * van een andere telefoon binnenkwam (`vanAfstand`). Dat laatste is geen
+ * eigen stap: ongedaan maken blijft dan gewoon werken.
+ */
+function laadTeamDeel(doc, { vanAfstand = false } = {}) {
+  zetTeam(doc);
+  if (!vanAfstand) momenten.length = 0;
+  teller += 1;
+  planCache = null;
+  bewaarLater();
+  meldLuisteraars({ vanAfstand });
+}
+
+// ------------------------------------------------------------- ongedaan maken
+// Per stap de teamgegevens ervoor en erna. Terugdraaien is samenvoegen: haal
+// weg wat deze stap veranderde, en laat staan wat er daarna gebeurde - ook
+// als dat de goal van een collega op een andere telefoon was.
+const momenten = [];
 function kanTerug() { return momenten.length > 0; }
 function draaiTerug() {
   const m = momenten.pop();
   if (!m) return false;
-  const d = JSON.parse(m);
-  S.wedstrijd = d.wedstrijd;
-  S.team.spelers = d.spelers;
+  const tijden = tijdInfo();
+  zetTeam(voegSamen(JSON.parse(m.na), JSON.parse(m.voor), teamDeel()));
+  tijdstempels(tijden);
   teller += 1; planCache = null; bewaarLater();
   meldLuisteraars();
   return true;
 }
 
 // -------------------------------------------------------------------- opslag
+// Met een account neemt samenwerken.js het bewaren van het team over. Wat er
+// lokaal stond, blijft dan onaangeroerd in localStorage staan, en komt
+// terug na het uitloggen.
+let teamOpslag = null;
+let lokaal = null;
+
+function gebruikTeamOpslag(opslag) {
+  if (opslag && !teamOpslag) lokaal = JSON.parse(JSON.stringify(exporteer()));
+  if (!opslag && teamOpslag && lokaal) {
+    zetTeam(lokaal);
+    momenten.length = 0;
+    planCache = null;
+    teller += 1;
+  }
+  teamOpslag = opslag || null;
+}
+
+/** De gegevens die op dit apparaat stonden van voor het inloggen (of null). */
+function lokaleGegevens() { return teamOpslag ? lokaal : null; }
+
 let bewaarTimer = null;
 function bewaarLater() {
   clearTimeout(bewaarTimer);
   bewaarTimer = setTimeout(bewaarNu, 250);
 }
 function bewaarNu() {
+  clearTimeout(bewaarTimer);
   try {
-    localStorage.setItem(SLEUTEL, JSON.stringify(exporteer()));
+    localStorage.setItem(SLEUTEL, JSON.stringify(teamOpslag ? { ...lokaal, instellingen: S.instellingen } : exporteer()));
   } catch (e) { /* privémodus of vol: de app werkt door, alleen zonder onthouden */ }
-  duwNaarServer();
+  if (teamOpslag) teamOpslag.bewaar();
 }
 function exporteer() {
   return { versie: VERSIE, team: S.team, wedstrijd: S.wedstrijd, archief: S.archief, instellingen: S.instellingen, gewijzigdOp: S.gewijzigdOp };
@@ -842,52 +1017,6 @@ function laadLokaal() {
     const ruw = localStorage.getItem(SLEUTEL);
     if (ruw) neemOver(JSON.parse(ruw));
   } catch (e) { /* onleesbaar: we beginnen schoon in plaats van te crashen */ }
-}
-
-// ---------------------------------------------------------------- server-sync
-// Wordt alleen actief als er echt iets luistert op het sync-adres. Faalt stil.
-const sync = { actief: false, adres: null, bezig: false, laatst: null, fout: null };
-
-function syncAdres() {
-  const eigen = (S.instellingen.syncUrl || '').trim();
-  if (eigen) return eigen.replace(/\/$/, '');
-  if (typeof location !== 'undefined' && /^https?:/.test(location.protocol)) {
-    return new URL('api/state', location.href.replace(/[^/]*$/, '')).toString();
-  }
-  return null;
-}
-
-async function startSync() {
-  const adres = syncAdres();
-  if (!adres) return false;
-  try {
-    const r = await fetch(adres, { headers: { accept: 'application/json' } });
-    if (!r.ok) return false;
-    const opAfstand = await r.json();
-    sync.actief = true; sync.adres = adres; sync.laatst = Date.now();
-    if (opAfstand && (opAfstand.gewijzigdOp || 0) > (S.gewijzigdOp || 0)) {
-      neemOver(opAfstand);
-      teller += 1;
-      meldLuisteraars();
-    } else {
-      duwNaarServer();
-    }
-    return true;
-  } catch (e) { sync.fout = String(e.message || e); return false; }
-}
-
-let duwTimer = null;
-function duwNaarServer() {
-  if (!sync.actief || !sync.adres) return;
-  clearTimeout(duwTimer);
-  duwTimer = setTimeout(async () => {
-    sync.bezig = true;
-    try {
-      await fetch(sync.adres, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(exporteer()) });
-      sync.laatst = Date.now(); sync.fout = null;
-    } catch (e) { sync.fout = String(e.message || e); }
-    sync.bezig = false;
-  }, 1200);
 }
 
 // ----------------------------------------------------------------- planning
@@ -960,11 +1089,11 @@ function schrapGoal(id) {
 function klokStand(w = S.wedstrijd) {
   if (!w) return 0;
   const k = w.klok;
-  const sec = k.loopt && k.sindsMs ? k.verstreken + (Date.now() - k.sindsMs) / 1000 : k.verstreken;
+  const sec = k.loopt && k.sindsMs ? k.verstreken + (nu() - k.sindsMs) / 1000 : k.verstreken;
   return Math.max(0, Math.min(sec, totaleSpeeltijd(w)));
 }
 function klokStart() {
-  wijzig((s) => { s.wedstrijd.klok = { ...s.wedstrijd.klok, loopt: true, sindsMs: Date.now(), pauzeReden: null };
+  wijzig((s) => { s.wedstrijd.klok = { ...s.wedstrijd.klok, loopt: true, sindsMs: nu(), pauzeReden: null };
     if (s.wedstrijd.status === 'opzet') s.wedstrijd.status = 'bezig'; });
 }
 function klokPauze(reden = null) {
@@ -977,7 +1106,7 @@ function klokAutoPauze(grens, reden) {
   });
 }
 function klokZet(sec) {
-  wijzig((s) => { s.wedstrijd.klok = { ...s.wedstrijd.klok, verstreken: Math.max(0, sec), sindsMs: s.wedstrijd.klok.loopt ? Date.now() : null }; });
+  wijzig((s) => { s.wedstrijd.klok = { ...s.wedstrijd.klok, verstreken: Math.max(0, sec), sindsMs: s.wedstrijd.klok.loopt ? nu() : null }; });
 }
 
 // ---------------------------------------------------------------- archiveren
@@ -1056,7 +1185,7 @@ function vanBase64Url(t) {
 
 
 
-return { uid, nieuweSpeler, nieuweWedstrijd, abonneer, stempel, wijzig, kanTerug, draaiTerug, bewaarNu, exporteer, neemOver, laadLokaal, startSync, plan, leginSchema, genereer, herplanNu, bevestigWissel, noteerGoal, schrapGoal, klokStand, klokStart, klokPauze, klokAutoPauze, klokZet, rondAf, deelLink, leesDeelLink, SLEUTEL, VERSIE, S, sync, FORMATIONS, getFormation, formationsForSize, totaleSpeeltijd };
+return { uid, nieuweSpeler, nieuweWedstrijd, abonneer, stempel, zetKlokVerschil, klokVerschil, herteken, wijzig, teamDeel, laadTeamDeel, kanTerug, draaiTerug, gebruikTeamOpslag, lokaleGegevens, bewaarNu, exporteer, neemOver, laadLokaal, plan, leginSchema, genereer, herplanNu, bevestigWissel, noteerGoal, schrapGoal, klokStand, klokStart, klokPauze, klokAutoPauze, klokZet, rondAf, deelLink, leesDeelLink, SLEUTEL, VERSIE, S, nu, FORMATIONS, getFormation, formationsForSize, totaleSpeeltijd };
 };
 __defs["lib/schedule.js"] = function () {
 // De wisselschema-motor.
@@ -1930,11 +2059,886 @@ function slotsForCount(formation, count) {
 
 return { getFormation, formationsForSize, slotsForCount, ROLES, FORMATIONS, SPEELVORMEN };
 };
+__defs["lib/samenvoegen.js"] = function () {
+// Twee trainers, twee telefoons, één team. Veranderen ze tegelijk iets, dan
+// moeten beide wijzigingen blijven staan: een goal van de een mag niet
+// verdwijnen omdat de ander net een wissel doorgaf.
+//
+// Dat is een driewegsamenvoeging. `basis` is de laatste stand die beide
+// kanten kenden, `mijn` en `hun` zijn wat er daarna los van elkaar van
+// gemaakt is. Wat maar aan één kant veranderde, komt er gewoon in. Waar
+// beide kanten iets aan veranderden, wordt dieper gekeken:
+//
+//   objecten              per sleutel
+//   lijsten met een id    per id: spelers, doelpunten, het archief. Twee
+//                         nieuwe goals komen er dus allebei in.
+//   lijsten met waarden   als verzameling: de selectie van een wedstrijd
+//
+// Wat dan nog botst, is een echt conflict: beide kanten gaven hetzelfde
+// veld een andere waarde. Dan wint `mijn` - behalve bij de klok en het
+// schema. Daar wint de laatste wijziging, ongeacht welke telefoon het eerst
+// weer bereik had: wie een kwartier offline stond, mag bij terugkomst niet
+// de wissel van zijn collega terugdraaien.
+//
+// Zonder DOM, zodat het in Node getest kan worden.
+
+const isObject = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
+const leeg = (x) => x === null || x === undefined;
+
+/** Diepe gelijkheid, ongeacht de volgorde van sleutels. `null` en ontbreken tellen als gelijk. */
+function gelijk(a, b) {
+  if (a === b) return true;
+  if (leeg(a) || leeg(b)) return leeg(a) && leeg(b);
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b) || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (!gelijk(a[i], b[i])) return false;
+    return true;
+  }
+  if (isObject(a)) {
+    if (!isObject(b)) return false;
+    for (const k of Object.keys(a)) if (!gelijk(a[k], b[k])) return false;
+    for (const k of Object.keys(b)) if (!(k in a) && !leeg(b[k])) return false;
+    return true;
+  }
+  return false;
+}
+
+// Het schema (blokken en de vastgezette opstellingen) hoort bij elkaar en
+// wordt nooit half van de een en half van de ander. De wedstrijd onthoudt
+// in `planMs` wanneer het schema voor het laatst veranderde.
+const SCHEMA = new Set(['blokken', 'pins', 'planMs']);
+
+/**
+ * @param basis  gemeenschappelijke voorganger (mag ontbreken)
+ * @param mijn   deze kant
+ * @param hun    de andere kant
+ * @param pad    waar we zijn, bv. 'wedstrijd.klok' - voor de regels hierboven
+ */
+function voegSamen(basis, mijn, hun, pad = '') {
+  if (gelijk(mijn, hun)) return mijn;
+  if (gelijk(basis, mijn)) return hun;
+  if (gelijk(basis, hun)) return mijn;
+
+  // Vanaf hier veranderden beide kanten iets.
+  if (pad === 'wedstrijd') {
+    const [b, m, h] = [basis?.id, mijn?.id, hun?.id];
+    // Een afgeronde, weggegooide of nieuwe wedstrijd wint van bijwerken van
+    // de oude: je voegt geen goal meer toe aan een wedstrijd die al in het
+    // archief staat.
+    if (m !== h) return m === b ? hun : mijn;
+  }
+  if (pad === 'wedstrijd.klok') {
+    return (hun?.bijgewerkt || 0) > (mijn?.bijgewerkt || 0) ? hun : mijn;
+  }
+  if (isObject(mijn) && isObject(hun)) return voegObjectSamen(isObject(basis) ? basis : {}, mijn, hun, pad);
+  if (Array.isArray(mijn) && Array.isArray(hun)) {
+    const b = Array.isArray(basis) ? basis : [];
+    if (metId(b) && metId(mijn) && metId(hun)) return voegLijstSamen(b, mijn, hun, pad);
+    if (waarden(b) && waarden(mijn) && waarden(hun)) return voegVerzamelingSamen(b, mijn, hun);
+  }
+  return mijn;
+}
+
+function voegObjectSamen(basis, mijn, hun, pad) {
+  // Bij de wedstrijd: wiens schema is het nieuwst?
+  const schemaVanHun = pad === 'wedstrijd' && (hun.planMs || 0) > (mijn.planMs || 0);
+  const uit = {};
+  for (const k of new Set([...Object.keys(mijn), ...Object.keys(hun)])) {
+    let v;
+    if (pad === 'wedstrijd' && SCHEMA.has(k) && !gelijk(basis[k], mijn[k]) && !gelijk(basis[k], hun[k])) {
+      v = schemaVanHun ? hun[k] : mijn[k];
+    } else {
+      v = voegSamen(basis[k], mijn[k], hun[k], pad ? `${pad}.${k}` : k);
+    }
+    if (v !== undefined) uit[k] = v;
+  }
+  return uit;
+}
+
+const metId = (lijst) => lijst.every((x) => isObject(x) && !leeg(x.id));
+const waarden = (lijst) => lijst.every((x) => ['string', 'number', 'boolean'].includes(typeof x));
+
+function voegLijstSamen(basis, mijn, hun, pad) {
+  const B = new Map(basis.map((x) => [x.id, x]));
+  const M = new Map(mijn.map((x) => [x.id, x]));
+  const H = new Map(hun.map((x) => [x.id, x]));
+
+  // De volgorde van `hun`, met wat alleen `mijn` heeft op de plek waar het
+  // bij mij stond: een nieuw archiefstuk vooraan, een nieuwe speler achteraan.
+  const volgorde = hun.map((x) => x.id);
+  mijn.forEach((x, i) => {
+    if (H.has(x.id) || volgorde.includes(x.id)) return;
+    let j = i - 1;
+    while (j >= 0 && !volgorde.includes(mijn[j].id)) j--;
+    volgorde.splice(j < 0 ? 0 : volgorde.indexOf(mijn[j].id) + 1, 0, x.id);
+  });
+
+  const uit = [];
+  for (const id of volgorde) {
+    const [inB, inM, inH] = [B.has(id), M.has(id), H.has(id)];
+    if (inM && inH) uit.push(voegSamen(B.get(id), M.get(id), H.get(id), `${pad}[]`));
+    // Aan één kant weg: dan blijft hij alleen als hij nieuw is, of als de
+    // andere kant hem intussen veranderde (bijwerken wint van weggooien).
+    else if (inM) { if (!inB || !gelijk(B.get(id), M.get(id))) uit.push(M.get(id)); }
+    else if (inH) { if (!inB || !gelijk(B.get(id), H.get(id))) uit.push(H.get(id)); }
+  }
+  return uit;
+}
+
+function voegVerzamelingSamen(basis, mijn, hun) {
+  const [B, M, H] = [new Set(basis), new Set(mijn), new Set(hun)];
+  const uit = [];
+  for (const x of mijn) if (H.has(x) || !B.has(x)) uit.push(x); // tenzij de ander hem weghaalde
+  for (const x of hun) if (!M.has(x) && !B.has(x)) uit.push(x);  // nieuw van de ander
+  return [...new Set(uit)];
+}
+
+return { gelijk, voegSamen };
+};
+__defs["app/samenwerken.js"] = function () {
+// Samenwerken: inloggen, teams kiezen, en één team gelijk houden op meerdere
+// telefoons.
+//
+// Elke telefoon heeft zijn eigen kopie van het team en past wijzigingen
+// meteen toe; langs de lijn wacht je niet op een server. Daarna gaan ze naar
+// de server, die per team een versienummer bijhoudt. Wie iets stuurt, zegt op
+// welke versie het gebaseerd is. Was iemand anders je net voor, dan krijg je
+// de nieuwe stand terug, voeg je samen (zie lib/samenvoegen.js) en stuur je
+// opnieuw. Zo gaat er niets verloren, ook niet na een kwartier zonder bereik.
+//
+// Om wijzigingen van anderen snel te zien, staat er steeds één verzoek open
+// (long polling): de server antwoordt zodra er iets verandert, of na 25
+// seconden met "niets nieuws". Dat werkt door elke proxy heen, ook door de
+// ingress van Home Assistant en door een Cloudflare-tunnel.
+
+const { S, wijzig, herteken, gebruikTeamOpslag, laadTeamDeel, teamDeel, zetKlokVerschil, klokVerschil } = __mod("app/store.js");
+const { vraag, vraagBijAfsluiten, zetServer, zetToken, paginaServer, normaliseerAdres, vergeetKlok } = __mod("app/api.js");
+const { voegSamen, gelijk } = __mod("lib/samenvoegen.js");
+
+const ACCOUNT = 'wisselschema.account';
+const CACHE = 'wisselschema.team.';
+const DELEN = ['team', 'wedstrijd', 'archief'];
+const WACHT = 25; // seconden dat een verzoek op een wijziging mag wachten
+
+/** Alles wat de schermen over het account en de verbinding moeten weten. */
+const account = {
+  modus: 'lokaal',      // lokaal | verbinden | inrichten | inloggen | team
+  server: null,         // basisadres van de server
+  status: null,         // antwoord van api/status
+  handmatig: false,     // server zelf ingevuld, niet de server van deze pagina
+  gebruiker: null,      // { id, naam, gebruikersnaam, beheerder }
+  teams: [],            // [{ id, naam, lid, leden: [{ id, naam }] }]
+  teamId: null,
+  verbinding: 'uit',    // uit | ok | offline
+  onverstuurd: false,   // er staan wijzigingen klaar die de server nog niet heeft
+  aanwezig: [],         // wie er verder naar dit team kijkt
+  sessieVerlopen: false,
+  melding: null,        // eenmalige mededeling bovenin
+};
+
+// De synchronisatie van het team dat open staat.
+const ts = {
+  teamId: null,
+  basis: null,        // laatst bekende stand op de server
+  versie: 0,
+  bezig: false,       // er is een verzending onderweg
+  timer: null,
+  luisteraar: null,   // AbortController van het openstaande verzoek
+  wekker: null,       // maakt een wachtende herhaalpoging meteen wakker
+  generatie: 0,       // bij elk ander team +1: oude lussen stoppen dan vanzelf
+  fouten: 0,
+  geweigerd: false,   // de server wees de laatste wijziging af; niet blijven proberen
+  wacht: WACHT,       // korter als een proxy lange verzoeken afkapt (en dat blijft zo)
+};
+
+const opslag = {
+  bewaar() { bewaarCache(); planDuw(); },
+  gewijzigd() { if (ts.teamId) zetOnverstuurd(true); },
+};
+
+// ------------------------------------------------------------ opslaan
+function bewaarAccount() {
+  try {
+    localStorage.setItem(ACCOUNT, JSON.stringify({
+      server: account.server, handmatig: account.handmatig, token: account.token,
+      gebruiker: account.gebruiker, teams: account.teams, teamId: account.teamId, klokVerschil: klokVerschil(),
+    }));
+  } catch (e) { /* zonder opslag werkt het ook, alleen log je de volgende keer opnieuw in */ }
+}
+
+function leesAccount() {
+  try { return JSON.parse(localStorage.getItem(ACCOUNT)); } catch (e) { return null; }
+}
+
+function wisCaches() {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(CACHE)) localStorage.removeItem(k);
+    }
+  } catch (e) { /* niets aan te doen */ }
+}
+
+function leesCache(teamId) {
+  try {
+    const c = JSON.parse(localStorage.getItem(CACHE + teamId));
+    if (c && c.gebruikerId === account.gebruiker?.id) return c;
+  } catch (e) { /* onleesbaar: opnieuw ophalen */ }
+  return null;
+}
+
+function bewaarCache() {
+  if (!ts.teamId || account.modus !== 'team') return;
+  const staat = teamDeel();
+  try {
+    localStorage.setItem(CACHE + ts.teamId, JSON.stringify({
+      gebruikerId: account.gebruiker?.id, versie: ts.versie, staat,
+      basis: ts.basis && gelijk(staat, ts.basis) ? 'zelfde' : ts.basis,
+    }));
+  } catch (e) { /* vol: de server heeft het, of krijgt het straks */ }
+}
+
+// ------------------------------------------------------------- opstarten
+/**
+ * Synchroon, vóór de eerste tekening: wie eerder inlogde, ziet meteen zijn
+ * team - ook zonder bereik. De server wordt daarna op de achtergrond gevraagd.
+ */
+function herstelAccount() {
+  const a = leesAccount();
+  if (a && a.token && a.server) {
+    zetServer(a.server);
+    zetToken(a.token);
+    zetKlokVerschil(a.klokVerschil || 0);
+    Object.assign(account, {
+      modus: 'team', server: a.server, handmatig: !!a.handmatig, token: a.token,
+      gebruiker: a.gebruiker, teams: a.teams || [],
+    });
+    gebruikTeamOpslag(opslag);
+    const id = kiesStartTeam(a.teamId);
+    if (id) openTeam(id);
+    return;
+  }
+  if (eigenAdres()) account.modus = 'verbinden';
+}
+
+/** Op de achtergrond: de server zoeken, of het account bijwerken. */
+async function verbind() {
+  if (account.modus === 'team') { await vernieuwIk(); return; }
+  const adres = eigenAdres();
+  if (!adres) { account.modus = 'lokaal'; herteken(); return; }
+  await zoekServer(adres, { handmatig: !!normaliseerAdres(S.instellingen.syncUrl) });
+}
+
+function eigenAdres() {
+  return normaliseerAdres(S.instellingen.syncUrl) || paginaServer();
+}
+
+async function zoekServer(adres, { handmatig = false } = {}) {
+  zetServer(adres);
+  let st = null;
+  try { st = await vraag('api/status', { tijdslimiet: 6000 }); } catch (e) { st = null; }
+  if (st && st.app === 'het-wisselschema' && st.api >= 2) {
+    Object.assign(account, { server: adres, status: st, handmatig, modus: st.ingericht ? 'inloggen' : 'inrichten' });
+    herteken();
+    return true;
+  }
+  zetServer(null);
+  vergeetKlok();
+  account.modus = 'lokaal';
+  herteken();
+  return false;
+}
+
+/** Vanuit de instellingen: met een server verbinden. */
+async function verbindMet(invoer) {
+  const adres = normaliseerAdres(invoer);
+  if (!adres) return false;
+  const ok = await zoekServer(adres, { handmatig: true });
+  if (ok) wijzig((s) => { s.instellingen.syncUrl = adres; });
+  return ok;
+}
+
+/** Terug naar alleen dit apparaat (als de server met de hand was ingevuld). */
+function terugNaarLokaal() {
+  zetServer(null);
+  vergeetKlok();
+  Object.assign(account, { modus: 'lokaal', server: null, status: null, handmatig: false });
+  wijzig((s) => { s.instellingen.syncUrl = ''; });
+}
+
+// ------------------------------------------------------------- inloggen
+async function inloggen(gebruikersnaam, wachtwoord) {
+  naInloggen(await vraag('api/inloggen', { methode: 'POST', data: { gebruikersnaam, wachtwoord } }));
+}
+
+async function inrichten(gegevens) {
+  naInloggen(await vraag('api/inrichten', { methode: 'POST', data: gegevens }));
+}
+
+/** Wachtwoord kwijt: een nieuw met de herstelcode uit het logboek van de server. */
+async function herstellen(gegevens) {
+  naInloggen(await vraag('api/herstellen', { methode: 'POST', data: gegevens }));
+}
+
+function naInloggen({ token, gebruiker, teams }) {
+  // Opnieuw inloggen na een verlopen sessie: de wijzigingen van daarvoor
+  // staan nog in de cache en gaan alsnog mee.
+  const zelfde = account.gebruiker && account.gebruiker.id === gebruiker.id;
+  if (!zelfde) wisCaches();
+  zetToken(token);
+  const vorigTeam = zelfde ? account.teamId : null;
+  Object.assign(account, {
+    modus: 'team', token, gebruiker, teams: teams || [], teamId: null,
+    sessieVerlopen: false, melding: null,
+  });
+  if (!zelfde) S.ui.scherm = 'team';
+  gebruikTeamOpslag(opslag);
+  const id = kiesStartTeam(vorigTeam);
+  bewaarAccount();
+  if (id) openTeam(id); else { stopTeam(); herteken(); }
+}
+
+async function uitloggen() {
+  try { await vraag('api/uitloggen', { methode: 'POST', tijdslimiet: 4000 }); } catch (e) { /* toch lokaal uitloggen */ }
+  stopTeam();
+  wisCaches();
+  try { localStorage.removeItem(ACCOUNT); } catch (e) { /* niets aan te doen */ }
+  zetToken(null);
+  vergeetKlok();
+  Object.assign(account, {
+    modus: account.server ? 'inloggen' : 'lokaal', token: null, gebruiker: null, teams: [], teamId: null,
+    aanwezig: [], onverstuurd: false, verbinding: 'uit', sessieVerlopen: false, melding: null,
+  });
+  gebruikTeamOpslag(null); // de lokale gegevens komen terug
+  S.ui.scherm = 'team';
+  herteken();
+}
+
+async function wijzigWachtwoord(huidig, nieuw) {
+  await vraag('api/ik/wachtwoord', { methode: 'POST', data: { huidig, nieuw } });
+}
+
+/** Wie ben ik en welke teams zie ik - na inloggen, en als je het teamlijstje opent. */
+async function vernieuwIk() {
+  if (account.modus !== 'team' || account.sessieVerlopen) return;
+  try {
+    const r = await vraag('api/ik');
+    account.gebruiker = r.gebruiker;
+    account.teams = r.teams || [];
+    bewaarAccount();
+    if (account.teamId && !account.teams.some((t) => t.id === account.teamId)) teamKwijt(account.teamId);
+    else if (!account.teamId) { const id = kiesStartTeam(null); if (id) openTeam(id); }
+    herteken();
+  } catch (e) {
+    if (e.status === 401) sessieVerlopen();
+  }
+}
+
+function sessieVerlopen() {
+  account.sessieVerlopen = true;
+  ts.generatie += 1; // lussen stoppen; wat je nu doet blijft in de cache staan
+  ts.luisteraar?.abort();
+  herteken();
+}
+
+// ----------------------------------------------------------------- teams
+function kiesStartTeam(voorkeur) {
+  if (voorkeur && account.teams.some((t) => t.id === voorkeur)) return voorkeur;
+  return (account.teams.find((t) => t.lid) || account.teams[0] || {}).id || null;
+}
+
+const teamNaam = (id) => (account.teams.find((t) => t.id === id) || {}).naam || 'Team';
+const leegTeam = (naam) => ({ team: { naam, spelers: [] }, wedstrijd: null, archief: [] });
+
+function kiesTeam(id) {
+  if (id === account.teamId) return;
+  // Wat er nog klaarstond, gaat nog weg. Lukt dat niet, dan staat het in de
+  // cache en gaat het mee als dit team weer open gaat.
+  bewaarCache();
+  duw();
+  openTeam(id);
+}
+
+function openTeam(id) {
+  stopTeam();
+  ts.teamId = id;
+  account.teamId = id;
+  account.aanwezig = [];
+  const c = leesCache(id);
+  ts.basis = c ? (c.basis === 'zelfde' ? c.staat : c.basis) : null;
+  ts.versie = c && ts.basis ? c.versie : 0;
+  laadTeamDeel(c ? c.staat : leegTeam(teamNaam(id)));
+  account.onverstuurd = !!(ts.basis && !gelijk(teamDeel(), ts.basis));
+  bewaarAccount();
+  luister(ts.generatie);
+}
+
+function stopTeam() {
+  ts.generatie += 1;
+  ts.luisteraar?.abort();
+  ts.wekker?.();
+  clearTimeout(ts.timer);
+  Object.assign(ts, { teamId: null, basis: null, versie: 0, bezig: false, fouten: 0, geweigerd: false });
+}
+
+function teamKwijt(id) {
+  const naam = teamNaam(id);
+  account.teams = account.teams.filter((t) => t.id !== id);
+  try { localStorage.removeItem(CACHE + id); } catch (e) { /* niets aan te doen */ }
+  if (account.teamId === id) {
+    stopTeam();
+    account.teamId = null;
+    const volgende = kiesStartTeam(null);
+    if (volgende) openTeam(volgende);
+    else laadTeamDeel(leegTeam(''));
+  }
+  bewaarAccount();
+  account.melding = `Je hebt geen toegang meer tot ${naam}.`;
+  herteken();
+}
+
+/** Na een wijziging in het beheer: teamlijst bijwerken en zo nodig een team openen. */
+async function naBeheer(nieuwTeamId = null) {
+  await vernieuwIk();
+  if (nieuwTeamId && account.teams.some((t) => t.id === nieuwTeamId)) kiesTeam(nieuwTeamId);
+}
+
+// ------------------------------------------------------------ ontvangen
+function zetVerbinding(v) {
+  if (account.verbinding !== v) { account.verbinding = v; herteken(); }
+}
+
+function zetOnverstuurd(v) {
+  if (account.onverstuurd !== v) { account.onverstuurd = v; herteken(); }
+}
+
+function zetAanwezig(lijst) {
+  if (!Array.isArray(lijst)) return;
+  const namen = (l) => l.map((x) => x.id).sort().join();
+  if (namen(lijst) !== namen(account.aanwezig)) { account.aanwezig = lijst; herteken(); }
+}
+
+/** Verwerkt een antwoord van de server: { versie, delen, volledig, aanwezig }. */
+function verwerk(r) {
+  zetAanwezig(r.aanwezig);
+  if (typeof r.versie !== 'number' || !r.delen) return;
+  if (!r.volledig && (!ts.basis || r.versie <= ts.versie)) return; // niets nieuws
+  if (r.volledig && ts.basis && r.versie === ts.versie) return;
+
+  const remote = r.volledig ? leegTeam(teamNaam(ts.teamId)) : { ...ts.basis };
+  for (const d of DELEN) if (d in r.delen) remote[d] = r.delen[d];
+  const mijn = teamDeel();
+
+  let samen;
+  if (ts.basis && r.versie < ts.versie) {
+    // De server is teruggegaan (back-up teruggezet, of hij verloor iets):
+    // wat deze telefoon heeft is leidend en gaat er opnieuw heen.
+    samen = mijn;
+  } else {
+    // Nog nooit gesynchroniseerd: vergelijk met een leeg team, zodat wat hier
+    // al werd ingevoerd blijft staan en ook naar de server gaat.
+    samen = voegSamen(ts.basis || leegTeam(teamNaam(ts.teamId)), mijn, remote);
+  }
+  ts.basis = remote;
+  ts.versie = r.versie;
+  if (!gelijk(samen, mijn)) laadTeamDeel(samen, { vanAfstand: true });
+  bewaarCache();
+  if (!gelijk(samen, remote)) planDuw(0);
+  else zetOnverstuurd(false);
+}
+
+// Houdt steeds één verzoek open dat terugkomt zodra er iets verandert.
+async function luister(gen) {
+  let direct = true;
+  while (gen === ts.generatie) {
+    const ctrl = new AbortController();
+    ts.luisteraar = ctrl;
+    const wacht = direct ? 0 : ts.wacht;
+    const begin = Date.now();
+    try {
+      const r = await vraag(`api/teams/${ts.teamId}?na=${ts.basis ? ts.versie : 0}&wacht=${wacht}`, { signaal: ctrl.signal, wacht });
+      if (gen !== ts.generatie) return;
+      ts.fouten = 0;
+      zetVerbinding('ok');
+      verwerk(r);
+      planDuw(0);
+      direct = false;
+      if (!ts.basis) await slaap(5000); // onbruikbaar antwoord: niet blijven hameren
+    } catch (e) {
+      if (gen !== ts.generatie) return;
+      if (e.status === 401) { sessieVerlopen(); return; }
+      if (e.status === 403 || e.status === 404) { teamKwijt(ts.teamId); return; }
+      if (e.afgebroken) { direct = true; continue; } // bewust gewekt (terug uit de achtergrond): meteen opnieuw
+      const open = (Date.now() - begin) / 1000;
+      if (wacht && e.status === 0 && open > 5 && ts.fouten === 0) {
+        // Lang open en dan afgebroken: vrijwel zeker een proxy met een
+        // time-out. Voortaan korter wachten, en meteen opnieuw.
+        ts.wacht = Math.min(ts.wacht, Math.max(5, Math.floor(open * 0.7)));
+        ts.fouten = 1;
+        continue;
+      }
+      direct = true;
+      ts.fouten += 1;
+      zetVerbinding('offline');
+      await slaap(Math.min(30000, 1000 * 2 ** Math.min(ts.fouten - 1, 5)));
+    }
+  }
+}
+
+function slaap(ms) {
+  return new Promise((klaar) => {
+    const t = setTimeout(wakker, ms);
+    function wakker() { clearTimeout(t); if (ts.wekker === wakker) ts.wekker = null; klaar(); }
+    ts.wekker = wakker;
+  });
+}
+
+/** Terug uit de achtergrond, of weer netwerk: niet wachten, meteen bijwerken. */
+function wek() {
+  if (account.modus !== 'team' || !ts.teamId) return;
+  ts.wekker?.();
+  ts.luisteraar?.abort();
+}
+
+// ------------------------------------------------------------- versturen
+function planDuw(ms = 300) {
+  if (account.modus !== 'team' || !ts.basis || account.sessieVerlopen) return;
+  clearTimeout(ts.timer);
+  ts.timer = setTimeout(duw, ms);
+}
+
+function wijzigingen() {
+  if (!ts.basis) return null;
+  const mijn = teamDeel();
+  const delen = {};
+  for (const d of DELEN) if (!gelijk(mijn[d], ts.basis[d])) delen[d] = mijn[d];
+  return Object.keys(delen).length ? delen : null;
+}
+
+async function duw() {
+  if (ts.bezig || !ts.basis || account.sessieVerlopen) return;
+  const delen = wijzigingen();
+  if (!delen) { zetOnverstuurd(false); return; }
+  zetOnverstuurd(true);
+  if (ts.geweigerd && gelijk(delen, ts.geweigerd)) return;
+
+  const gen = ts.generatie;
+  const teamId = ts.teamId;
+  const basisVersie = ts.versie;
+  const verstuurd = { ...ts.basis, ...delen };
+  ts.bezig = true;
+  let opnieuw = 300;
+  try {
+    const r = await vraag(`api/teams/${teamId}`, { methode: 'PUT', data: { basisVersie, delen } });
+    if (gen !== ts.generatie) return;
+    if (r.versie > ts.versie) { ts.basis = verstuurd; ts.versie = r.versie; }
+    ts.geweigerd = false;
+    zetAanwezig(r.aanwezig);
+    zetVerbinding('ok');
+  } catch (e) {
+    if (gen !== ts.generatie) return;
+    if (e.status === 409 && e.data) { verwerk(e.data); opnieuw = 0; }
+    else if (e.status === 401) sessieVerlopen();
+    else if (e.status === 403 || e.status === 404) { teamKwijt(teamId); return; }
+    else if (e.status === 0) { zetVerbinding('offline'); opnieuw = null; } // de luisterlus probeert het straks weer
+    else { ts.geweigerd = delen; opnieuw = null; console.warn('Server weigerde de wijziging:', e.message); }
+  } finally {
+    if (gen === ts.generatie) {
+      ts.bezig = false;
+      bewaarCache();
+      const nogIets = !!wijzigingen();
+      zetOnverstuurd(nogIets);
+      if (nogIets && opnieuw !== null) planDuw(opnieuw);
+    }
+  }
+}
+
+/** De app gaat dicht: nog één poging, zonder op antwoord te wachten. */
+function duwBijAfsluiten() {
+  if (account.modus !== 'team' || !ts.teamId || ts.bezig || account.sessieVerlopen) return;
+  const delen = wijzigingen();
+  if (delen) vraagBijAfsluiten(`api/teams/${ts.teamId}`, 'PUT', { basisVersie: ts.versie, delen });
+}
+
+return { herstelAccount, verbind, verbindMet, terugNaarLokaal, inloggen, inrichten, herstellen, uitloggen, wijzigWachtwoord, vernieuwIk, kiesTeam, naBeheer, wek, duwBijAfsluiten, account };
+};
+__defs["app/api.js"] = function () {
+// Praten met de server (de Home Assistant-add-on, of een andere installatie
+// van deploy/homeassistant/addon/server.mjs).
+//
+// Alles loopt via `vraag`. Die zet het token in de kop, maakt van elke fout
+// een ApiFout met een tekst die je zo kunt tonen, en houdt het verschil
+// tussen de klok van deze telefoon en die van de server bij.
+
+const { zetKlokVerschil, klokVerschil } = __mod("app/store.js");
+
+class ApiFout extends Error {
+  constructor(status, bericht, data = null) {
+    super(bericht);
+    this.status = status; // 0 = geen verbinding
+    this.data = data;
+  }
+}
+
+const staat = { server: null, token: null, klokGemeten: false };
+
+/** Basisadres van de server, eindigend op '/'. */
+function zetServer(adres) { staat.server = adres || null; }
+function zetToken(token) { staat.token = token || null; }
+
+/** Het adres van deze pagina, als die van een webserver komt (en niet van schijf). */
+function paginaServer() {
+  if (typeof location === 'undefined' || !/^https?:$/.test(location.protocol)) return null;
+  return new URL('.', location.href).toString();
+}
+
+/** Maakt van wat iemand intypt een bruikbaar basisadres, of null. */
+function normaliseerAdres(invoer) {
+  let a = String(invoer || '').trim();
+  if (!a) return null;
+  if (!/^https?:\/\//i.test(a)) a = `${/^(localhost|127\.|10\.|192\.168\.)/.test(a) ? 'http' : 'https'}://${a}`;
+  try {
+    const url = new URL(a);
+    // Een oud synchronisatieadres (…/api/state) of een verwijzing naar de app zelf.
+    url.pathname = url.pathname.replace(/\/api(\/state)?\/?$/, '/').replace(/[^/]*\.html$/, '');
+    if (!url.pathname.endsWith('/')) url.pathname += '/';
+    url.search = ''; url.hash = '';
+    return url.toString();
+  } catch (e) { return null; }
+}
+
+/**
+ * @param {string} pad    relatief aan de server, bv. 'api/ik'
+ * @param {object} opties { methode, data, signaal, wacht (s, voor long polling), tijdslimiet (ms) }
+ */
+async function vraag(pad, { methode = 'GET', data, signaal, wacht = 0, tijdslimiet = 15000 } = {}) {
+  if (!staat.server) throw new ApiFout(0, 'Er is geen server ingesteld.');
+  const ctrl = new AbortController();
+  const limiet = setTimeout(() => ctrl.abort(), tijdslimiet + wacht * 1000);
+  const afbreken = () => ctrl.abort();
+  if (signaal) signaal.addEventListener('abort', afbreken);
+
+  const koppen = { accept: 'application/json' };
+  if (data !== undefined) koppen['content-type'] = 'application/json';
+  if (staat.token) koppen['x-wissel-sessie'] = staat.token;
+
+  const t0 = Date.now();
+  let r, json = null;
+  try {
+    r = await fetch(new URL(pad, staat.server), {
+      method: methode, headers: koppen, cache: 'no-store', signal: ctrl.signal,
+      body: data !== undefined ? JSON.stringify(data) : undefined,
+    });
+    if (r.status !== 204) json = await r.json().catch(() => null);
+  } catch (e) {
+    const fout = new ApiFout(0, 'Geen verbinding met de server.');
+    fout.afgebroken = !!(signaal && signaal.aborted);
+    throw fout;
+  } finally {
+    clearTimeout(limiet);
+    if (signaal) signaal.removeEventListener('abort', afbreken);
+  }
+  // Bij long polling zegt de reistijd niets over de klok: niet meten.
+  if (json && typeof json.nu === 'number' && !wacht) meetKlok(json.nu, t0, Date.now());
+  if (!r.ok) throw new ApiFout(r.status, (json && json.fout) || `De server gaf een fout (${r.status}).`, json);
+  return json || {};
+}
+
+/**
+ * Voor als de app wordt gesloten: nog één keer versturen, zonder op antwoord
+ * te wachten. `keepalive` laat het verzoek doorlopen als de pagina al weg is.
+ */
+function vraagBijAfsluiten(pad, methode, data) {
+  if (!staat.server) return;
+  const tekst = JSON.stringify(data);
+  if (tekst.length > 60000) return; // browsers weigeren grotere keepalive-verzoeken
+  try {
+    fetch(new URL(pad, staat.server), {
+      method: methode, keepalive: true, body: tekst,
+      headers: { 'content-type': 'application/json', ...(staat.token ? { 'x-wissel-sessie': staat.token } : {}) },
+    }).catch(() => {});
+  } catch (e) { /* dan de volgende keer */ }
+}
+
+// De server stuurt bij elk antwoord zijn klok mee. De helft van de reistijd
+// is de beste schatting van wanneer hij die las. Snelle metingen tellen het
+// zwaarst; na een paar verzoeken zit het verschil ruim binnen een seconde.
+function meetKlok(serverNu, t0, t1) {
+  const reistijd = t1 - t0;
+  if (reistijd > 3000) return;
+  const schatting = serverNu - (t0 + t1) / 2;
+  const gewicht = staat.klokGemeten ? (reistijd < 300 ? 0.3 : 0.1) : 1;
+  staat.klokGemeten = true;
+  zetKlokVerschil(Math.round(klokVerschil() * (1 - gewicht) + schatting * gewicht));
+}
+
+/** Na uitloggen weer rekenen met de eigen klok. */
+function vergeetKlok() { staat.klokGemeten = false; zetKlokVerschil(0); }
+
+return { zetServer, zetToken, paginaServer, normaliseerAdres, vraag, vraagBijAfsluiten, vergeetKlok, ApiFout };
+};
+__defs["app/kop.js"] = function () {
+// De kopbalk. Zonder account: de teamnaam. Met een account ook de teamkeuze,
+// wie er verder meekijkt, en een stip die zegt of alles verstuurd is - dat
+// wil je weten voordat je na de wedstrijd je telefoon wegstopt.
+
+const { h, toonSheet, bevestig, melding, initialen, teamInitialen, datumTekst } = __mod("app/ui.js");
+const { S, herteken } = __mod("app/store.js");
+const { account, kiesTeam, uitloggen, vernieuwIk, wijzigWachtwoord, inloggen } = __mod("app/samenwerken.js");
+const { getFormation } = __mod("lib/formations.js");
+
+function ondertitel() {
+  const w = S.wedstrijd;
+  if (!w) return `${S.team.spelers.length} speler${S.team.spelers.length === 1 ? '' : 's'}`;
+  const tegen = w.tegenstander ? `${w.thuis ? 'thuis tegen' : 'uit bij'} ${w.tegenstander}` : datumTekst(w.datum);
+  return `${tegen} · ${getFormation(w.formationId).naam}`;
+}
+
+/** Hoe het ervoor staat met de verbinding, in één woord voor de stip en een zin voor erbij. */
+function verbindingsStaat() {
+  if (account.sessieVerlopen) return { klasse: 'fout', tekst: 'Je bent uitgelogd. Wat je nu doet, wordt bewaard tot je weer inlogt.' };
+  if (account.verbinding === 'offline') {
+    return { klasse: 'uit', tekst: account.onverstuurd
+      ? 'Geen verbinding. Je wijzigingen staan op dit apparaat en gaan mee zodra er weer bereik is.'
+      : 'Geen verbinding met de server. Je kunt gewoon doorwerken.' };
+  }
+  if (account.onverstuurd) return { klasse: 'bezig', tekst: 'Wijzigingen worden verstuurd…' };
+  if (account.verbinding === 'ok') return { klasse: 'ok', tekst: 'Verbonden. Alles is verstuurd.' };
+  return { klasse: 'uit', tekst: 'Verbinden…' };
+}
+
+function kopbalk(ganaar) {
+  const kop = h('header', { class: 'kop' }, h('div', { class: 'merk', 'aria-hidden': 'true' }, 'W'));
+  const titel = [h('strong', {}, S.team.naam), h('small', {}, ondertitel())];
+
+  if (account.modus !== 'team') {
+    kop.appendChild(h('div', { class: 'titel' }, ...titel));
+    return [kop];
+  }
+
+  if (!account.teamId) titel.splice(0, 2, h('strong', {}, 'Het Wisselschema'), h('small', {}, account.gebruiker?.naam || ''));
+  kop.appendChild(account.teamId
+    ? h('button', { class: 'titel teamknop', 'aria-label': `Team ${S.team.naam}, kies een ander team`,
+      onclick: () => teamSheet(ganaar) }, ...titel)
+    : h('div', { class: 'titel' }, ...titel));
+
+  if (account.aanwezig.length) {
+    const namen = account.aanwezig.map((a) => a.naam);
+    kop.appendChild(h('div', { class: 'aanwezig', title: `Kijkt nu mee: ${namen.join(', ')}`,
+      'aria-label': `Kijkt nu mee: ${namen.join(', ')}` },
+      ...account.aanwezig.slice(0, 3).map((a) => h('span', {}, initialen(a.naam)))));
+  }
+
+  const staat = verbindingsStaat();
+  kop.appendChild(h('button', { class: 'accountknop', 'aria-label': `${account.gebruiker?.naam || 'Account'}. ${staat.tekst}`,
+    title: staat.tekst, onclick: () => accountSheet(ganaar) },
+    initialen(account.gebruiker?.naam), h('i', { class: `stip ${staat.klasse}` })));
+
+  const uit = [kop];
+  if (account.sessieVerlopen) {
+    uit.push(h('div', { class: 'melding hoog balk-melding' }, h('span', { class: 'ico' }, '!'),
+      h('span', { style: { flex: '1' } }, 'Je bent uitgelogd. Je kunt doorwerken; log opnieuw in om het te delen.'),
+      h('button', { class: 'knop klein', onclick: herinlogSheet }, 'Inloggen')));
+  } else if (account.melding) {
+    const tekst = account.melding;
+    uit.push(h('div', { class: 'melding midden balk-melding' }, h('span', { class: 'ico' }, 'i'),
+      h('span', { style: { flex: '1' } }, tekst),
+      h('button', { class: 'knop klein stil', 'aria-label': 'Sluiten', onclick: () => { account.melding = null; herteken(); } }, '✕')));
+  }
+  return uit;
+}
+
+// ------------------------------------------------------------------- teams
+function teamSheet(ganaar) {
+  vernieuwIk(); // het lijstje kan veranderd zijn; komt het terug, dan tekent de app opnieuw
+  toonSheet('Kies een team', (c, sluit) => {
+    if (!account.teams.length) c.appendChild(h('div', { class: 'leeg' }, 'Je hebt nog geen teams.'));
+    for (const t of account.teams) {
+      const open = t.id === account.teamId;
+      const leden = (t.leden || []).map((l) => l.naam).join(', ');
+      c.appendChild(h('button', { class: 'spelerrij', 'aria-current': open ? 'true' : null,
+        style: { width: '100%', textAlign: 'left', background: 'none', border: 0, borderBottom: '1px solid var(--rand)' },
+        onclick: () => { sluit(); if (!open) { kiesTeam(t.id); melding(`${t.naam} geopend`); } } },
+        h('div', { class: 'bal' }, teamInitialen(t.naam)),
+        h('div', { class: 'naam' }, t.naam, h('small', {}, leden || 'nog geen trainers')),
+        open ? h('span', { class: 'vlag' }, 'OPEN') : !t.lid ? h('span', { class: 'mini' }, 'geen lid') : null));
+    }
+    if (account.gebruiker?.beheerder) {
+      c.appendChild(h('button', { class: 'knop breed', style: { marginTop: '14px' },
+        onclick: () => { sluit(); ganaar('beheer'); } }, 'Club beheren'));
+    }
+  });
+}
+
+// ----------------------------------------------------------------- account
+function accountSheet(ganaar) {
+  const g = account.gebruiker || {};
+  toonSheet(g.naam || 'Account', (c, sluit) => {
+    let host = account.server;
+    try { host = new URL(account.server).host; } catch (e) { /* laat het adres staan */ }
+    c.appendChild(h('p', { class: 'uitleg' }, `Ingelogd als ${g.gebruikersnaam}${g.beheerder ? ' · beheerder' : ''} op ${host}.`));
+    const staat = verbindingsStaat();
+    c.appendChild(h('div', { class: 'strook' },
+      h('div', { class: 'kop2' }, 'Verbinding', h('small', {}, staat.tekst)),
+      h('i', { class: `stip los ${staat.klasse}` })));
+    if (account.aanwezig.length) {
+      c.appendChild(h('div', { class: 'strook' },
+        h('div', { class: 'kop2' }, 'Kijkt nu mee', h('small', {}, account.aanwezig.map((a) => a.naam).join(', ')))));
+    }
+    c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '14px', flexDirection: 'column' } },
+      g.beheerder ? h('button', { class: 'knop', onclick: () => { sluit(); ganaar('beheer'); } }, 'Club beheren') : null,
+      h('button', { class: 'knop', onclick: () => { sluit(); wachtwoordSheet(); } }, 'Wachtwoord wijzigen'),
+      h('button', { class: 'knop gevaar', onclick: () => {
+        sluit();
+        if (account.onverstuurd || account.sessieVerlopen) {
+          bevestig('Nog niet alles is verstuurd', 'Er staan wijzigingen op dit apparaat die de server nog niet heeft. Als je uitlogt, ben je die kwijt.',
+            uitloggen, { knop: 'Toch uitloggen', gevaar: true });
+        } else uitloggen();
+      } }, 'Uitloggen')));
+  });
+}
+
+function wachtwoordSheet() {
+  toonSheet('Wachtwoord wijzigen', (c, sluit) => {
+    const huidig = h('input', { type: 'password', autocomplete: 'current-password' });
+    const nieuw = h('input', { type: 'password', autocomplete: 'new-password', minlength: '8' });
+    const fout = h('p', { class: 'fout', role: 'alert' });
+    c.appendChild(h('label', { class: 'veld' }, h('span', {}, 'Huidig wachtwoord'), huidig));
+    c.appendChild(h('label', { class: 'veld' }, h('span', {}, 'Nieuw wachtwoord (minstens 8 tekens)'), nieuw));
+    c.appendChild(fout);
+    c.appendChild(h('div', { class: 'knoprij' },
+      h('button', { class: 'knop', onclick: sluit }, 'Annuleren'),
+      h('button', { class: 'knop primair', style: { flex: '2' }, onclick: async () => {
+        try { await wijzigWachtwoord(huidig.value, nieuw.value); sluit(); melding('Wachtwoord gewijzigd'); }
+        catch (e) { fout.textContent = e.message; }
+      } }, 'Opslaan')));
+  });
+}
+
+/** Sessie verlopen midden in een wedstrijd: inloggen zonder dat het scherm verdwijnt. */
+function herinlogSheet() {
+  toonSheet('Opnieuw inloggen', (c, sluit) => {
+    const naam = h('input', { type: 'text', autocomplete: 'username', autocapitalize: 'none', value: account.gebruiker?.gebruikersnaam || '' });
+    const wachtwoord = h('input', { type: 'password', autocomplete: 'current-password' });
+    const fout = h('p', { class: 'fout', role: 'alert' });
+    c.appendChild(h('p', { class: 'uitleg' }, 'Wat je intussen hebt gedaan, gaat daarna alsnog mee.'));
+    c.appendChild(h('label', { class: 'veld' }, h('span', {}, 'Gebruikersnaam'), naam));
+    c.appendChild(h('label', { class: 'veld' }, h('span', {}, 'Wachtwoord'), wachtwoord));
+    c.appendChild(fout);
+    c.appendChild(h('button', { class: 'knop primair breed', onclick: async () => {
+      try { await inloggen(naam.value, wachtwoord.value); sluit(); melding('Weer ingelogd'); }
+      catch (e) { fout.textContent = e.message; }
+    } }, 'Inloggen'));
+  });
+}
+
+return { verbindingsStaat, kopbalk };
+};
 __defs["app/scherm-team.js"] = function () {
 // Scherm: het team. Spelers toevoegen, plakken of uploaden.
 
 const { h, icoon, toonSheet, bevestig, melding, saldoTekst, initialen, downloadBestand } = __mod("app/ui.js");
-const { S, wijzig, nieuweSpeler, uid, exporteer, neemOver } = __mod("app/store.js");
+const { S, wijzig, nieuweSpeler, uid, exporteer, neemOver, lokaleGegevens } = __mod("app/store.js");
 
 const ROLNAAM = { V: 'Verdediging', M: 'Middenveld', A: 'Aanval' };
 
@@ -2154,6 +3158,23 @@ function bestandSheet() {
         }
       } });
     c.appendChild(invoer);
+
+    // Wie de app al zonder account gebruikte, heeft zijn team op de telefoon
+    // staan. Na het inloggen hoeft dat niet opnieuw ingetypt te worden.
+    const lokaal = lokaleGegevens();
+    if (lokaal && (lokaal.team?.spelers?.length || lokaal.archief?.length)) {
+      const n = lokaal.team.spelers.length;
+      c.appendChild(h('div', { class: 'tussenkop' }, 'Van dit apparaat'));
+      c.appendChild(h('p', { class: 'uitleg' },
+        `Op dit apparaat staat nog ${lokaal.team.naam} van voor het inloggen: ${n} speler${n === 1 ? '' : 's'}, ${(lokaal.archief || []).length} gespeelde wedstrijden.`));
+      c.appendChild(h('button', { class: 'knop breed', onclick: () => bevestig(`${lokaal.team.naam} overnemen?`,
+        `Spelers, wedstrijd en archief van ${S.team.naam} worden vervangen door die van dit apparaat, voor alle trainers van het team.`, () => {
+          wijzig(() => { neemOver({ team: { ...lokaal.team, naam: S.team.naam }, wedstrijd: lokaal.wedstrijd ?? null, archief: lokaal.archief || [] }); },
+            { terugdraaibaar: true });
+          sluit(); melding('Overgenomen');
+        }, { knop: 'Overnemen', gevaar: true }) }, `Overnemen in ${S.team.naam}`));
+    }
+
     c.appendChild(h('div', { class: 'tussenkop' }, 'Back-up maken'));
     c.appendChild(h('button', { class: 'knop breed', onclick: () => {
       downloadBestand(`wisselschema-${S.team.naam.replace(/\W+/g, '-').toLowerCase()}.json`, JSON.stringify(exporteer(), null, 2));
@@ -2805,7 +3826,8 @@ function schermLive(ganaar, herteken) {
   if (bank.length) {
     veldKaart.appendChild(h('div', { class: 'tussenkop' }, 'Bank'));
     veldKaart.appendChild(h('div', { class: 'chiprij' }, ...bank.map((q) => {
-      const uit = ((w.beschikbaar || {})[q.id] || {}).tot < totaal;
+      // `tot` is null na een rondje door JSON (Infinity bestaat daar niet): dan speelt hij gewoon mee.
+      const uit = ((((w.beschikbaar || {})[q.id] || {}).tot) ?? Infinity) < totaal;
       return h('span', { class: 'chip', style: uit ? { opacity: '.5' } : {} },
         h('i', { class: 'dot' }), q.naam, uit ? h('span', { class: 'mini' }, '· eruit') : null);
     })));
@@ -3130,12 +4152,14 @@ __defs["app/scherm-archief.js"] = function () {
 // Scherm: gespeelde wedstrijden en instellingen.
 
 const { h, icoon, toonSheet, bevestig, melding, datumTekst, minutenTekst, saldoTekst, voornaam, downloadBestand } = __mod("app/ui.js");
-const { S, wijzig, exporteer, neemOver, startSync, sync } = __mod("app/store.js");
+const { S, wijzig, exporteer, neemOver } = __mod("app/store.js");
+const { account, verbindMet } = __mod("app/samenwerken.js");
+const { verbindingsStaat } = __mod("app/kop.js");
 const { getFormation } = __mod("lib/formations.js");
 const { stand, plusMin, verloop, goalMinuut } = __mod("lib/score.js");
 const { plusMinLabel } = __mod("app/scherm-live.js");
 
-function schermArchief() {
+function schermArchief(ganaar) {
   const wrap = h('div', {});
 
   if (!S.archief.length) {
@@ -3148,6 +4172,8 @@ function schermArchief() {
 
   wrap.appendChild(h('div', { class: 'tussenkop' }, 'Instellingen'));
   wrap.appendChild(instellingenKaart());
+  wrap.appendChild(h('div', { class: 'tussenkop' }, 'Samenwerken'));
+  wrap.appendChild(samenwerkKaart(ganaar));
   wrap.appendChild(overKaart());
   return wrap;
 }
@@ -3218,40 +4244,468 @@ function instellingenKaart() {
       ...[['auto', 'Automatisch'], ['licht', 'Licht'], ['donker', 'Donker']].map(([v, l]) =>
         h('option', { value: v, selected: S.instellingen.thema === v }, l)))));
 
+  const gedeeld = account.modus === 'team';
   kaart.appendChild(h('div', { class: 'tussenkop' }, 'Gegevens'));
   kaart.appendChild(h('div', { class: 'knoprij' },
     h('button', { class: 'knop klein', onclick: () => {
       downloadBestand(`wisselschema-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(exporteer(), null, 2));
       melding('Back-up gedownload');
     } }, 'Back-up downloaden'),
-    h('button', { class: 'knop klein stil gevaar', onclick: () => bevestig('Alles wissen?',
-      'Team, wedstrijd en archief worden verwijderd. Dit kun je niet ongedaan maken.',
-      () => { wijzig(() => { neemOver({ team: { naam: 'Mijn team', spelers: [] }, wedstrijd: null, archief: [] }); }); melding('Alles gewist'); },
-      { knop: 'Alles wissen', gevaar: true }) }, 'Alles wissen')));
+    h('button', { class: 'knop klein stil gevaar', onclick: () => bevestig(gedeeld ? 'Teamgegevens wissen?' : 'Alles wissen?',
+      gedeeld
+        ? `Spelers, wedstrijd en archief van ${S.team.naam} worden gewist, voor alle trainers van dit team. Dit kun je niet ongedaan maken.`
+        : 'Team, wedstrijd en archief worden verwijderd. Dit kun je niet ongedaan maken.',
+      () => {
+        wijzig(() => { neemOver({ team: { naam: gedeeld ? S.team.naam : 'Mijn team', spelers: [] }, wedstrijd: null, archief: [] }); });
+        melding(gedeeld ? 'Teamgegevens gewist' : 'Alles gewist');
+      },
+      { knop: gedeeld ? 'Wissen' : 'Alles wissen', gevaar: true }) }, gedeeld ? 'Teamgegevens wissen' : 'Alles wissen')));
+  return kaart;
+}
 
-  kaart.appendChild(h('div', { class: 'tussenkop' }, 'Synchroniseren'));
-  kaart.appendChild(h('p', { class: 'uitleg' },
-    sync.actief
-      ? `Verbonden met ${sync.adres}. Je team staat ook op de server, zodat je hem op je tablet terugvindt.`
-      : 'Optioneel. Draai je de app vanaf een server met opslag (zoals de Home Assistant-add-on), vul dan het adres in. Laat leeg om alles alleen op dit apparaat te houden.'));
-  const adresVeld = h('input', { type: 'text', value: S.instellingen.syncUrl || '', placeholder: 'https://wisselschema.thuis/api/state' });
+function samenwerkKaart(ganaar) {
+  const kaart = h('div', { class: 'kaart' });
+  if (account.modus === 'team') {
+    const team = account.teams.find((t) => t.id === account.teamId);
+    const anderen = (team?.leden || []).filter((l) => l.id !== account.gebruiker?.id).map((l) => l.naam);
+    let host = account.server;
+    try { host = new URL(account.server).host; } catch (e) { /* laat het adres staan */ }
+    kaart.appendChild(h('p', { class: 'uitleg', style: { marginTop: '0' } },
+      `Ingelogd als ${account.gebruiker?.naam} op ${host}. `,
+      team ? (anderen.length ? `${team.naam} deel je met ${anderen.join(', ')}.` : `Je bent de enige trainer van ${team.naam}.`) : ''));
+    kaart.appendChild(h('div', { class: 'strook' },
+      h('div', { class: 'kop2' }, 'Verbinding', h('small', {}, verbindingsStaat().tekst)),
+      h('i', { class: `stip los ${verbindingsStaat().klasse}` })));
+    if (account.gebruiker?.beheerder) {
+      kaart.appendChild(h('button', { class: 'knop klein', style: { marginTop: '10px' }, onclick: () => ganaar('beheer') }, 'Club beheren'));
+    }
+    return kaart;
+  }
+  kaart.appendChild(h('p', { class: 'uitleg', style: { marginTop: '0' } },
+    'Samen met andere trainers aan hetzelfde team werken, ook tijdens de wedstrijd? Dat kan met een server, zoals de Home Assistant-add-on. Vul het adres in; daarna log je in.'));
+  const adresVeld = h('input', { type: 'text', value: S.instellingen.syncUrl || '', placeholder: 'https://wisselschema.jouwclub.nl',
+    autocapitalize: 'none', spellcheck: 'false' });
   kaart.appendChild(adresVeld);
   kaart.appendChild(h('button', { class: 'knop klein', style: { marginTop: '8px' }, onclick: async () => {
-    wijzig((s) => { s.instellingen.syncUrl = adresVeld.value.trim(); });
-    melding(await startSync() ? 'Verbonden' : 'Geen verbinding - de app werkt gewoon lokaal door');
-  } }, 'Verbinding testen'));
+    if (!(await verbindMet(adresVeld.value))) melding('Geen wisselschema-server gevonden op dat adres');
+  } }, 'Verbinden'));
   return kaart;
 }
 
 function overKaart() {
   return h('div', { class: 'kaart' },
     h('h3', {}, 'Over deze app'),
-    h('p', { class: 'uitleg', style: { marginBottom: '4px' } },
-      'Het wisselschema draait volledig in je browser. Je gegevens blijven op je eigen apparaat staan; er wordt niets verstuurd tenzij je zelf een synchronisatieadres invult.'),
+    h('p', { class: 'uitleg', style: { marginBottom: '4px' } }, account.modus === 'team'
+      ? 'Het wisselschema draait in je browser en werkt ook zonder bereik. Je team staat op de server van je club; wat je zonder verbinding doet, gaat mee zodra er weer bereik is.'
+      : 'Het wisselschema draait volledig in je browser. Je gegevens blijven op je eigen apparaat staan; er wordt niets verstuurd tenzij je zelf met een server verbindt.'),
     h('p', { class: 'mini' }, 'Werkt zonder internet. Sla de pagina op of zet hem op je beginscherm.'));
 }
 
 return { schermArchief };
+};
+__defs["app/scherm-inloggen.js"] = function () {
+// Schermen voor wie nog niet binnen is: verbinden, inloggen, de server
+// inrichten, en de melding dat je (nog) geen team hebt.
+
+const { h, icoon, melding, toonSheet, sluitSheet } = __mod("app/ui.js");
+const { account, inloggen, inrichten, herstellen, terugNaarLokaal, uitloggen, vernieuwIk, naBeheer } = __mod("app/samenwerken.js");
+const { vraag } = __mod("app/api.js");
+
+const veld = (label, invoer, uitleg) =>
+  h('label', { class: 'veld' }, h('span', {}, label), invoer, uitleg ? h('small', { class: 'mini' }, uitleg) : null);
+
+const hostVan = (adres) => { try { return new URL(adres).host; } catch (e) { return adres || ''; } };
+
+function kop(tekst) {
+  return [
+    h('div', { class: 'merk', 'aria-hidden': 'true' }, 'W'),
+    h('h1', {}, 'Het Wisselschema'),
+    h('p', { class: 'uitleg' }, tekst),
+  ];
+}
+
+/**
+ * Een formulier dat tijdens het versturen zijn knop uitzet en een fout
+ * onder de velden laat zien, zonder het scherm opnieuw op te bouwen: dan
+ * blijft wat je typte gewoon staan.
+ */
+function formulier(velden, knoptekst, actie, { klasse = 'kaart' } = {}) {
+  const fout = h('p', { class: 'fout', role: 'alert' });
+  const knop = h('button', { class: 'knop primair breed groot', type: 'submit' }, knoptekst);
+  return h('form', { class: klasse, onsubmit: async (e) => {
+    e.preventDefault();
+    fout.textContent = '';
+    knop.disabled = true;
+    knop.textContent = 'Even geduld…';
+    try { await actie(); }
+    catch (err) { fout.textContent = err.message || 'Dat lukte niet.'; }
+    knop.disabled = false;
+    knop.textContent = knoptekst;
+  } }, ...velden, fout, knop);
+}
+
+function schermVerbinden() {
+  return h('div', { class: 'inlog' }, ...kop('Verbinden met de server…'));
+}
+
+function schermInloggen() {
+  const naam = h('input', { type: 'text', name: 'username', autocomplete: 'username', autocapitalize: 'none',
+    spellcheck: 'false', required: true, placeholder: 'bv. dennis' });
+  const wachtwoord = h('input', { type: 'password', name: 'password', autocomplete: 'current-password', required: true });
+  return h('div', { class: 'inlog' },
+    ...kop('Log in om je team te openen.'),
+    formulier([veld('Gebruikersnaam', naam), veld('Wachtwoord', wachtwoord)], 'Inloggen',
+      () => inloggen(naam.value, wachtwoord.value)),
+    h('p', { class: 'mini centraal' }, `Server: ${hostVan(account.server)}. Nog geen account? Vraag het de beheerder van je club.`),
+    h('button', { class: 'knop stil breed', onclick: vergetenSheet }, 'Wachtwoord vergeten?'),
+    account.handmatig
+      ? h('button', { class: 'knop stil breed', onclick: terugNaarLokaal }, 'Zonder server verder, alleen op dit apparaat')
+      : null);
+}
+
+function schermInrichten() {
+  const st = account.status || {};
+  const code = h('input', { type: 'text', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false',
+    required: true, placeholder: 'ABCD-EFGH' });
+  const naam = h('input', { type: 'text', autocomplete: 'name', required: true, placeholder: 'Je naam' });
+  const gebruikersnaam = h('input', { type: 'text', name: 'username', autocomplete: 'username', autocapitalize: 'none',
+    spellcheck: 'false', required: true });
+  const wachtwoord = h('input', { type: 'password', name: 'new-password', autocomplete: 'new-password', required: true, minlength: '8' });
+
+  // De gebruikersnaam volgt de voornaam, tot je hem zelf aanpast.
+  let zelfGekozen = false;
+  gebruikersnaam.addEventListener('input', () => { zelfGekozen = true; });
+  naam.addEventListener('input', () => { if (!zelfGekozen) gebruikersnaam.value = gebruikersnaamVoor(naam.value); });
+
+  return h('div', { class: 'inlog' },
+    ...kop('Deze server heeft nog geen accounts. Maak het eerste aan: dat wordt de beheerder, die daarna trainers en teams toevoegt.'),
+    formulier([
+      veld('Inrichtcode', code, 'Staat in het logboek van de server. Bij de Home Assistant-add-on: Instellingen → Add-ons → Het Wisselschema → Logboek.'),
+      veld('Je naam', naam),
+      veld('Gebruikersnaam', gebruikersnaam),
+      veld('Wachtwoord', wachtwoord, 'Minstens 8 tekens.'),
+      st.oudTeam ? h('div', { class: 'melding info' }, h('span', { class: 'ico' }, 'i'),
+        h('span', {}, `Het team dat al op de server stond (${st.oudTeam.naam}, ${st.oudTeam.spelers} spelers) wordt je eerste team.`)) : null,
+    ], 'Beheerder aanmaken', () => inrichten({
+      code: code.value, naam: naam.value, gebruikersnaam: gebruikersnaam.value, wachtwoord: wachtwoord.value,
+    })));
+}
+
+async function vergetenSheet() {
+  let st = account.status || {};
+  try { st = await vraag('api/status'); } catch (e) { /* dan wat we al wisten */ }
+  toonSheet('Wachtwoord vergeten', (c) => {
+    c.appendChild(h('p', { class: 'uitleg' },
+      'Vraag de beheerder van je club om een nieuw wachtwoord: dat kan onder Club beheren, en je krijgt het in een berichtje.'));
+    if (!st.herstellen) {
+      c.appendChild(h('p', { class: 'uitleg' },
+        'Ben je zelf de beheerder? Zet dan in Home Assistant bij de add-on de optie reset_password aan en start hem opnieuw. In het logboek staat daarna een herstelcode; daarmee kies je hier een nieuw wachtwoord.'));
+      return;
+    }
+    const code = h('input', { type: 'text', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', required: true });
+    const naam = h('input', { type: 'text', autocomplete: 'username', autocapitalize: 'none', spellcheck: 'false', required: true });
+    const wachtwoord = h('input', { type: 'password', autocomplete: 'new-password', required: true, minlength: '8' });
+    c.appendChild(formulier([
+      veld('Herstelcode', code, 'Staat in het logboek van de server; werkt één keer.'),
+      veld('Gebruikersnaam', naam),
+      veld('Nieuw wachtwoord', wachtwoord, 'Minstens 8 tekens.'),
+    ], 'Nieuw wachtwoord instellen', async () => {
+      await herstellen({ code: code.value, gebruikersnaam: naam.value, wachtwoord: wachtwoord.value });
+      sluitSheet();
+      melding('Nieuw wachtwoord ingesteld. Zet reset_password weer uit.');
+    }, { klasse: '' }));
+  });
+}
+
+/** Van "Dennis de Vries" naar "dennis": wat de meeste clubs als gebruikersnaam nemen. */
+function gebruikersnaamVoor(naam) {
+  return String(naam || '').trim().split(/\s+/)[0].normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9._-]/g, '');
+}
+
+function schermGeenTeam(ganaar) {
+  const wrap = h('div', {});
+  if (account.gebruiker?.beheerder) {
+    const naam = h('input', { type: 'text', required: true, placeholder: 'JO9-1' });
+    wrap.appendChild(formulier([
+      h('h2', {}, 'Maak je eerste team'),
+      h('p', { class: 'uitleg' }, 'Daarna voeg je spelers toe, en kun je onder Club beheren trainers aan het team koppelen.'),
+      veld('Teamnaam', naam),
+    ], 'Team aanmaken', async () => {
+      const r = await vraag('api/teams', { methode: 'POST', data: { naam: naam.value, leden: [account.gebruiker.id] } });
+      await naBeheer(r.team.id);
+      melding(`${r.team.naam} aangemaakt`);
+    }));
+    wrap.appendChild(h('button', { class: 'knop breed', onclick: () => ganaar('beheer') }, icoon('team', 18), 'Club beheren'));
+  } else {
+    wrap.appendChild(h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
+      h('h2', { style: { marginBottom: '6px' } }, 'Nog geen team'),
+      h('p', {}, 'Je bent nog niet aan een team gekoppeld. Vraag de beheerder van je club om je toe te voegen.'),
+      h('div', { class: 'knoprij', style: { justifyContent: 'center' } },
+        h('button', { class: 'knop primair', onclick: async () => { await vernieuwIk(); melding(account.teamId ? 'Team gevonden' : 'Nog steeds geen team'); } }, 'Opnieuw kijken'),
+        h('button', { class: 'knop', onclick: uitloggen }, 'Uitloggen')))));
+  }
+  return wrap;
+}
+
+return { schermVerbinden, schermInloggen, schermInrichten, gebruikersnaamVoor, schermGeenTeam };
+};
+__defs["app/scherm-beheer.js"] = function () {
+// Scherm: de club beheren. Alleen voor beheerders: trainers en teams
+// aanmaken, en bepalen wie bij welk team hoort. Iedere trainer ziet daarna
+// alleen zijn eigen teams.
+
+const { h, icoon, toonSheet, bevestig, melding, initialen, teamInitialen, kopieer } = __mod("app/ui.js");
+const { herteken } = __mod("app/store.js");
+const { account, naBeheer } = __mod("app/samenwerken.js");
+const { vraag } = __mod("app/api.js");
+const { gebruikersnaamVoor } = __mod("app/scherm-inloggen.js");
+
+const beheer = { geladen: false, laden: false, fout: null, gebruikers: [], teams: [], adres: null };
+
+/** Bij het openen van het scherm: vers ophalen. */
+function vergeetBeheer() { beheer.geladen = false; beheer.fout = null; }
+
+async function laad() {
+  beheer.laden = true;
+  try {
+    neemOver(await vraag('api/beheer'));
+    beheer.fout = null;
+    // Het adres voor in de uitnodiging: het openbare adres als de server dat kent.
+    vraag('api/status').then((st) => { beheer.adres = st.adres || null; }).catch(() => {});
+  } catch (e) { beheer.fout = e.message; }
+  beheer.laden = false;
+  herteken();
+}
+
+function neemOver(r) {
+  if (r.gebruikers) beheer.gebruikers = r.gebruikers;
+  if (r.teams) beheer.teams = r.teams;
+  beheer.geladen = true;
+}
+
+/** Een wijziging doorvoeren: bij succes de lijsten bijwerken, bij een fout die tonen. */
+async function doe(pad, methode, data) {
+  const r = await vraag(pad, { methode, data });
+  neemOver(r);
+  herteken();
+  naBeheer();
+  return r;
+}
+
+const naamVan = (id) => (beheer.gebruikers.find((g) => g.id === id) || {}).naam || '?';
+const teamNaamVan = (id) => (beheer.teams.find((t) => t.id === id) || {}).naam || '?';
+
+function schermBeheer(ganaar) {
+  const wrap = h('div', {});
+  wrap.appendChild(h('button', { class: 'knop stil klein', style: { marginBottom: '6px', paddingLeft: '2px' },
+    onclick: () => ganaar('team') }, '← Terug'));
+
+  if (!account.gebruiker?.beheerder) {
+    wrap.appendChild(h('div', { class: 'kaart' }, h('div', { class: 'leeg' }, 'Alleen een beheerder kan de club beheren.')));
+    return wrap;
+  }
+  if (!beheer.geladen && !beheer.laden && !beheer.fout) laad();
+
+  wrap.appendChild(h('div', { class: 'kaart' },
+    h('h2', {}, 'Club beheren'),
+    h('p', { class: 'uitleg', style: { margin: '0' } },
+      'Maak trainers en teams aan en koppel ze aan elkaar. Een trainer ziet alleen zijn eigen teams; een beheerder ziet alles en kan dit scherm openen.')));
+
+  if (beheer.fout) {
+    wrap.appendChild(h('div', { class: 'melding hoog' }, h('span', { class: 'ico' }, '!'), h('span', { style: { flex: '1' } }, beheer.fout),
+      h('button', { class: 'knop klein', onclick: () => { beheer.fout = null; laad(); } }, 'Opnieuw')));
+    return wrap;
+  }
+  if (!beheer.geladen) {
+    wrap.appendChild(h('div', { class: 'kaart' }, h('div', { class: 'leeg' }, 'Laden…')));
+    return wrap;
+  }
+
+  // ---- teams
+  wrap.appendChild(h('div', { class: 'tussenkop' }, `Teams · ${beheer.teams.length}`));
+  const teams = h('div', { class: 'kaart' });
+  if (!beheer.teams.length) teams.appendChild(h('div', { class: 'leeg', style: { padding: '12px' } }, 'Nog geen teams.'));
+  for (const t of [...beheer.teams].sort((a, b) => a.naam.localeCompare(b.naam, 'nl'))) {
+    teams.appendChild(h('div', { class: 'spelerrij', role: 'button', tabindex: '0', onclick: () => teamSheet(t, ganaar),
+      onkeydown: (e) => { if (e.key === 'Enter') teamSheet(t, ganaar); } },
+      h('div', { class: 'bal' }, teamInitialen(t.naam)),
+      h('div', { class: 'naam' }, t.naam, h('small', {}, t.leden.length ? t.leden.map(naamVan).join(', ') : 'nog geen trainers')),
+      t.id === account.teamId ? h('span', { class: 'vlag' }, 'OPEN') : null));
+  }
+  teams.appendChild(h('button', { class: 'knop breed', style: { marginTop: '10px' }, onclick: () => teamSheet(null, ganaar) },
+    icoon('plus', 18), 'Team'));
+  wrap.appendChild(teams);
+
+  // ---- trainers
+  wrap.appendChild(h('div', { class: 'tussenkop' }, `Trainers · ${beheer.gebruikers.length}`));
+  const mensen = h('div', { class: 'kaart' });
+  for (const g of [...beheer.gebruikers].sort((a, b) => a.naam.localeCompare(b.naam, 'nl'))) {
+    mensen.appendChild(h('div', { class: 'spelerrij', role: 'button', tabindex: '0', onclick: () => gebruikerSheet(g),
+      onkeydown: (e) => { if (e.key === 'Enter') gebruikerSheet(g); } },
+      h('div', { class: 'bal' }, initialen(g.naam)),
+      h('div', { class: 'naam' }, g.naam,
+        h('small', {}, `${g.gebruikersnaam} · ${g.teams.length ? g.teams.map(teamNaamVan).join(', ') : 'geen team'}`)),
+      g.beheerder ? h('span', { class: 'vlag' }, 'BEHEERDER') : null));
+  }
+  mensen.appendChild(h('button', { class: 'knop breed', style: { marginTop: '10px' }, onclick: () => gebruikerSheet(null) },
+    icoon('plus', 18), 'Trainer'));
+  wrap.appendChild(mensen);
+  return wrap;
+}
+
+// ------------------------------------------------------------------- hulp
+/** Een rij aan/uit-chips, bv. welke trainers bij een team horen. */
+function kiesRij(opties, gekozen) {
+  const set = new Set(gekozen);
+  const rij = h('div', { class: 'chiprij' });
+  for (const o of opties) {
+    const knop = h('button', { class: 'chip', type: 'button', 'aria-pressed': String(set.has(o.id)),
+      onclick: () => {
+        if (set.has(o.id)) set.delete(o.id); else set.add(o.id);
+        knop.setAttribute('aria-pressed', String(set.has(o.id)));
+      } }, h('i', { class: 'dot' }), o.naam);
+    rij.appendChild(knop);
+  }
+  if (!opties.length) rij.appendChild(h('span', { class: 'mini' }, 'Nog niets om uit te kiezen.'));
+  return { rij, gekozen: () => [...set] };
+}
+
+function foutVak() { return h('p', { class: 'fout', role: 'alert' }); }
+
+async function probeer(fout, actie) {
+  fout.textContent = '';
+  try { await actie(); } catch (e) { fout.textContent = e.message; }
+}
+
+// ------------------------------------------------------------------- teams
+function teamSheet(team, ganaar) {
+  toonSheet(team ? team.naam : 'Nieuw team', (c, sluit) => {
+    const naam = h('input', { type: 'text', value: team ? team.naam : '', placeholder: 'JO9-1' });
+    const leden = kiesRij(beheer.gebruikers, team ? team.leden : [account.gebruiker.id]);
+    const fout = foutVak();
+    c.appendChild(h('label', { class: 'veld' }, h('span', {}, 'Teamnaam'), naam));
+    c.appendChild(h('div', { class: 'tussenkop', style: { marginTop: '4px' } }, 'Trainers van dit team'));
+    c.appendChild(leden.rij);
+    c.appendChild(h('p', { class: 'mini', style: { marginTop: '8px' } }, 'Zij zien dit team in de app en kunnen er samen aan werken, ook tegelijk tijdens de wedstrijd.'));
+    c.appendChild(fout);
+    c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '10px' } },
+      team ? h('button', { class: 'knop gevaar', onclick: () => {
+        sluit();
+        bevestig(`${team.naam} verwijderen?`,
+          'Het team verdwijnt voor alle trainers, met spelers en archief. Op de server blijft een kopie bewaard.',
+          () => doe(`api/teams/${team.id}`, 'DELETE').then(() => melding('Team verwijderd')).catch((e) => melding(e.message)),
+          { knop: 'Verwijderen', gevaar: true });
+      } }, 'Verwijderen') : null,
+      team && team.id !== account.teamId && team.leden.includes(account.gebruiker.id)
+        ? h('button', { class: 'knop', onclick: () => { sluit(); naBeheer(team.id); ganaar('team'); } }, 'Openen') : null,
+      h('button', { class: 'knop primair', style: { flex: '2' }, onclick: () => probeer(fout, async () => {
+        if (team) {
+          await doe(`api/teams/${team.id}`, 'PATCH', { naam: naam.value, leden: leden.gekozen() });
+          melding('Team bijgewerkt');
+        } else {
+          const r = await doe('api/teams', 'POST', { naam: naam.value, leden: leden.gekozen() });
+          melding(`${r.team.naam} aangemaakt`);
+        }
+        sluit();
+      }) }, team ? 'Opslaan' : 'Aanmaken')));
+  });
+}
+
+// ---------------------------------------------------------------- trainers
+// Leesbaar en toch lastig te raden. De server laat na tien foute pogingen
+// een kwartier niemand meer proberen, dus meer is niet nodig.
+const WOORDEN = ['bal', 'doel', 'kop', 'net', 'veld', 'gras', 'fluit', 'hoek', 'lat', 'paal', 'wissel', 'spits',
+  'keeper', 'corner', 'pass', 'volley', 'bank', 'shirt', 'aftrap', 'rust', 'penalty', 'sprint', 'libero', 'stopper',
+  'kopbal', 'hakje', 'panna', 'lob', 'schot', 'redding', 'zijlijn', 'middenstip', 'dribbel', 'voorzet', 'uittrap', 'tackle'];
+function maakWachtwoord() {
+  const r = new Uint32Array(3);
+  crypto.getRandomValues(r);
+  return `${WOORDEN[r[0] % WOORDEN.length]}-${WOORDEN[r[1] % WOORDEN.length]}-${1000 + (r[2] % 9000)}`;
+}
+
+function gebruikerSheet(g) {
+  const ikZelf = g && g.id === account.gebruiker.id;
+  toonSheet(g ? g.naam : 'Nieuwe trainer', (c, sluit) => {
+    const naam = h('input', { type: 'text', value: g ? g.naam : '', autocomplete: 'off', placeholder: 'Dennis de Vries' });
+    const gebruikersnaam = h('input', { type: 'text', value: g ? g.gebruikersnaam : '', autocomplete: 'off', autocapitalize: 'none', spellcheck: 'false' });
+    const wachtwoord = h('input', { type: 'text', value: g ? '' : maakWachtwoord(), autocomplete: 'off', spellcheck: 'false',
+      placeholder: g ? 'laat leeg om niet te wijzigen' : '' });
+    const teams = kiesRij(beheer.teams, g ? g.teams : (account.teamId ? [account.teamId] : []));
+    let beheerder = g ? !!g.beheerder : false;
+    const beheerderKnop = h('button', { class: 'schakel', type: 'button', 'aria-pressed': String(beheerder), 'aria-label': 'Beheerder',
+      disabled: ikZelf, onclick: () => { beheerder = !beheerder; beheerderKnop.setAttribute('aria-pressed', String(beheerder)); } }, h('i', {}));
+    const fout = foutVak();
+
+    let zelfGekozen = !!g;
+    gebruikersnaam.addEventListener('input', () => { zelfGekozen = true; });
+    naam.addEventListener('input', () => { if (!zelfGekozen) gebruikersnaam.value = gebruikersnaamVoor(naam.value); });
+
+    c.appendChild(h('div', { class: 'rij2' },
+      h('label', { class: 'veld' }, h('span', {}, 'Naam'), naam),
+      h('label', { class: 'veld' }, h('span', {}, 'Gebruikersnaam'), gebruikersnaam)));
+    c.appendChild(h('label', { class: 'veld' }, h('span', {}, g ? 'Nieuw wachtwoord' : 'Wachtwoord'),
+      h('div', { style: { display: 'flex', gap: '8px' } }, wachtwoord,
+        h('button', { class: 'knop klein', type: 'button', style: { flex: 'none' }, onclick: () => { wachtwoord.value = maakWachtwoord(); } }, 'Nieuw'))));
+    c.appendChild(h('div', { class: 'tussenkop', style: { marginTop: '4px' } }, 'Teams'));
+    c.appendChild(teams.rij);
+    c.appendChild(h('div', { class: 'strook', style: { marginTop: '8px' } },
+      h('div', { class: 'kop2' }, 'Beheerder', h('small', {}, ikZelf ? 'Je kunt jezelf geen beheerder af maken' : 'Mag trainers en teams beheren, en ziet alle teams')),
+      beheerderKnop));
+    c.appendChild(fout);
+    c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '10px' } },
+      g && !ikZelf ? h('button', { class: 'knop gevaar', onclick: () => {
+        sluit();
+        bevestig(`${g.naam} verwijderen?`, 'Het account verdwijnt en is meteen uitgelogd. De teams en hun gegevens blijven staan.',
+          () => doe(`api/gebruikers/${g.id}`, 'DELETE').then(() => melding('Trainer verwijderd')).catch((e) => melding(e.message)),
+          { knop: 'Verwijderen', gevaar: true });
+      } }, 'Verwijderen') : null,
+      h('button', { class: 'knop primair', style: { flex: '2' }, onclick: () => probeer(fout, async () => {
+        const gegevens = { naam: naam.value, gebruikersnaam: gebruikersnaam.value, beheerder, teams: teams.gekozen() };
+        if (wachtwoord.value) gegevens.wachtwoord = wachtwoord.value;
+        const r = g ? await doe(`api/gebruikers/${g.id}`, 'PATCH', gegevens) : await doe('api/gebruikers', 'POST', gegevens);
+        sluit();
+        if (gegevens.wachtwoord) uitnodiging(r.gebruiker, gegevens.wachtwoord, !g);
+        else melding('Opgeslagen');
+      }) }, g ? 'Opslaan' : 'Aanmaken')));
+  });
+}
+
+/** Wat je de nieuwe trainer stuurt: adres, gebruikersnaam en wachtwoord in één berichtje. */
+function uitnodiging(g, wachtwoord, nieuw) {
+  const adres = beheer.adres || account.server || '';
+  const teams = beheer.gebruikers.find((x) => x.id === g.id)?.teams.map(teamNaamVan) || [];
+  const tekst = [
+    nieuw ? `Hoi ${g.naam.split(' ')[0]}, je hebt een account voor Het Wisselschema.` : `Hoi ${g.naam.split(' ')[0]}, je hebt een nieuw wachtwoord voor Het Wisselschema.`,
+    '',
+    `Adres: ${adres}`,
+    `Gebruikersnaam: ${g.gebruikersnaam}`,
+    `Wachtwoord: ${wachtwoord}`,
+    teams.length ? `Team: ${teams.join(', ')}` : null,
+    '',
+    'Tip: zet de pagina op je beginscherm, dan start hij als een app.',
+  ].filter((r) => r !== null).join('\n');
+
+  toonSheet(nieuw ? 'Trainer aangemaakt' : 'Wachtwoord gewijzigd', (c, sluit) => {
+    c.appendChild(h('p', { class: 'uitleg' }, 'Stuur dit naar de trainer, bijvoorbeeld via de groepsapp. Het wachtwoord zie je hierna niet meer terug.'));
+    if (/\/api\/hassio_ingress\//.test(adres)) {
+      c.appendChild(h('div', { class: 'melding midden' }, h('span', { class: 'ico' }, '!'),
+        h('span', {}, 'Dit is het adres binnen Home Assistant; daar kan een trainer zonder Home Assistant-account niet bij. Vul bij de add-on de optie public_url in, of pas het adres hieronder aan.')));
+    }
+    const vak = h('textarea', { style: { minHeight: '250px' }, value: tekst, spellcheck: 'false' });
+    c.appendChild(vak);
+    c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '10px' } },
+      navigator.share ? h('button', { class: 'knop', onclick: async () => {
+        try { await navigator.share({ text: vak.value }); } catch (e) { /* afgebroken */ }
+      } }, 'Versturen') : null,
+      h('button', { class: 'knop primair', style: { flex: '2' }, onclick: async () => {
+        melding(await kopieer(vak.value) ? 'Gekopieerd' : 'Kopiëren lukte niet - selecteer de tekst zelf');
+      } }, 'Kopiëren'),
+      h('button', { class: 'knop', onclick: sluit }, 'Klaar')));
+  });
+}
+
+return { vergeetBeheer, schermBeheer, maakWachtwoord };
 };
 const app = __mod("app/main.js");
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', app.start);

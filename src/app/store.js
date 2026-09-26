@@ -1,11 +1,13 @@
-// Toestand, opslag en synchronisatie.
+// Toestand, opslag en tijd.
 //
-// Alles draait lokaal. localStorage is de waarheid; een server (de Home
-// Assistant-add-on) is optioneel en wordt alleen gebruikt als hij er is.
-// Zo blijft de app langs de lijn werken zonder netwerk.
+// Alles draait lokaal, zodat de app langs de lijn ook zonder netwerk werkt.
+// Zonder account is localStorage de enige opslag. Met een account komen de
+// teamgegevens van de server; dan neemt samenwerken.js het bewaren van het
+// team over, en houdt deze module alleen bij wat er in het geheugen staat.
 
 import { planWedstrijd, herplan, wisselUitgevoerd, maakBlokken, totaleSpeeltijd } from '../lib/schedule.js';
 import { FORMATIONS, getFormation, formationsForSize } from '../lib/formations.js';
+import { voegSamen } from '../lib/samenvoegen.js';
 
 export const SLEUTEL = 'wisselschema.v1';
 export const VERSIE = 1;
@@ -56,12 +58,32 @@ const luisteraars = new Set();
 export function abonneer(fn) { luisteraars.add(fn); return () => luisteraars.delete(fn); }
 export function stempel() { return teller; }
 
+// ---------------------------------------------------------------------- tijd
+// Met een server rekent de klok in servertijd. Dan lopen twee telefoons
+// gelijk, ook als de ene een halve minuut verkeerd staat. Zonder server is
+// het verschil nul.
+const tijd = { verschil: 0 };
+export function zetKlokVerschil(ms) { tijd.verschil = Number.isFinite(ms) ? ms : 0; }
+export function klokVerschil() { return tijd.verschil; }
+export const nu = () => Date.now() + tijd.verschil;
+
 // Hertekenen gebeurt pas in de volgende frame. Dat is niet alleen zuiniger,
 // het voorkomt ook een venijnig probleem: een tik op een knop laat eerst het
 // invoerveld zijn focus verliezen, dat vuurt `change`, en als we daarop meteen
 // de hele DOM herbouwen is de knop verdwenen voordat de klik hem bereikt.
+//
+// Wijzigingen van een andere telefoon wachten bovendien tot je klaar bent met
+// typen: anders verdwijnt het veld onder je vingers.
 let meldingGepland = false;
-function meldLuisteraars() {
+let wachtOpTypen = false;
+function meldLuisteraars({ vanAfstand = false } = {}) {
+  if (vanAfstand && aanHetTypen()) {
+    if (!wachtOpTypen) {
+      wachtOpTypen = true;
+      document.activeElement.addEventListener('blur', () => { wachtOpTypen = false; meldLuisteraars(); }, { once: true });
+    }
+    return;
+  }
   if (meldingGepland) return;
   meldingGepland = true;
   const uitvoeren = () => { meldingGepland = false; for (const l of luisteraars) l(); };
@@ -69,10 +91,36 @@ function meldLuisteraars() {
   else setTimeout(uitvoeren, 0);
 }
 
+function aanHetTypen() {
+  if (typeof document === 'undefined') return false;
+  const el = document.activeElement;
+  if (!el || !el.closest || !el.closest('#app')) return false;
+  if (el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
+  return el.tagName === 'INPUT' && !['button', 'checkbox', 'radio', 'range', 'submit', 'file'].includes(el.type);
+}
+
+/** Opnieuw tekenen zonder dat er iets aan de gegevens verandert (bv. inloggen gelukt). */
+export function herteken() { meldLuisteraars(); }
+
 /** Enige route waarlangs de toestand verandert: muteren, bewaren, hertekenen. */
 export function wijzig(fn, opties = {}) {
-  if (opties.terugdraaibaar) bewaarMoment();
+  // Met een account ook bij gewone stappen vergelijken: dan staat de stip in
+  // de kopbalk meteen op "nog niet verstuurd", en niet pas als de
+  // verzending begint.
+  const voor = opties.terugdraaibaar || teamOpslag ? teamJson() : null;
+  const tijden = tijdInfo();
   const uitkomst = fn(S);
+  tijdstempels(tijden);
+  if (voor !== null) {
+    const na = teamJson();
+    if (na !== voor) {
+      if (opties.terugdraaibaar) {
+        momenten.push({ voor, na });
+        if (momenten.length > 40) momenten.shift();
+      }
+      if (teamOpslag) teamOpslag.gewijzigd();
+    }
+  }
   teller += 1;
   S.gewijzigdOp = Date.now();
   planCache = null;
@@ -81,36 +129,101 @@ export function wijzig(fn, opties = {}) {
   return uitkomst;
 }
 
-// ------------------------------------------------------------- ongedaan maken
-const momenten = [];
-function bewaarMoment() {
-  if (!S.wedstrijd) return;
-  momenten.push(JSON.stringify({ wedstrijd: S.wedstrijd, spelers: S.team.spelers }));
-  if (momenten.length > 40) momenten.shift();
+// Als twee telefoons allebei de klok of het schema veranderden, wint de
+// laatste (zie samenvoegen.js). Daarvoor onthoudt de wedstrijd wanneer dat
+// was. Automatisch, zodat geen enkele knop het kan vergeten.
+function tijdInfo() {
+  const w = S.wedstrijd;
+  return w ? { id: w.id, klok: JSON.stringify(w.klok ?? null), schema: JSON.stringify([w.blokken ?? null, w.pins ?? null]) } : null;
 }
+function tijdstempels(voor) {
+  const w = S.wedstrijd;
+  if (!w) return;
+  const nieuw = !voor || voor.id !== w.id;
+  if (w.klok && (nieuw || JSON.stringify(w.klok) !== voor.klok)) w.klok = { ...w.klok, bijgewerkt: nu() };
+  if (nieuw || JSON.stringify([w.blokken ?? null, w.pins ?? null]) !== voor.schema) w.planMs = nu();
+}
+
+// ------------------------------------------------------------- teamgegevens
+// Het deel van de toestand dat bij een team hoort en met een server wordt
+// gedeeld. Instellingen en het scherm waar je staat zijn van dit apparaat.
+const teamJson = () => JSON.stringify({ team: S.team, wedstrijd: S.wedstrijd ?? null, archief: S.archief });
+export function teamDeel() { return JSON.parse(teamJson()); }
+
+function zetTeam(bron) {
+  // Altijd een eigen kopie: wat er binnenkomt, is ook de basis waarmee de
+  // samenwerkmodule vergelijkt. Deelden ze een object, dan veranderde de
+  // basis stilletjes mee en werd een nieuwe goal nooit verstuurd.
+  const doc = JSON.parse(JSON.stringify(bron));
+  const team = doc.team && typeof doc.team === 'object' ? doc.team : {};
+  S.team = { ...team, naam: team.naam || 'Mijn team', spelers: Array.isArray(team.spelers) ? team.spelers : [] };
+  S.wedstrijd = doc.wedstrijd ?? null;
+  S.archief = Array.isArray(doc.archief) ? doc.archief : [];
+}
+
+/**
+ * Vervangt de teamgegevens: bij het openen van een ander team, of met wat er
+ * van een andere telefoon binnenkwam (`vanAfstand`). Dat laatste is geen
+ * eigen stap: ongedaan maken blijft dan gewoon werken.
+ */
+export function laadTeamDeel(doc, { vanAfstand = false } = {}) {
+  zetTeam(doc);
+  if (!vanAfstand) momenten.length = 0;
+  teller += 1;
+  planCache = null;
+  bewaarLater();
+  meldLuisteraars({ vanAfstand });
+}
+
+// ------------------------------------------------------------- ongedaan maken
+// Per stap de teamgegevens ervoor en erna. Terugdraaien is samenvoegen: haal
+// weg wat deze stap veranderde, en laat staan wat er daarna gebeurde - ook
+// als dat de goal van een collega op een andere telefoon was.
+const momenten = [];
 export function kanTerug() { return momenten.length > 0; }
 export function draaiTerug() {
   const m = momenten.pop();
   if (!m) return false;
-  const d = JSON.parse(m);
-  S.wedstrijd = d.wedstrijd;
-  S.team.spelers = d.spelers;
+  const tijden = tijdInfo();
+  zetTeam(voegSamen(JSON.parse(m.na), JSON.parse(m.voor), teamDeel()));
+  tijdstempels(tijden);
   teller += 1; planCache = null; bewaarLater();
   meldLuisteraars();
   return true;
 }
 
 // -------------------------------------------------------------------- opslag
+// Met een account neemt samenwerken.js het bewaren van het team over. Wat er
+// lokaal stond, blijft dan onaangeroerd in localStorage staan, en komt
+// terug na het uitloggen.
+let teamOpslag = null;
+let lokaal = null;
+
+export function gebruikTeamOpslag(opslag) {
+  if (opslag && !teamOpslag) lokaal = JSON.parse(JSON.stringify(exporteer()));
+  if (!opslag && teamOpslag && lokaal) {
+    zetTeam(lokaal);
+    momenten.length = 0;
+    planCache = null;
+    teller += 1;
+  }
+  teamOpslag = opslag || null;
+}
+
+/** De gegevens die op dit apparaat stonden van voor het inloggen (of null). */
+export function lokaleGegevens() { return teamOpslag ? lokaal : null; }
+
 let bewaarTimer = null;
 function bewaarLater() {
   clearTimeout(bewaarTimer);
   bewaarTimer = setTimeout(bewaarNu, 250);
 }
 export function bewaarNu() {
+  clearTimeout(bewaarTimer);
   try {
-    localStorage.setItem(SLEUTEL, JSON.stringify(exporteer()));
+    localStorage.setItem(SLEUTEL, JSON.stringify(teamOpslag ? { ...lokaal, instellingen: S.instellingen } : exporteer()));
   } catch (e) { /* privémodus of vol: de app werkt door, alleen zonder onthouden */ }
-  duwNaarServer();
+  if (teamOpslag) teamOpslag.bewaar();
 }
 export function exporteer() {
   return { versie: VERSIE, team: S.team, wedstrijd: S.wedstrijd, archief: S.archief, instellingen: S.instellingen, gewijzigdOp: S.gewijzigdOp };
@@ -130,52 +243,6 @@ export function laadLokaal() {
     const ruw = localStorage.getItem(SLEUTEL);
     if (ruw) neemOver(JSON.parse(ruw));
   } catch (e) { /* onleesbaar: we beginnen schoon in plaats van te crashen */ }
-}
-
-// ---------------------------------------------------------------- server-sync
-// Wordt alleen actief als er echt iets luistert op het sync-adres. Faalt stil.
-export const sync = { actief: false, adres: null, bezig: false, laatst: null, fout: null };
-
-function syncAdres() {
-  const eigen = (S.instellingen.syncUrl || '').trim();
-  if (eigen) return eigen.replace(/\/$/, '');
-  if (typeof location !== 'undefined' && /^https?:/.test(location.protocol)) {
-    return new URL('api/state', location.href.replace(/[^/]*$/, '')).toString();
-  }
-  return null;
-}
-
-export async function startSync() {
-  const adres = syncAdres();
-  if (!adres) return false;
-  try {
-    const r = await fetch(adres, { headers: { accept: 'application/json' } });
-    if (!r.ok) return false;
-    const opAfstand = await r.json();
-    sync.actief = true; sync.adres = adres; sync.laatst = Date.now();
-    if (opAfstand && (opAfstand.gewijzigdOp || 0) > (S.gewijzigdOp || 0)) {
-      neemOver(opAfstand);
-      teller += 1;
-      meldLuisteraars();
-    } else {
-      duwNaarServer();
-    }
-    return true;
-  } catch (e) { sync.fout = String(e.message || e); return false; }
-}
-
-let duwTimer = null;
-function duwNaarServer() {
-  if (!sync.actief || !sync.adres) return;
-  clearTimeout(duwTimer);
-  duwTimer = setTimeout(async () => {
-    sync.bezig = true;
-    try {
-      await fetch(sync.adres, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(exporteer()) });
-      sync.laatst = Date.now(); sync.fout = null;
-    } catch (e) { sync.fout = String(e.message || e); }
-    sync.bezig = false;
-  }, 1200);
 }
 
 // ----------------------------------------------------------------- planning
@@ -248,11 +315,11 @@ export function schrapGoal(id) {
 export function klokStand(w = S.wedstrijd) {
   if (!w) return 0;
   const k = w.klok;
-  const sec = k.loopt && k.sindsMs ? k.verstreken + (Date.now() - k.sindsMs) / 1000 : k.verstreken;
+  const sec = k.loopt && k.sindsMs ? k.verstreken + (nu() - k.sindsMs) / 1000 : k.verstreken;
   return Math.max(0, Math.min(sec, totaleSpeeltijd(w)));
 }
 export function klokStart() {
-  wijzig((s) => { s.wedstrijd.klok = { ...s.wedstrijd.klok, loopt: true, sindsMs: Date.now(), pauzeReden: null };
+  wijzig((s) => { s.wedstrijd.klok = { ...s.wedstrijd.klok, loopt: true, sindsMs: nu(), pauzeReden: null };
     if (s.wedstrijd.status === 'opzet') s.wedstrijd.status = 'bezig'; });
 }
 export function klokPauze(reden = null) {
@@ -265,7 +332,7 @@ export function klokAutoPauze(grens, reden) {
   });
 }
 export function klokZet(sec) {
-  wijzig((s) => { s.wedstrijd.klok = { ...s.wedstrijd.klok, verstreken: Math.max(0, sec), sindsMs: s.wedstrijd.klok.loopt ? Date.now() : null }; });
+  wijzig((s) => { s.wedstrijd.klok = { ...s.wedstrijd.klok, verstreken: Math.max(0, sec), sindsMs: s.wedstrijd.klok.loopt ? nu() : null }; });
 }
 
 // ---------------------------------------------------------------- archiveren
