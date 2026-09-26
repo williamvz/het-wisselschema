@@ -146,7 +146,7 @@ function leegDoc(naam, inhoud = {}) {
 // ----------------------------------------------------------------- de club
 export class Club {
   /**
-   * @param {string} map          waar de bestanden staan (bij de add-on: /data)
+   * @param {string} map          waar de bestanden staan (in Home Assistant: /data)
    * @param {object} opties       { log, inrichtcode, herstelcode } - vaste codes
    *                              zijn handig voor tests en automatisering. Met
    *                              herstelcode `true` maakt de server er zelf een.

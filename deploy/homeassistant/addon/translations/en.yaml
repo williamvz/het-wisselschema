@@ -13,7 +13,7 @@ configuration:
   reset_password:
     name: Reset password
     description: >-
-      Lost the administrator password? Turn this on and restart the add-on.
+      Lost the administrator password? Turn this on and restart the app.
       The log then shows a recovery code; enter it in the app under
       "Wachtwoord vergeten?". Turn it off again afterwards.
 network:

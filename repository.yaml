@@ -1,0 +1,7 @@
+# Hierdoor is deze repository ook een app-repository voor Home Assistant.
+# Voeg https://github.com/williamvz/het-wisselschema toe onder Instellingen →
+# Apps → App Store → ⋮ → Repositories. De app zelf staat in
+# deploy/homeassistant/addon.
+name: Het Wisselschema
+url: https://github.com/williamvz/het-wisselschema
+maintainer: William van Zweeden

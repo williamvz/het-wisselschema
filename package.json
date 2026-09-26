@@ -11,7 +11,8 @@
     "test": "npm run build && node --test test/*.test.mjs",
     "test:motor": "node --test test/schedule.test.mjs test/herplan.test.mjs",
     "serve": "node deploy/homeassistant/addon/server.mjs",
-    "schermafdrukken": "node build/schermafdrukken.mjs"
+    "schermafdrukken": "node build/schermafdrukken.mjs",
+    "app-iconen": "node build/app-iconen.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.55.0"

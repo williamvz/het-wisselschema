@@ -22,10 +22,10 @@ verbindingen. Nadeel: je team staat alleen op dát apparaat.
 
 ## 2. Als los bestand op Home Assistant
 
-De snelste manier om hem op je Pi te krijgen, zonder add-on.
+De snelste manier om hem op je Pi te krijgen, zonder app uit de App Store.
 
 ```bash
-# op de Raspberry Pi, of via de Samba-/Studio Code Server-add-on
+# op de Raspberry Pi, of via de Samba- of Studio Code Server-app
 mkdir -p /config/www/wisselschema
 cp index.html /config/www/wisselschema/index.html
 ```
@@ -49,39 +49,68 @@ er is geen samenwerken. Daarvoor is route 3.
 
 ---
 
-## 3. Als add-on, met accounts en teams
+## 3. Als app uit de App Store, met accounts en teams
 
 Nu staan je teams op de Pi, werk je met je medetrainer tegelijk aan
 hetzelfde team, en kun je de app met de rest van de club delen.
 
+Deze repository is ook een app-repository voor Home Assistant. In Home
+Assistant: **Instellingen → Apps → App Store → ⋮ → Repositories** (in oudere
+versies heet het *Add-ons* en *Add-on Store*), en voeg toe:
+
+```
+https://github.com/williamvz/het-wisselschema
+```
+
+Of met één klik:
+
+[![Voeg de repository toe aan je Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fwilliamvz%2Fhet-wisselschema)
+
+"Het Wisselschema" verschijnt dan in de App Store. Installeren, starten, en
+**Toon in zijbalk** aanzetten. Home Assistant bouwt de app op je eigen
+apparaat; dat duurt de eerste keer een paar minuten. Een nieuwe versie zie je
+als update in Home Assistant.
+
+<details>
+<summary>Zonder de App Store: de map zelf kopiëren</summary>
+
+Handig als je zelf aan de app werkt:
+
 ```bash
-npm run build                                    # vult addon/www/index.html
+npm run build                                    # werkt addon/www/index.html bij
 cp -r deploy/homeassistant/addon /addons/wisselschema
 ```
 
-Heb je geen Node bij de hand? Kopieer dan `index.html` uit de wortel van de
-repository met de hand naar `deploy/homeassistant/addon/www/index.html`. Het
-is hetzelfde bestand; de add-on-map bevat verder alleen de server
-(`server.mjs` en `club.mjs`) en de Docker-configuratie.
+Daarna staat hij in de App Store onder *Local apps*. Na een nieuwe kopie kies
+je bij de app **Herbouwen**.
 
-Daarna in Home Assistant: **Instellingen → Add-ons → Add-on store → ⋮ →
-Repositories vernieuwen**. "Het Wisselschema" verschijnt onder *Local add-ons*.
-Installeren, starten, en **Show in sidebar** aanzetten. Had je de add-on al,
-kies dan **Herbouwen** (rebuild): versie 2 is de versie met accounts.
+</details>
+
+Had je de app al als lokale app uit `/addons`? Dan is de app uit de
+repository een nieuwe, met een eigen opslag. Hoe je je team meeneemt, staat
+hieronder bij *De eerste keer*.
 
 ### De eerste keer
 
-1. Open de add-on en ga naar het tabblad **Logboek**. Daar staat een regel
-   `Inrichtcode: XXXX-XXXX`.
+1. Open de app in Home Assistant en ga naar het tabblad **Logboek**. Daar
+   staat een regel `Inrichtcode: XXXX-XXXX`.
 2. Open de app (via de zijbalk). Hij vraagt om die code, je naam, een
    gebruikersnaam en een wachtwoord. Dat account wordt de **beheerder**.
-3. Stond er van de vorige versie al een team op de server, dan wordt dat je
-   eerste team, met spelers, archief en seizoenssaldo. Het oude bestand blijft
-   bewaard als `state-voor-accounts.json`.
+3. Werkte je de lokale app uit `/addons` bij naar deze versie, dan wordt het
+   team dat op de server stond je eerste team, met spelers, archief en
+   seizoenssaldo. Het oude bestand blijft bewaard als
+   `state-voor-accounts.json`.
+4. Kwam je van de lokale app en installeerde je nu die uit de App Store, dan
+   begint die leeg. Maak een team aan en kijk onder **Team → Bestand**: staat
+   daar **Van dit apparaat**, dan neem je je oude team met één tik over.
+   Anders open je eerst de oude app, kies je **Archief → Back-up downloaden**,
+   en zet je dat bestand in de nieuwe terug via **Team → Bestand**. Daarna kun
+   je de oude app verwijderen.
 
 ### Trainers en teams
 
-Tik rechtsboven op je initialen en kies **Club beheren**.
+Tik rechtsboven op je initialen en kies **Club beheren**. Dezelfde uitleg
+staat ook in de app zelf, in het tabblad **Documentatie**.
 
 - **Team** — naam, en welke trainers erbij horen. Zij zien het team in de app
   en kunnen er samen aan werken, ook tegelijk tijdens de wedstrijd.
@@ -115,7 +144,7 @@ door, en zodra er weer bereik is gaat alles alsnog mee.
 
 Is er een tweede beheerder, dan geeft die je een nieuw wachtwoord. Anders:
 
-1. Zet de optie `reset_password` aan en start de add-on opnieuw.
+1. Zet de optie `reset_password` aan en start de app opnieuw.
 2. In het logboek staat nu een regel met `Herstelcode`, met daarachter een
    code als `XXXX-XXXX`.
 3. Tik in de app op **Wachtwoord vergeten?**, vul de code, je gebruikersnaam
@@ -124,7 +153,7 @@ Is er een tweede beheerder, dan geeft die je een nieuw wachtwoord. Anders:
 
 ### Waar staan de gegevens
 
-In de map `/data` van de add-on, en dus in de back-ups van Home Assistant:
+In de map `/data` van de app, en dus in de back-ups van Home Assistant:
 
 - `club.json` — gebruikers, teams en sessies. Wachtwoorden alleen als
   scrypt-hash, sessies alleen als hash van het token.
@@ -143,7 +172,7 @@ terugzetten van een back-up is het team er weer.
 ## Een eigen domein: `wisselschema.williamvanzweden.nl`
 
 Om de app met de club te delen, moet hij buiten je huis bereikbaar zijn. Zet
-eerst de add-on uit route 3 aan. Daarna twee mogelijkheden.
+eerst de app uit route 3 aan. Daarna twee mogelijkheden.
 
 De app heeft zijn eigen accounts: zonder inloggen kom je niet bij de teams,
 ook niet via de directe poort. Wel moet het adres **https** zijn, anders gaan
@@ -154,11 +183,11 @@ wachtwoorden onversleuteld over de lijn. Beide recepten hieronder regelen dat.
 Geen poorten openzetten, werkt ook achter CGNAT, en je krijgt meteen een
 geldig certificaat.
 
-1. Installeer de **Cloudflare Tunnel**-add-on (repository
+1. Installeer de **Cloudflare Tunnel**-app (repository
    `https://github.com/brenner-tobias/ha-addons`).
 2. Maak in Cloudflare een tunnel en wijs `wisselschema.williamvanzweden.nl`
    naar `http://homeassistant:8099`.
-3. Zet in de add-on-configuratie van Het Wisselschema de poort `8099/tcp`
+3. Zet in de configuratie van de app Het Wisselschema de poort `8099/tcp`
    aan, zodat de tunnel erbij kan.
 4. Vul bij de optie `public_url` het adres in:
    `https://wisselschema.williamvanzweden.nl/`.
@@ -169,7 +198,7 @@ een club is de inlog van de app meestal genoeg.
 
 ### Via Nginx Proxy Manager
 
-1. Installeer de **Nginx Proxy Manager**-add-on.
+1. Installeer de **Nginx Proxy Manager**-app.
 2. Zet poort 80 en 443 door op je router naar de Pi.
 3. Maak een DNS-A-record voor `wisselschema.williamvanzweden.nl`.
 4. Maak een Proxy Host naar `homeassistant:8099`, met een Let's Encrypt-certificaat

@@ -1,4 +1,4 @@
-// Praten met de server (de Home Assistant-add-on, of een andere installatie
+// Praten met de server (de app voor Home Assistant, of een andere installatie
 // van deploy/homeassistant/addon/server.mjs).
 //
 // Alles loopt via `vraag`. Die zet het token in de kop, maakt van elke fout

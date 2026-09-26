@@ -13,7 +13,7 @@ gespeeld is.
 geen account, geen internet nodig.
 
 **En samen kan ook.** Zet hetzelfde bestand op een kleine server (de Home
-Assistant-add-on) en je werkt met je medetrainer tegelijk aan één team: de een
+Assistant-app) en je werkt met je medetrainer tegelijk aan één team: de een
 houdt de klok en de wissels bij, de ander de score. Met accounts en teams deel
 je hem met de hele club.
 
@@ -76,11 +76,13 @@ Zie [`deploy/homeassistant/README.md`](deploy/homeassistant/README.md). Kort:
 
 1. **Los bestand** — `index.html` in `/config/www/` en een `panel_iframe` in
    je configuratie. Vijf minuten werk, geen accounts, geen samenwerken.
-2. **Als add-on** — kopieer `deploy/homeassistant/addon` naar `/addons/`. De
-   app verschijnt in de zijbalk van Home Assistant, met accounts en teams. De
-   eerste keer maak je in de app de beheerder aan, met een code uit het
-   logboek van de add-on. Stond er al een team op de server, dan wordt dat je
-   eerste team.
+2. **Als app uit de App Store** — voeg deze repository toe onder
+   **Instellingen → Apps → App Store → ⋮ → Repositories**:
+   `https://github.com/williamvz/het-wisselschema`. Installeren, starten, en
+   de app staat in de zijbalk, met accounts en teams. De eerste keer maak je
+   de beheerder aan met een code uit het logboek van de app.
+
+   [![Voeg de repository toe aan je Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fwilliamvz%2Fhet-wisselschema)
 
 Om hem met de club te delen, zet je er een eigen domein voor. Er staat een
 recept voor Cloudflare Tunnel en voor Nginx Proxy Manager bij, inclusief wat
@@ -161,7 +163,7 @@ lange verzoeken toch af, dan wacht de app voortaan korter.
 ```bash
 npm install        # alleen nodig voor de tests
 npm run build      # src/ -> index.html (één bestand, geen bundler-afhankelijkheid)
-npm test           # 77 tests: motor, samenvoegen, server, en de app in een browser
+npm test           # 78 tests: motor, samenvoegen, server, en de app in een browser
 npm run check      # laadt alle modules, vangt import- en syntaxfouten
 npm run serve      # draait de server lokaal op poort 8099 (inrichtcode in de uitvoer)
 ```
@@ -173,7 +175,7 @@ src/app/        de schermen, in gewoon DOM zonder framework, en de
                 samenwerking met de server (samenwerken.js)
 build/build.mjs bundelt alles tot één index.html
 test/           motortests, browsertests (Playwright) en servertests
-deploy/         Home Assistant: add-on (server.mjs, club.mjs) en handleiding
+deploy/         Home Assistant: de app (server.mjs, club.mjs) en handleiding
 ```
 
 De motor in `src/lib/` kent geen DOM en draait net zo goed in Node. Daar zit
@@ -183,7 +185,11 @@ wissel die twee minuten te laat wordt uitgevoerd.
 
 `index.html` staat in de repository omdat dat het product is — je moet hem
 kunnen downloaden en openen zonder iets te installeren. Hij wordt gemaakt door
-`npm run build`; pas hem niet met de hand aan.
+`npm run build`; pas hem niet met de hand aan. De build zet hetzelfde bestand
+ook in `deploy/homeassistant/addon/www/`, want Home Assistant bouwt de app
+rechtstreeks uit deze repository. Verhoog bij een nieuwe versie `version` in
+`deploy/homeassistant/addon/config.yaml` (en schrijf een regel in
+`CHANGELOG.md` ernaast); anders ziet Home Assistant geen update.
 
 ## Aantekeningen
 

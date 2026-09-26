@@ -13,7 +13,7 @@ configuration:
   reset_password:
     name: Wachtwoord herstellen
     description: >-
-      Wachtwoord van de beheerder kwijt? Zet dit aan en start de add-on
+      Wachtwoord van de beheerder kwijt? Zet dit aan en start de app
       opnieuw. In het logboek staat dan een herstelcode; die vul je in de app
       in onder "Wachtwoord vergeten?". Zet het daarna weer uit.
 network:
