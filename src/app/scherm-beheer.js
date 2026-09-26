@@ -237,7 +237,7 @@ function uitnodiging(g, wachtwoord, nieuw) {
     c.appendChild(h('p', { class: 'uitleg' }, 'Stuur dit naar de trainer, bijvoorbeeld via de groepsapp. Het wachtwoord zie je hierna niet meer terug.'));
     if (/\/api\/hassio_ingress\//.test(adres)) {
       c.appendChild(h('div', { class: 'melding midden' }, h('span', { class: 'ico' }, '!'),
-        h('span', {}, 'Dit is het adres binnen Home Assistant; daar kan een trainer zonder Home Assistant-account niet bij. Vul bij de add-on de optie public_url in, of pas het adres hieronder aan.')));
+        h('span', {}, 'Dit is het adres binnen Home Assistant; daar kan een trainer zonder Home Assistant-account niet bij. Vul in Home Assistant bij de app de optie public_url in, of pas het adres hieronder aan.')));
     }
     const vak = h('textarea', { style: { minHeight: '250px' }, value: tekst, spellcheck: 'false' });
     c.appendChild(vak);

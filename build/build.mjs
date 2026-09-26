@@ -5,6 +5,7 @@
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
+import { ICOON_SVG } from './icoon.mjs';
 
 const WORTEL = resolve(process.argv[2] || '.');
 const SRC = join(WORTEL, 'src');
@@ -91,12 +92,6 @@ else app.start();
 })();`;
 
 // --- pictogram en manifest, inline zodat er geen los bestand nodig is
-const ICOON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<rect width="64" height="64" rx="14" fill="#10794a"/>
-<rect x="12" y="10" width="40" height="44" rx="4" fill="none" stroke="#fff" stroke-width="3"/>
-<line x1="12" y1="32" x2="52" y2="32" stroke="#fff" stroke-width="3"/>
-<circle cx="32" cy="32" r="7" fill="none" stroke="#fff" stroke-width="3"/>
-<circle cx="22" cy="20" r="4" fill="#fbbf24"/><circle cx="42" cy="44" r="4" fill="#fbbf24"/></svg>`;
 const icoonUrl = `data:image/svg+xml,${encodeURIComponent(ICOON_SVG.replace(/\n/g, ''))}`;
 const manifest = {
   name: 'Het Wisselschema', short_name: 'Wisselschema', start_url: '.', scope: '.',
@@ -115,6 +110,8 @@ if (html.includes('</script>', html.indexOf('<script')) === false) throw new Err
 writeFileSync(UIT, html);
 
 // Dezelfde app in de add-on, zodat die map op zichzelf te installeren is.
+// Hij staat ook in git: Home Assistant bouwt de app rechtstreeks uit deze
+// repository en draait daarbij geen `npm run build`.
 const ADDON_WWW = join(WORTEL, 'deploy/homeassistant/addon/www');
 mkdirSync(ADDON_WWW, { recursive: true });
 writeFileSync(join(ADDON_WWW, 'index.html'), html);

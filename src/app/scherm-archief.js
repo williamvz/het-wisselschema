@@ -131,7 +131,7 @@ function samenwerkKaart(ganaar) {
     return kaart;
   }
   kaart.appendChild(h('p', { class: 'uitleg', style: { marginTop: '0' } },
-    'Samen met andere trainers aan hetzelfde team werken, ook tijdens de wedstrijd? Dat kan met een server, zoals de Home Assistant-add-on. Vul het adres in; daarna log je in.'));
+    'Samen met andere trainers aan hetzelfde team werken, ook tijdens de wedstrijd? Dat kan met een server, zoals de app voor Home Assistant. Vul het adres in; daarna log je in.'));
   const adresVeld = h('input', { type: 'text', value: S.instellingen.syncUrl || '', placeholder: 'https://wisselschema.jouwclub.nl',
     autocapitalize: 'none', spellcheck: 'false' });
   kaart.appendChild(adresVeld);

@@ -74,7 +74,7 @@ export function schermInrichten() {
   return h('div', { class: 'inlog' },
     ...kop('Deze server heeft nog geen accounts. Maak het eerste aan: dat wordt de beheerder, die daarna trainers en teams toevoegt.'),
     formulier([
-      veld('Inrichtcode', code, 'Staat in het logboek van de server. Bij de Home Assistant-add-on: Instellingen → Add-ons → Het Wisselschema → Logboek.'),
+      veld('Inrichtcode', code, 'Staat in het logboek van de server. In Home Assistant: Instellingen → Apps → Het Wisselschema → Logboek.'),
       veld('Je naam', naam),
       veld('Gebruikersnaam', gebruikersnaam),
       veld('Wachtwoord', wachtwoord, 'Minstens 8 tekens.'),
@@ -93,7 +93,7 @@ async function vergetenSheet() {
       'Vraag de beheerder van je club om een nieuw wachtwoord: dat kan onder Club beheren, en je krijgt het in een berichtje.'));
     if (!st.herstellen) {
       c.appendChild(h('p', { class: 'uitleg' },
-        'Ben je zelf de beheerder? Zet dan in Home Assistant bij de add-on de optie reset_password aan en start hem opnieuw. In het logboek staat daarna een herstelcode; daarmee kies je hier een nieuw wachtwoord.'));
+        'Ben je zelf de beheerder? Zet dan in Home Assistant bij de app Het Wisselschema de optie reset_password aan en start hem opnieuw. In het logboek staat daarna een herstelcode; daarmee kies je hier een nieuw wachtwoord.'));
       return;
     }
     const code = h('input', { type: 'text', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', required: true });
