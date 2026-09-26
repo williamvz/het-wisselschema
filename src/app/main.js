@@ -1,14 +1,17 @@
 // De romp: kopbalk, schermkeuze, navigatie en het opstarten.
 
-import { h, icoon, leegmaken, toonSheet, melding, houdSchermAan, minutenTekst, voornaam, datumTekst } from './ui.js';
-import { S, wijzig, abonneer, laadLokaal, startSync, plan, klokStand, leesDeelLink, nieuweSpeler, nieuweWedstrijd, bewaarNu } from './store.js';
+import { h, icoon, leegmaken, toonSheet, melding, houdSchermAan, minutenTekst, voornaam } from './ui.js';
+import { S, wijzig, abonneer, laadLokaal, plan, klokStand, leesDeelLink, nieuweSpeler, nieuweWedstrijd, bewaarNu } from './store.js';
 import { getFormation } from '../lib/formations.js';
-import { totaleSpeeltijd } from '../lib/schedule.js';
+import { account, herstelAccount, verbind, wek, duwBijAfsluiten } from './samenwerken.js';
+import { kopbalk } from './kop.js';
 import { schermTeam } from './scherm-team.js';
 import { schermOpzet } from './scherm-opzet.js';
 import { schermSchema } from './scherm-schema.js';
 import { schermLive, tikLive, actiefBlokIndex } from './scherm-live.js';
 import { schermArchief } from './scherm-archief.js';
+import { schermVerbinden, schermInloggen, schermInrichten, schermGeenTeam } from './scherm-inloggen.js';
+import { schermBeheer, vergeetBeheer } from './scherm-beheer.js';
 
 const SCHERMEN = [
   { id: 'team', naam: 'Team', ico: 'team' },
@@ -21,15 +24,9 @@ const SCHERMEN = [
 let wortel = null;
 
 export function ganaar(scherm) {
+  if (scherm === 'beheer') vergeetBeheer(); // altijd vers ophalen
   wijzig((s) => { s.ui.scherm = scherm; });
   window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function ondertitel() {
-  const w = S.wedstrijd;
-  if (!w) return `${S.team.spelers.length} speler${S.team.spelers.length === 1 ? '' : 's'}`;
-  const tegen = w.tegenstander ? `${w.thuis ? 'thuis tegen' : 'uit bij'} ${w.tegenstander}` : datumTekst(w.datum);
-  return `${tegen} · ${getFormation(w.formationId).naam}`;
 }
 
 function wisselStaatOpen() {
@@ -45,20 +42,36 @@ export function render() {
   document.documentElement.dataset.thema = thema === 'auto' ? '' : thema;
 
   leegmaken(wortel);
-  wortel.appendChild(h('header', { class: 'kop' },
-    h('div', { class: 'merk', 'aria-hidden': 'true' }, 'W'),
-    h('div', { class: 'titel' },
-      h('strong', {}, S.team.naam),
-      h('small', {}, ondertitel()))));
 
-  const scherm = S.ui.scherm || 'team';
+  // Nog niet binnen: een scherm zonder kopbalk en navigatie.
+  if (['verbinden', 'inloggen', 'inrichten'].includes(account.modus)) {
+    wortel.appendChild(account.modus === 'verbinden' ? schermVerbinden()
+      : account.modus === 'inloggen' ? schermInloggen() : schermInrichten());
+    document.getElementById('nav')?.remove();
+    houdSchermAan(false);
+    return;
+  }
+
+  for (const deel of kopbalk(ganaar)) wortel.appendChild(deel);
+
+  let scherm = S.ui.scherm || 'team';
+  const zonderTeam = account.modus === 'team' && !account.teamId;
+  if (scherm === 'beheer' && !account.gebruiker?.beheerder) scherm = 'team';
   const inhoud =
-    scherm === 'team' ? schermTeam()
+    scherm === 'beheer' ? schermBeheer(ganaar)
+    : zonderTeam ? schermGeenTeam(ganaar)
+    : scherm === 'team' ? schermTeam()
     : scherm === 'opzet' ? schermOpzet(ganaar)
     : scherm === 'schema' ? schermSchema(ganaar)
     : scherm === 'live' ? schermLive(ganaar, render)
-    : schermArchief();
+    : schermArchief(ganaar);
   wortel.appendChild(inhoud);
+
+  if (zonderTeam) {
+    document.getElementById('nav')?.remove();
+    houdSchermAan(false);
+    return;
+  }
 
   const open = wisselStaatOpen();
   const nav = h('nav', { class: 'nav niet-printen', 'aria-label': 'Hoofdnavigatie' });
@@ -110,11 +123,18 @@ async function verwerkDeelLink() {
     }
     c.appendChild(h('div', { class: 'schema-wrap' }, h('table', { class: 'schema' }, h('thead', {}, kop), lijf)));
 
+    // Overnemen kan alleen als duidelijk is waar het heen gaat: dit apparaat,
+    // of het team dat open staat.
+    const kanOvernemen = account.modus === 'lokaal' || (account.modus === 'team' && !!account.teamId);
+    if (account.modus === 'team' && account.teamId) {
+      c.appendChild(h('p', { class: 'mini', style: { marginTop: '10px' } }, `Overnemen zet dit schema klaar bij ${S.team.naam}.`));
+    }
     c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '16px' } },
-      h('button', { class: 'knop', onclick: sluit }, 'Alleen bekijken'),
-      h('button', { class: 'knop primair', style: { flex: '2' }, onclick: () => {
+      h('button', { class: 'knop', onclick: sluit }, kanOvernemen ? 'Alleen bekijken' : 'Sluiten'),
+      !kanOvernemen ? null : h('button', { class: 'knop primair', style: { flex: '2' }, onclick: () => {
         wijzig((s) => {
-          s.team.naam = data.t || s.team.naam;
+          // Een clubteam heet zoals de club het noemt; lokaal nemen we de naam over.
+          if (account.modus !== 'team') s.team.naam = data.t || s.team.naam;
           for (const sp of spelers) if (!s.team.spelers.some((q) => q.id === sp.id)) s.team.spelers.push(sp);
           const w = nieuweWedstrijd();
           Object.assign(w, {
@@ -141,22 +161,32 @@ async function verwerkDeelLink() {
 export async function start() {
   wortel = document.getElementById('app');
   laadLokaal();
+  herstelAccount(); // wie eerder inlogde, ziet meteen zijn team - ook zonder bereik
+  abonneer(render);
   render();
 
-  const gedeeld = await verwerkDeelLink();
-  if (!gedeeld) startSync().then((ok) => { if (ok) render(); });
+  // Eerst weten of er een server is: een gedeeld schema overnemen kan pas
+  // als duidelijk is in welk team het terechtkomt.
+  if (account.modus === 'verbinden') await verbind();
+  else verbind();
+  await verwerkDeelLink();
 
   setInterval(() => { if (S.ui.scherm === 'live' && S.wedstrijd) tikLive(); }, 250);
 
   // Terugkomen uit de achtergrond: de klok loopt door op wandkloktijd, dus
-  // even bijwerken zodat het scherm meteen weer klopt.
+  // even bijwerken zodat het scherm meteen weer klopt. En wat de anderen
+  // intussen deden, meteen ophalen in plaats van op het volgende antwoord
+  // van de server te wachten.
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) { tikLive(); houdSchermAan(S.instellingen.schermAan && S.ui.scherm === 'live' && !!S.wedstrijd?.klok?.loopt); }
+    if (!document.hidden) {
+      tikLive();
+      wek();
+      houdSchermAan(S.instellingen.schermAan && S.ui.scherm === 'live' && !!S.wedstrijd?.klok?.loopt);
+    }
   });
-  window.addEventListener('pagehide', bewaarNu);
+  window.addEventListener('online', wek);
+  window.addEventListener('pagehide', () => { bewaarNu(); duwBijAfsluiten(); });
   window.addEventListener('beforeunload', (e) => {
     if (S.wedstrijd?.klok?.loopt) { bewaarNu(); e.preventDefault(); e.returnValue = ''; }
   });
-
-  abonneer(render);
 }

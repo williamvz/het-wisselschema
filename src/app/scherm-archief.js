@@ -1,12 +1,14 @@
 // Scherm: gespeelde wedstrijden en instellingen.
 
 import { h, icoon, toonSheet, bevestig, melding, datumTekst, minutenTekst, saldoTekst, voornaam, downloadBestand } from './ui.js';
-import { S, wijzig, exporteer, neemOver, startSync, sync } from './store.js';
+import { S, wijzig, exporteer, neemOver } from './store.js';
+import { account, verbindMet } from './samenwerken.js';
+import { verbindingsStaat } from './kop.js';
 import { getFormation } from '../lib/formations.js';
 import { stand, plusMin, verloop, goalMinuut } from '../lib/score.js';
 import { plusMinLabel } from './scherm-live.js';
 
-export function schermArchief() {
+export function schermArchief(ganaar) {
   const wrap = h('div', {});
 
   if (!S.archief.length) {
@@ -19,6 +21,8 @@ export function schermArchief() {
 
   wrap.appendChild(h('div', { class: 'tussenkop' }, 'Instellingen'));
   wrap.appendChild(instellingenKaart());
+  wrap.appendChild(h('div', { class: 'tussenkop' }, 'Samenwerken'));
+  wrap.appendChild(samenwerkKaart(ganaar));
   wrap.appendChild(overKaart());
   return wrap;
 }
@@ -89,35 +93,59 @@ function instellingenKaart() {
       ...[['auto', 'Automatisch'], ['licht', 'Licht'], ['donker', 'Donker']].map(([v, l]) =>
         h('option', { value: v, selected: S.instellingen.thema === v }, l)))));
 
+  const gedeeld = account.modus === 'team';
   kaart.appendChild(h('div', { class: 'tussenkop' }, 'Gegevens'));
   kaart.appendChild(h('div', { class: 'knoprij' },
     h('button', { class: 'knop klein', onclick: () => {
       downloadBestand(`wisselschema-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(exporteer(), null, 2));
       melding('Back-up gedownload');
     } }, 'Back-up downloaden'),
-    h('button', { class: 'knop klein stil gevaar', onclick: () => bevestig('Alles wissen?',
-      'Team, wedstrijd en archief worden verwijderd. Dit kun je niet ongedaan maken.',
-      () => { wijzig(() => { neemOver({ team: { naam: 'Mijn team', spelers: [] }, wedstrijd: null, archief: [] }); }); melding('Alles gewist'); },
-      { knop: 'Alles wissen', gevaar: true }) }, 'Alles wissen')));
+    h('button', { class: 'knop klein stil gevaar', onclick: () => bevestig(gedeeld ? 'Teamgegevens wissen?' : 'Alles wissen?',
+      gedeeld
+        ? `Spelers, wedstrijd en archief van ${S.team.naam} worden gewist, voor alle trainers van dit team. Dit kun je niet ongedaan maken.`
+        : 'Team, wedstrijd en archief worden verwijderd. Dit kun je niet ongedaan maken.',
+      () => {
+        wijzig(() => { neemOver({ team: { naam: gedeeld ? S.team.naam : 'Mijn team', spelers: [] }, wedstrijd: null, archief: [] }); });
+        melding(gedeeld ? 'Teamgegevens gewist' : 'Alles gewist');
+      },
+      { knop: gedeeld ? 'Wissen' : 'Alles wissen', gevaar: true }) }, gedeeld ? 'Teamgegevens wissen' : 'Alles wissen')));
+  return kaart;
+}
 
-  kaart.appendChild(h('div', { class: 'tussenkop' }, 'Synchroniseren'));
-  kaart.appendChild(h('p', { class: 'uitleg' },
-    sync.actief
-      ? `Verbonden met ${sync.adres}. Je team staat ook op de server, zodat je hem op je tablet terugvindt.`
-      : 'Optioneel. Draai je de app vanaf een server met opslag (zoals de Home Assistant-add-on), vul dan het adres in. Laat leeg om alles alleen op dit apparaat te houden.'));
-  const adresVeld = h('input', { type: 'text', value: S.instellingen.syncUrl || '', placeholder: 'https://wisselschema.thuis/api/state' });
+function samenwerkKaart(ganaar) {
+  const kaart = h('div', { class: 'kaart' });
+  if (account.modus === 'team') {
+    const team = account.teams.find((t) => t.id === account.teamId);
+    const anderen = (team?.leden || []).filter((l) => l.id !== account.gebruiker?.id).map((l) => l.naam);
+    let host = account.server;
+    try { host = new URL(account.server).host; } catch (e) { /* laat het adres staan */ }
+    kaart.appendChild(h('p', { class: 'uitleg', style: { marginTop: '0' } },
+      `Ingelogd als ${account.gebruiker?.naam} op ${host}. `,
+      team ? (anderen.length ? `${team.naam} deel je met ${anderen.join(', ')}.` : `Je bent de enige trainer van ${team.naam}.`) : ''));
+    kaart.appendChild(h('div', { class: 'strook' },
+      h('div', { class: 'kop2' }, 'Verbinding', h('small', {}, verbindingsStaat().tekst)),
+      h('i', { class: `stip los ${verbindingsStaat().klasse}` })));
+    if (account.gebruiker?.beheerder) {
+      kaart.appendChild(h('button', { class: 'knop klein', style: { marginTop: '10px' }, onclick: () => ganaar('beheer') }, 'Club beheren'));
+    }
+    return kaart;
+  }
+  kaart.appendChild(h('p', { class: 'uitleg', style: { marginTop: '0' } },
+    'Samen met andere trainers aan hetzelfde team werken, ook tijdens de wedstrijd? Dat kan met een server, zoals de Home Assistant-add-on. Vul het adres in; daarna log je in.'));
+  const adresVeld = h('input', { type: 'text', value: S.instellingen.syncUrl || '', placeholder: 'https://wisselschema.jouwclub.nl',
+    autocapitalize: 'none', spellcheck: 'false' });
   kaart.appendChild(adresVeld);
   kaart.appendChild(h('button', { class: 'knop klein', style: { marginTop: '8px' }, onclick: async () => {
-    wijzig((s) => { s.instellingen.syncUrl = adresVeld.value.trim(); });
-    melding(await startSync() ? 'Verbonden' : 'Geen verbinding - de app werkt gewoon lokaal door');
-  } }, 'Verbinding testen'));
+    if (!(await verbindMet(adresVeld.value))) melding('Geen wisselschema-server gevonden op dat adres');
+  } }, 'Verbinden'));
   return kaart;
 }
 
 function overKaart() {
   return h('div', { class: 'kaart' },
     h('h3', {}, 'Over deze app'),
-    h('p', { class: 'uitleg', style: { marginBottom: '4px' } },
-      'Het wisselschema draait volledig in je browser. Je gegevens blijven op je eigen apparaat staan; er wordt niets verstuurd tenzij je zelf een synchronisatieadres invult.'),
+    h('p', { class: 'uitleg', style: { marginBottom: '4px' } }, account.modus === 'team'
+      ? 'Het wisselschema draait in je browser en werkt ook zonder bereik. Je team staat op de server van je club; wat je zonder verbinding doet, gaat mee zodra er weer bereik is.'
+      : 'Het wisselschema draait volledig in je browser. Je gegevens blijven op je eigen apparaat staan; er wordt niets verstuurd tenzij je zelf met een server verbindt.'),
     h('p', { class: 'mini' }, 'Werkt zonder internet. Sla de pagina op of zet hem op je beginscherm.'));
 }

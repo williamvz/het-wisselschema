@@ -1,0 +1,20 @@
+configuration:
+  allow_cors:
+    name: Allow the standalone app
+    description: >-
+      Let the standalone index.html (from another address, or from disk)
+      connect to this server. Logging in is still required.
+  public_url:
+    name: Public address
+    description: >-
+      The address coaches use to reach the app, e.g.
+      https://wisselschema.yourclub.org/. Used in the message you send a new
+      coach.
+  reset_password:
+    name: Reset password
+    description: >-
+      Lost the administrator password? Turn this on and restart the add-on.
+      The log then shows a recovery code; enter it in the app under
+      "Wachtwoord vergeten?". Turn it off again afterwards.
+network:
+  8099/tcp: Direct access, for your own domain (with the app's own accounts)

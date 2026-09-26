@@ -57,6 +57,11 @@ export function initialen(naam) {
   return (d.length > 1 ? d[0][0] + d[d.length - 1][0] : d[0].slice(0, 2)).toUpperCase();
 }
 export const voornaam = (naam) => String(naam || '').trim().split(/\s+/)[0] || '?';
+/** Voor teams is het getal het herkenbare deel: JO9-1 wordt "9-1", JO11-2 "11-2". */
+export function teamInitialen(naam) {
+  const m = /\d[\w-]*/.exec(String(naam || ''));
+  return m ? m[0].slice(0, 4) : initialen(naam);
+}
 
 export const datumTekst = (iso) => {
   try {

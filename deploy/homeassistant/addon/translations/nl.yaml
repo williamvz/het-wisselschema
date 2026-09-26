@@ -1,0 +1,20 @@
+configuration:
+  allow_cors:
+    name: Losse app laten verbinden
+    description: >-
+      Laat de losse index.html (van een ander adres, of van schijf) ook met
+      deze server verbinden. Inloggen blijft nodig.
+  public_url:
+    name: Openbaar adres
+    description: >-
+      Het adres waarop trainers de app bereiken, bijvoorbeeld
+      https://wisselschema.jouwclub.nl/. Komt in het berichtje dat je een
+      nieuwe trainer stuurt.
+  reset_password:
+    name: Wachtwoord herstellen
+    description: >-
+      Wachtwoord van de beheerder kwijt? Zet dit aan en start de add-on
+      opnieuw. In het logboek staat dan een herstelcode; die vul je in de app
+      in onder "Wachtwoord vergeten?". Zet het daarna weer uit.
+network:
+  8099/tcp: Rechtstreekse toegang, voor een eigen domein (met de accounts van de app)
