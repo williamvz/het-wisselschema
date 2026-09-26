@@ -1,17 +1,16 @@
 name: Het Wisselschema
-version: "2.0.0"
+version: "2.0.1"
 slug: wisselschema
 description: Wisselschema-assistent voor jeugdvoetbal - maakt het schema, bewaakt de wissels en herplant bij uitval.
 url: https://github.com/williamvz/het-wisselschema
+# De 32-bits varianten (armv7, armhf, i386) zijn in Home Assistant verouderd.
 arch:
   - aarch64
   - amd64
-  - armv7
-  - armhf
-  - i386
 startup: application
 boot: auto
-init: false
+# Geen `init: false`: het Node-image heeft geen eigen init-systeem, dus Docker
+# zet er een voor, die signalen netjes aan de server doorgeeft.
 
 # Via ingress verschijnt de app in de zijbalk van Home Assistant, met de
 # inlog van Home Assistant ervoor. Daarbinnen heeft de app zijn eigen

@@ -1,5 +1,13 @@
 # Wijzigingen
 
+## 2.0.1
+
+- Bouwt weer op de huidige Home Assistant. Die geeft bij het bouwen geen
+  basis-image meer mee; de app gebruikt nu zelf het officiële Node-image
+  (Node 22 op Alpine), zonder extra pakketten.
+- Alleen nog voor 64-bits apparaten (aarch64 en amd64): de 32-bits varianten
+  zijn in Home Assistant verouderd.
+
 ## 2.0.0
 
 - Accounts en teams. Een beheerder maakt trainers en teams aan en koppelt ze
