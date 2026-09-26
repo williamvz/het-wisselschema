@@ -2,7 +2,7 @@
 // waar het langs de lijn om draait: "wissel gedaan" en "speler eruit".
 
 import { h, icoon, toonSheet, bevestig, melding, mmss, minutenTekst, piep, tril, voornaam } from './ui.js';
-import { S, wijzig, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal } from './store.js';
+import { S, wijzig, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal } from './store.js';
 import { getFormation } from '../lib/formations.js';
 import { totaleSpeeltijd } from '../lib/schedule.js';
 import { tekenVeld } from './veld.js';
@@ -85,8 +85,9 @@ export function schermLive(ganaar, herteken) {
       '🚑 Speler kan niet verder'),
     h('button', { class: 'knop', onclick: () => erbijSheet(p) }, 'Speler erbij'),
     h('button', { class: 'knop', onclick: () => ganaar('schema') }, 'Heel schema'),
-    kanTerug() ? h('button', { class: 'knop', onclick: () => { draaiTerug(); melding('Laatste stap teruggedraaid'); } },
-      icoon('terug', 17), 'Ongedaan') : null));
+    kanTerug() ? h('button', { class: 'knop', onclick: () => {
+      melding(draaiTerug() ? 'Laatste stap teruggedraaid' : 'Er is niets meer terug te draaien');
+    } }, icoon('terug', 17), 'Ongedaan') : null));
 
   // ------------------------------------------------------------- speeltijd
   const tijdKaart = h('div', { class: 'kaart', style: { marginTop: '12px' } });
@@ -141,9 +142,9 @@ export function schermLive(ganaar, herteken) {
 
     // Automatisch stoppen aan het eind van een periode; de klok loopt in het
     // echt ook niet door tijdens het limonadekwartier.
-    const periodeEinde = (periode + 1) * w.periodeMin * 60;
-    if (loopt && t >= periodeEinde && periodeEinde > (w.klok.laatsteGrens ?? -1)) {
-      klokAutoPauze(periodeEinde, periodeEinde >= totaal ? 'einde' : 'rust');
+    const grens = periodeGrens(w, t);
+    if (grens !== null) {
+      klokAutoPauze(grens, grens >= totaal ? 'einde' : 'rust');
       sein();
     }
 

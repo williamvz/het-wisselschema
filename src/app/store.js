@@ -110,12 +110,12 @@ export function wijzig(fn, opties = {}) {
   const voor = opties.terugdraaibaar || teamOpslag ? teamJson() : null;
   const tijden = tijdInfo();
   const uitkomst = fn(S);
-  tijdstempels(tijden);
+  tijdstempels(tijden, opties);
   if (voor !== null) {
     const na = teamJson();
     if (na !== voor) {
       if (opties.terugdraaibaar) {
-        momenten.push({ voor, na });
+        momenten.push({ voor, na, wedstrijdId: S.wedstrijd?.id ?? null });
         if (momenten.length > 40) momenten.shift();
       }
       if (teamOpslag) teamOpslag.gewijzigd();
@@ -132,15 +132,20 @@ export function wijzig(fn, opties = {}) {
 // Als twee telefoons allebei de klok of het schema veranderden, wint de
 // laatste (zie samenvoegen.js). Daarvoor onthoudt de wedstrijd wanneer dat
 // was. Automatisch, zodat geen enkele knop het kan vergeten.
+//
+// Behalve wat de klok vanzelf doet (`vanzelf`): stoppen aan het eind van een
+// periode is geen beslissing van een trainer. Een telefoon die een tijd
+// offline stond en de oude klok zelf heeft laten doorlopen, mag daarmee
+// niet winnen van wat een collega intussen echt met de klok deed.
 function tijdInfo() {
   const w = S.wedstrijd;
   return w ? { id: w.id, klok: JSON.stringify(w.klok ?? null), schema: JSON.stringify([w.blokken ?? null, w.pins ?? null]) } : null;
 }
-function tijdstempels(voor) {
+function tijdstempels(voor, { vanzelf = false } = {}) {
   const w = S.wedstrijd;
   if (!w) return;
   const nieuw = !voor || voor.id !== w.id;
-  if (w.klok && (nieuw || JSON.stringify(w.klok) !== voor.klok)) w.klok = { ...w.klok, bijgewerkt: nu() };
+  if (w.klok && !vanzelf && (nieuw || JSON.stringify(w.klok) !== voor.klok)) w.klok = { ...w.klok, bijgewerkt: nu() };
   if (nieuw || JSON.stringify([w.blokken ?? null, w.pins ?? null]) !== voor.schema) w.planMs = nu();
 }
 
@@ -167,8 +172,11 @@ function zetTeam(bron) {
  * eigen stap: ongedaan maken blijft dan gewoon werken.
  */
 export function laadTeamDeel(doc, { vanAfstand = false } = {}) {
+  const wedstrijdId = S.wedstrijd?.id ?? null;
   zetTeam(doc);
-  if (!vanAfstand) momenten.length = 0;
+  // Een ander team, of een andere wedstrijd van een collega: wat je eerder
+  // deed, is dan niet meer terug te draaien.
+  if (!vanAfstand || (S.wedstrijd?.id ?? null) !== wedstrijdId) momenten.length = 0;
   teller += 1;
   planCache = null;
   bewaarLater();
@@ -180,10 +188,14 @@ export function laadTeamDeel(doc, { vanAfstand = false } = {}) {
 // weg wat deze stap veranderde, en laat staan wat er daarna gebeurde - ook
 // als dat de goal van een collega op een andere telefoon was.
 const momenten = [];
-export function kanTerug() { return momenten.length > 0; }
+// Alleen stappen in de wedstrijd die nu open staat: na het afronden van de
+// vorige draai je die niet meer terug vanuit de nieuwe.
+const actueel = (m) => m.wedstrijdId === (S.wedstrijd?.id ?? null);
+export function kanTerug() { return momenten.length > 0 && actueel(momenten[momenten.length - 1]); }
 export function draaiTerug() {
   const m = momenten.pop();
   if (!m) return false;
+  if (!actueel(m)) { momenten.length = 0; return false; }
   const tijden = tijdInfo();
   zetTeam(voegSamen(JSON.parse(m.na), JSON.parse(m.voor), teamDeel()));
   tijdstempels(tijden);
@@ -213,6 +225,9 @@ export function gebruikTeamOpslag(opslag) {
 /** De gegevens die op dit apparaat stonden van voor het inloggen (of null). */
 export function lokaleGegevens() { return teamOpslag ? lokaal : null; }
 
+/** Staat er een team van de server open? Dan is de teamnaam die van de club. */
+export function metServer() { return !!teamOpslag; }
+
 let bewaarTimer = null;
 function bewaarLater() {
   clearTimeout(bewaarTimer);
@@ -230,7 +245,13 @@ export function exporteer() {
 }
 export function neemOver(data) {
   if (!data || typeof data !== 'object') return false;
-  if (data.team) S.team = { naam: data.team.naam || 'Mijn team', spelers: (data.team.spelers || []).map((p) => ({ ...nieuweSpeler(), ...p })) };
+  if (data.team) {
+    S.team = {
+      // Een back-up terugzetten in een clubteam hernoemt dat team niet.
+      naam: teamOpslag ? S.team.naam : (data.team.naam || 'Mijn team'),
+      spelers: (data.team.spelers || []).map((p) => ({ ...nieuweSpeler(), ...p })),
+    };
+  }
   if ('wedstrijd' in data) S.wedstrijd = data.wedstrijd;
   if (data.archief) S.archief = data.archief;
   if (data.instellingen) S.instellingen = { ...S.instellingen, ...data.instellingen };
@@ -323,16 +344,36 @@ export function klokStart() {
     if (s.wedstrijd.status === 'opzet') s.wedstrijd.status = 'bezig'; });
 }
 export function klokPauze(reden = null) {
-  wijzig((s) => { s.wedstrijd.klok = { verstreken: klokStand(s.wedstrijd), loopt: false, sindsMs: null, pauzeReden: reden }; });
+  wijzig((s) => { s.wedstrijd.klok = { ...s.wedstrijd.klok, verstreken: klokStand(s.wedstrijd), loopt: false, sindsMs: null, pauzeReden: reden }; });
 }
 /** Periode afgelopen: klok precies op de grens zetten en stoppen, in één stap. */
 export function klokAutoPauze(grens, reden) {
   wijzig((s) => {
-    s.wedstrijd.klok = { verstreken: grens, loopt: false, sindsMs: null, pauzeReden: reden, laatsteGrens: grens };
-  });
+    s.wedstrijd.klok = { ...s.wedstrijd.klok, verstreken: grens, loopt: false, sindsMs: null, pauzeReden: reden, laatsteGrens: grens };
+  }, { vanzelf: true });
 }
 export function klokZet(sec) {
-  wijzig((s) => { s.wedstrijd.klok = { ...s.wedstrijd.klok, verstreken: Math.max(0, sec), sindsMs: s.wedstrijd.klok.loopt ? nu() : null }; });
+  wijzig((s) => {
+    const w = s.wedstrijd;
+    const nieuw = Math.max(0, sec);
+    // Wie de klok verzet, heeft de grenzen tot daar zelf al gehad: niet
+    // meteen weer stoppen op een grens waar je net overheen sprong.
+    w.klok = { ...w.klok, verstreken: nieuw, sindsMs: w.klok.loopt ? nu() : null, laatsteGrens: vorigeGrens(w, nieuw) };
+  });
+}
+
+const vorigeGrens = (w, t) => Math.floor(t / (w.periodeMin * 60)) * w.periodeMin * 60;
+
+/**
+ * Moet de klok nu vanzelf stoppen, omdat hij over het eind van een periode
+ * liep? Dan die grens, anders null. Ook als de telefoon even in je zak zat
+ * en de grens al een tijdje voorbij is: de scheidsrechter floot toen ook.
+ */
+export function periodeGrens(w, t = klokStand(w)) {
+  if (!w || !w.klok || !w.klok.loopt || !(w.periodeMin > 0)) return null;
+  const grens = Math.min(totaleSpeeltijd(w), vorigeGrens(w, t));
+  const gehad = w.klok.laatsteGrens ?? vorigeGrens(w, w.klok.verstreken || 0);
+  return grens > 0 && grens > gehad ? grens : null;
 }
 
 // ---------------------------------------------------------------- archiveren

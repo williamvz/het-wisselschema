@@ -112,15 +112,17 @@ test('twee telefoons: wie op een oude versie schrijft, krijgt terug wat er veran
   const begin = await api(s.basis, `${pad}?na=0`, { token: w.token });
   assert.equal(begin.versie, 1);
   assert.deepEqual(Object.keys(begin.delen).sort(), ['archief', 'team', 'wedstrijd']);
+  const { tijdperk } = begin;
+  assert.ok(tijdperk, 'de server zegt uit welk tijdperk deze versie is');
 
   const wedstrijd = { id: 'w1', doelpunten: [{ id: 'g1', wie: 'wij', sec: 60, opVeld: [] }] };
-  const een = await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { basisVersie: 1, delen: { wedstrijd } } });
+  const een = await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { basisVersie: 1, tijdperk, delen: { wedstrijd } } });
   assert.equal(een.status, 200);
   assert.equal(een.versie, 2);
 
   // De andere telefoon schrijft nog op versie 1.
   const botsing = await api(s.basis, pad, { methode: 'PUT', token: w.token,
-    data: { basisVersie: 1, delen: { team: { naam: 'JO9-1', spelers: [{ id: 's1', naam: 'Daan' }] } } } });
+    data: { basisVersie: 1, tijdperk, delen: { team: { naam: 'JO9-1', spelers: [{ id: 's1', naam: 'Daan' }] } } } });
   assert.equal(botsing.status, 409);
   assert.equal(botsing.versie, 2);
   assert.deepEqual(Object.keys(botsing.delen), ['wedstrijd'], 'alleen wat sinds versie 1 veranderde');
@@ -136,13 +138,19 @@ test('twee telefoons: wie op een oude versie schrijft, krijgt terug wat er veran
   assert.equal(onbekend.volledig, true);
   assert.equal(onbekend.versie, 2);
 
+  // Wie een tijdperk noemt dat de server niet kent (van voor een herstart),
+  // krijgt alles terug, ook als het versienummer toevallig klopt.
+  const oudTijdperk = await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { basisVersie: 2, tijdperk: 'oud', delen: { archief: [] } } });
+  assert.equal(oudTijdperk.status, 409);
+  assert.equal(oudTijdperk.volledig, true);
+
   // De teamnaam uit de app wordt ook de naam in het beheer.
-  await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { basisVersie: 2, delen: { team: { naam: 'JO9-1 (zaterdag)', spelers: [] } } } });
+  await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { basisVersie: 2, tijdperk, delen: { team: { naam: 'JO9-1 (zaterdag)', spelers: [] } } } });
   assert.equal((await api(s.basis, '/api/ik', { token: w.token })).teams[0].naam, 'JO9-1 (zaterdag)');
 
   // Onzin wordt geweigerd.
-  assert.equal((await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { basisVersie: 3, delen: { team: 'x' } } })).status, 400);
-  assert.equal((await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { basisVersie: 3, delen: { geheim: 1 } } })).status, 400);
+  assert.equal((await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { basisVersie: 3, tijdperk, delen: { team: 'x' } } })).status, 400);
+  assert.equal((await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { basisVersie: 3, tijdperk, delen: { geheim: 1 } } })).status, 400);
   assert.equal((await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { delen: {} } })).status, 400);
 });
 
@@ -156,11 +164,12 @@ test('een wachtend verzoek komt terug zodra een ander iets bewaart, en ziet wie 
   assert.equal(d.status, 200);
   const pad = `/api/teams/${team.id}`;
 
+  const { tijdperk } = await api(s.basis, `${pad}?na=0`, { token: w.token });
   const start = Date.now();
   const wachten = api(s.basis, `${pad}?na=1&wacht=20`, { token: dennis.token });
   await new Promise((r) => setTimeout(r, 300));
   const bewaard = await api(s.basis, pad, { methode: 'PUT', token: w.token,
-    data: { basisVersie: 1, delen: { wedstrijd: { id: 'w1', doelpunten: [] } } } });
+    data: { basisVersie: 1, tijdperk, delen: { wedstrijd: { id: 'w1', doelpunten: [] } } } });
   assert.deepEqual(bewaard.aanwezig.map((a) => a.naam), ['Dennis'], 'William ziet dat Dennis meekijkt');
 
   const antwoord = await wachten;
@@ -260,4 +269,129 @@ test('wachtwoord kwijt: met de herstelcode uit het logboek, één keer', async (
   assert.equal((await api(s.basis, '/api/status')).herstellen, false);
   const inlog = await api(s.basis, '/api/inloggen', { methode: 'POST', data: { gebruikersnaam: 'william', wachtwoord: 'nieuw-geheim-1' } });
   assert.equal(inlog.status, 200);
+});
+
+// ------------------------------------------------ na de review: aanvallen en randgevallen
+
+test('honderd pogingen tegelijk komen niet langs de teller', async (t) => {
+  const s = await metServer(t);
+  await richtIn(s.basis);
+  const poging = (wachtwoord) => api(s.basis, '/api/inloggen', { methode: 'POST', data: { gebruikersnaam: 'william', wachtwoord } });
+  const uitslagen = await Promise.all([...Array(100)].map((_, i) => poging(i === 99 ? 'geheim-123' : `fout-${i}`)));
+  const statussen = uitslagen.map((u) => u.status);
+  assert.ok(statussen.filter((x) => x === 401).length <= 10, `hooguit tien echte pogingen (${statussen.filter((x) => x === 401).length})`);
+  assert.ok(statussen.filter((x) => x === 429 || x === 503).length >= 89, 'de rest wordt geweigerd');
+  assert.notEqual(statussen[99], 200, 'het goede wachtwoord achteraan de rij komt er niet doorheen');
+});
+
+test('wie op één adres raadt, sluit de trainer op een ander adres niet buiten', async (t) => {
+  const s = await metServer(t);
+  await richtIn(s.basis);
+  const poging = (wachtwoord, adres) => api(s.basis, '/api/inloggen', { methode: 'POST', adres, data: { gebruikersnaam: 'william', wachtwoord } });
+  for (let i = 0; i < 10; i++) assert.equal((await poging(`fout-${i}`, '10.0.0.66')).status, 401);
+  assert.equal((await poging('geheim-123', '10.0.0.66')).status, 429, 'de rader is geblokkeerd');
+  assert.equal((await poging('geheim-123', '10.0.0.7')).status, 200, 'de trainer zelf kan er gewoon in');
+
+  // Van veel adressen tegelijk raden loopt tegen het totaal aan.
+  for (let a = 0; a < 5; a++) for (let i = 0; i < 10; i++) await poging(`fout-${a}-${i}`, `10.1.${a}.1`);
+  assert.equal((await poging('geheim-123', '10.9.9.9')).status, 429, 'na vijftig foute pogingen in totaal is het even klaar');
+});
+
+test('onzinnige gebruikersnamen kosten niets en worden niet onthouden', async (t) => {
+  const s = await metServer(t);
+  await richtIn(s.basis);
+  const t0 = Date.now();
+  for (let i = 0; i < 30; i++) {
+    const r = await api(s.basis, '/api/inloggen', { methode: 'POST', data: { gebruikersnaam: `${'x'.repeat(8000)}${i}`, wachtwoord: 'x' } });
+    assert.equal(r.status, 401);
+  }
+  assert.ok(Date.now() - t0 < 3000, 'zonder te rekenen afgewezen');
+  const groot = await fetch(`${s.basis}/api/inloggen`, { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ gebruikersnaam: 'x'.repeat(40000), wachtwoord: 'x' }) });
+  assert.equal(groot.status, 413, 'inloggen hoeft nooit meer dan een paar kilobyte');
+  assert.equal((await api(s.basis, '/api/inloggen', { methode: 'POST', data: { gebruikersnaam: 'william', wachtwoord: 'geheim-123' } })).status, 200);
+});
+
+test('een map opvragen geeft netjes een 404 en laat de verbinding niet hangen', async (t) => {
+  const s = await metServer(t);
+  for (const pad of ['/%2F', '/%2e/', '//']) {
+    const r = await fetch(`${s.basis}${pad}`, { signal: AbortSignal.timeout(3000) });
+    assert.ok([200, 400, 404].includes(r.status), `${pad}: ${r.status}`);
+    await r.arrayBuffer();
+  }
+});
+
+test('een onleesbaar teambestand wordt nooit stilletjes een leeg team', async (t) => {
+  let s = await metServer(t);
+  const w = await richtIn(s.basis);
+  const { team } = await api(s.basis, '/api/teams', { methode: 'POST', token: w.token, data: { naam: 'JO9-1', leden: [w.gebruiker.id] } });
+  const pad = `/api/teams/${team.id}`;
+  const bewaard = await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { basisVersie: 1, tijdperk: (await api(s.basis, `${pad}?na=0`, { token: w.token })).tijdperk,
+    delen: { team: { naam: 'JO9-1', spelers: [{ id: 'a', naam: 'Daan' }, { id: 'b', naam: 'Sem' }] } } } });
+  assert.equal(bewaard.status, 200);
+  const bestand = `${MAP}/teams/${team.id}.json`;
+  const goed = await readFile(bestand, 'utf8');
+
+  await s.stop({ opruimen: false });
+  const { writeFile } = await import('node:fs/promises');
+  await writeFile(bestand, '{ dit is kapot');
+  s = await startServer({ poort: POORT, map: MAP, schoon: false });
+  t.after(() => s.stop());
+  const sessie = await api(s.basis, '/api/inloggen', { methode: 'POST', data: { gebruikersnaam: 'william', wachtwoord: 'geheim-123' } });
+  assert.equal((await api(s.basis, `${pad}?na=0`, { token: sessie.token })).status, 503);
+  assert.equal((await api(s.basis, pad, { methode: 'PUT', token: sessie.token, data: { basisVersie: 1, delen: { archief: [] } } })).status, 503);
+  assert.equal(await readFile(bestand, 'utf8'), '{ dit is kapot', 'het bestand is niet overschreven');
+
+  // Bestand hersteld: het team is er weer, zonder herstart.
+  await writeFile(bestand, goed);
+  const terug = await api(s.basis, `${pad}?na=0`, { token: sessie.token });
+  assert.equal(terug.status, 200);
+  assert.equal(terug.delen.team.spelers.length, 2);
+});
+
+test('een ongeldige teamnaam verandert ook de leden niet', async (t) => {
+  const s = await metServer(t);
+  const w = await richtIn(s.basis);
+  const { team } = await api(s.basis, '/api/teams', { methode: 'POST', token: w.token, data: { naam: 'JO9-1', leden: [w.gebruiker.id] } });
+  assert.equal((await api(s.basis, `/api/teams/${team.id}`, { methode: 'PATCH', token: w.token, data: { leden: [], naam: '   ' } })).status, 400);
+  const beheer = await api(s.basis, '/api/beheer', { token: w.token });
+  assert.deepEqual(beheer.teams[0].leden, [w.gebruiker.id]);
+});
+
+test('elke wijziging krijgt haar eigen versie terug, ook als het schrijven traag is', async () => {
+  // Rechtstreeks op de club, met een schijf die er 150 ms over doet.
+  const { Club } = await import('../deploy/homeassistant/addon/club.mjs');
+  const { rm: weg, mkdir: maak } = await import('node:fs/promises');
+  const map = '.tmptest-traag';
+  await weg(map, { recursive: true, force: true });
+  await maak(map, { recursive: true });
+  try {
+    const club = await new Club(map, { inrichtcode: 'TEST-CODE' }).laad();
+    const { gebruiker } = await club.richtIn({ code: 'TEST-CODE', naam: 'W', gebruikersnaam: 'william', wachtwoord: 'geheim-123' });
+    const t = await club.maakTeam({ naam: 'JO9-1', leden: [gebruiker.id] });
+    const echt = club.schrijf.bind(club);
+    club.schrijf = async (pad, inhoud) => { await new Promise((r) => setTimeout(r, 150)); return echt(pad, inhoud); };
+
+    const a = club.bewaarDelen(t.id, 1, { wedstrijd: { id: 'w1' } }, gebruiker, club.tijdperk);
+    await new Promise((r) => setTimeout(r, 30));
+    const b = club.bewaarDelen(t.id, 2, { archief: [{ id: 'x' }] }, gebruiker, club.tijdperk);
+    assert.deepEqual([(await a).versie, (await b).versie], [2, 3], 'niet allebei 3');
+
+    // Een wijziging uit een ander tijdperk (van voor een herstart) krijgt alles terug.
+    const oud = await club.bewaarDelen(t.id, 3, { archief: [] }, gebruiker, 'ander-tijdperk');
+    assert.equal(oud.conflict.volledig, true);
+    assert.equal(oud.conflict.tijdperk, club.tijdperk);
+  } finally {
+    await weg(map, { recursive: true, force: true });
+  }
+});
+
+test('de herstelcode werkt ook met verzoeken tegelijk maar één keer', async (t) => {
+  const s = await metServer(t, { env: { WISSELSCHEMA_HERSTELCODE: 'HERS-TEL3' } });
+  const w = await richtIn(s.basis);
+  await api(s.basis, '/api/gebruikers', { methode: 'POST', token: w.token, data: { naam: 'Dennis', gebruikersnaam: 'dennis', wachtwoord: 'bal-doel-1234' } });
+  const herstel = (gebruikersnaam) => api(s.basis, '/api/herstellen', { methode: 'POST',
+    data: { code: 'HERS-TEL3', gebruikersnaam, wachtwoord: 'overgenomen-1' } });
+  const [a, b] = await Promise.all([herstel('william'), herstel('dennis')]);
+  assert.deepEqual([a.status, b.status].sort(), [200, 403]);
 });

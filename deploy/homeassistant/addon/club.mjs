@@ -30,9 +30,11 @@ const MINUUT = 60 * 1000;
 const DAG = 24 * 60 * MINUUT;
 const SESSIEDUUR = 180 * DAG;
 const POGINGVENSTER = 15 * MINUUT;
-const MAX_POGINGEN = 10;
+const POGINGEN_PER_ADRES = 10;  // per gebruikersnaam en per adres
+const POGINGEN_PER_NAAM = 50;   // per gebruikersnaam, alle adressen samen
 const AANWEZIG_MS = 45 * 1000;
 const SCRYPT = { N: 16384, r: 8, p: 1, lengte: 32 };
+const GEBRUIKERSNAAM = /^[a-z0-9][a-z0-9._@-]{1,39}$/;
 
 /** Fout met een HTTP-status en een tekst die de app zo kan tonen. */
 export class Fout extends Error {
@@ -43,10 +45,30 @@ export class Fout extends Error {
 const maakId = (voor) => `${voor}${randomBytes(5).toString('hex')}`;
 const hashToken = (token) => createHash('sha256').update(token).digest('hex');
 
+// Een wachtwoord controleren kost bewust rekenwerk, en gebeurt op dezelfde
+// werkthreads die ook de bestanden wegschrijven. Daarom hooguit twee
+// tegelijk, met een korte rij erachter: wie de server met inlogpogingen
+// bestookt, legt daarmee het bewaren van de teams niet stil.
+const HASH_TEGELIJK = 2;
+const HASH_RIJ = 16;
+const hashRij = { bezig: 0, wachtend: [] };
+async function metHashPlek(fn) {
+  if (hashRij.bezig < HASH_TEGELIJK) hashRij.bezig += 1;
+  else {
+    if (hashRij.wachtend.length >= HASH_RIJ) throw new Fout(503, 'De server is even druk. Probeer het zo opnieuw.');
+    await new Promise((klaar) => hashRij.wachtend.push(klaar)); // krijgt de plek van wie klaar is
+  }
+  try { return await fn(); }
+  finally {
+    const volgende = hashRij.wachtend.shift();
+    if (volgende) volgende(); else hashRij.bezig -= 1;
+  }
+}
+
 async function hashWachtwoord(wachtwoord) {
   const zout = randomBytes(16);
   const { N, r, p, lengte } = SCRYPT;
-  const sleutel = await scrypt(wachtwoord.normalize('NFC'), zout, lengte, { N, r, p, maxmem: 64 * 1024 * 1024 });
+  const sleutel = await metHashPlek(() => scrypt(wachtwoord.normalize('NFC'), zout, lengte, { N, r, p, maxmem: 64 * 1024 * 1024 }));
   return `scrypt$${N}$${r}$${p}$${zout.toString('base64')}$${sleutel.toString('base64')}`;
 }
 
@@ -54,8 +76,8 @@ async function wachtwoordKlopt(wachtwoord, opgeslagen) {
   const [soort, N, r, p, zout, hash] = String(opgeslagen).split('$');
   if (soort !== 'scrypt' || !zout || !hash) return false;
   const verwacht = Buffer.from(hash, 'base64');
-  const sleutel = await scrypt(wachtwoord.normalize('NFC'), Buffer.from(zout, 'base64'), verwacht.length,
-    { N: Number(N), r: Number(r), p: Number(p), maxmem: 64 * 1024 * 1024 });
+  const sleutel = await metHashPlek(() => scrypt(String(wachtwoord).slice(0, 200).normalize('NFC'), Buffer.from(zout, 'base64'),
+    verwacht.length, { N: Number(N), r: Number(r), p: Number(p), maxmem: 64 * 1024 * 1024 }));
   return timingSafeEqual(sleutel, verwacht);
 }
 
@@ -80,7 +102,7 @@ function schoneNaam(naam, wat = 'naam') {
 
 function schoneGebruikersnaam(naam) {
   const n = String(naam ?? '').trim().toLowerCase();
-  if (!/^[a-z0-9][a-z0-9._@-]{1,39}$/.test(n)) {
+  if (!GEBRUIKERSNAAM.test(n)) {
     throw new Fout(400, 'Een gebruikersnaam is 2 tot 40 tekens: kleine letters, cijfers, punt, streepje of @.');
   }
   return n;
@@ -144,6 +166,11 @@ export class Club {
     this.schrijfRij = new Map();
     this.code = inrichtcode ? schoneCode(inrichtcode) : null;
     this.bezigMetInrichten = false;
+    // Nieuw bij elke start. Is de server herstart - of is er een back-up
+    // teruggezet - dan klopt de versiegeschiedenis die een telefoon kent
+    // misschien niet meer; aan een ander tijdperk ziet de app dat hij alles
+    // opnieuw moet ophalen en samenvoegen.
+    this.tijdperk = randomBytes(6).toString('hex');
     this.herstel = herstelcode === true ? maakCode() : herstelcode ? schoneCode(herstelcode) : null;
   }
 
@@ -186,11 +213,12 @@ export class Club {
   }
 
   /** Maakt de eerste beheerder aan. Kan alleen zolang er nog niemand is. */
-  async richtIn({ code, naam, gebruikersnaam, wachtwoord } = {}) {
+  async richtIn({ code, naam, gebruikersnaam, wachtwoord } = {}, adres = '?') {
     if (this.ingericht || this.bezigMetInrichten) throw new Fout(409, 'Deze server is al ingericht. Log in met je account.');
-    this.controleerPogingen('inrichten');
+    const sleutels = this.pogingSleutels('inrichten', adres);
+    this.controleerPogingen(sleutels);
     if (!codeKlopt(code, this.code)) {
-      this.telFout('inrichten');
+      this.telPoging(sleutels);
       throw new Fout(403, 'Die inrichtcode klopt niet. Je vindt hem in het logboek van de server.');
     }
     this.bezigMetInrichten = true;
@@ -220,35 +248,42 @@ export class Club {
    * beheerder die het zijne kwijt is. Wie bij het logboek kan, beheert de
    * server toch al. De code werkt één keer.
    */
-  async herstelWachtwoord({ code, gebruikersnaam, wachtwoord } = {}) {
-    this.controleerPogingen('herstellen');
+  async herstelWachtwoord({ code, gebruikersnaam, wachtwoord } = {}, adres = '?') {
+    const sleutels = this.pogingSleutels('herstellen', adres);
+    this.controleerPogingen(sleutels);
     if (!this.herstel || !codeKlopt(code, this.herstel)) {
-      this.telFout('herstellen');
+      this.telPoging(sleutels);
       throw new Fout(403, 'Die herstelcode klopt niet, of herstellen staat niet aan.');
     }
     const naam = String(gebruikersnaam ?? '').trim().toLowerCase();
     const g = this.data.gebruikers.find((x) => x.gebruikersnaam === naam);
     if (!g) throw new Fout(404, `Er is geen gebruiker "${naam}".`);
     controleerWachtwoord(wachtwoord);
-    await this.wijzigGebruiker(g.id, { wachtwoord }); // sluit ook alle sessies
+    // Nu al verbruiken: anders kan wie de code heeft, met verzoeken tegelijk
+    // meerdere wachtwoorden vervangen.
     this.herstel = null;
-    this.pogingen.delete(`inloggen:${naam}`);
+    await this.wijzigGebruiker(g.id, { wachtwoord }); // sluit ook alle sessies
+    for (const k of this.pogingSleutels(`inloggen:${naam}`, adres)) this.pogingen.delete(k);
     this.log(`wachtwoord hersteld voor ${naam}`);
     return this.nieuweSessie(g);
   }
 
   // ------------------------------------------------------------- sessies
-  async logIn(gebruikersnaam, wachtwoord) {
+  async logIn(gebruikersnaam, wachtwoord, adres = '?') {
     const naam = String(gebruikersnaam ?? '').trim().toLowerCase();
-    const sleutel = `inloggen:${naam}`;
-    this.controleerPogingen(sleutel);
+    const mis = () => new Fout(401, 'Onbekende gebruikersnaam of verkeerd wachtwoord.');
+    // Wat nooit een gebruikersnaam kan zijn, hoeft niet gecontroleerd of
+    // onthouden te worden.
+    if (!GEBRUIKERSNAAM.test(naam)) throw mis();
+    const sleutels = this.pogingSleutels(`inloggen:${naam}`, adres);
+    this.controleerPogingen(sleutels);
+    // Tellen vóór het rekenen, niet erna: anders komen honderd pogingen die
+    // tegelijk binnenkomen allemaal langs de teller.
+    this.telPoging(sleutels);
     const g = this.data.gebruikers.find((x) => x.gebruikersnaam === naam);
     const klopt = await wachtwoordKlopt(String(wachtwoord ?? ''), g ? g.wachtwoord : this.nepHash);
-    if (!g || !klopt) {
-      this.telFout(sleutel);
-      throw new Fout(401, 'Onbekende gebruikersnaam of verkeerd wachtwoord.');
-    }
-    this.pogingen.delete(sleutel);
+    if (!g || !klopt) throw mis();
+    this.telGoed(sleutels);
     return this.nieuweSessie(g);
   }
 
@@ -287,20 +322,43 @@ export class Club {
     this.data.sessies = this.data.sessies.filter((s) => !welke(s));
   }
 
-  controleerPogingen(sleutel) {
-    const p = this.pogingen.get(sleutel);
-    if (p && Date.now() - p.sinds < POGINGVENSTER && p.aantal >= MAX_POGINGEN) {
+  // Pogingen tellen we per adres én in totaal. Per adres, zodat een vreemde
+  // niet met tien foute wachtwoorden de echte trainer buitensluit; in
+  // totaal, zodat wie van veel adressen tegelijk raadt toch niet ver komt.
+  // (Het adres komt van Cloudflare of de proxy; wie de poort rechtstreeks
+  // bereikt kan het verzinnen, maar dan blijft het totaal staan.)
+  pogingSleutels(wat, adres) {
+    return [`${wat}@${String(adres).slice(0, 64)}`, wat];
+  }
+
+  controleerPogingen([perAdres, totaal]) {
+    const teVeel = (k, max) => {
+      const p = this.pogingen.get(k);
+      return p && Date.now() - p.sinds < POGINGVENSTER && p.aantal >= max;
+    };
+    if (teVeel(perAdres, POGINGEN_PER_ADRES) || teVeel(totaal, POGINGEN_PER_NAAM)) {
       throw new Fout(429, 'Te veel mislukte pogingen. Probeer het over een kwartier opnieuw.');
     }
   }
 
-  telFout(sleutel) {
-    if (this.pogingen.size > 5000) {
+  /** Het klopte: op dit adres weer bij nul, en in het totaal telt deze niet mee. */
+  telGoed([perAdres, totaal]) {
+    this.pogingen.delete(perAdres);
+    const p = this.pogingen.get(totaal);
+    if (p && p.aantal > 0) p.aantal -= 1;
+  }
+
+  telPoging(sleutels) {
+    if (this.pogingen.size > 10000) {
       for (const [k, p] of this.pogingen) if (Date.now() - p.sinds >= POGINGVENSTER) this.pogingen.delete(k);
+      // Nog steeds vol: de oudste eruit. Een Map onthoudt de volgorde.
+      for (const k of this.pogingen.keys()) { if (this.pogingen.size <= 8000) break; this.pogingen.delete(k); }
     }
-    const p = this.pogingen.get(sleutel);
-    if (!p || Date.now() - p.sinds >= POGINGVENSTER) this.pogingen.set(sleutel, { aantal: 1, sinds: Date.now() });
-    else p.aantal += 1;
+    for (const k of sleutels) {
+      const p = this.pogingen.get(k);
+      if (!p || Date.now() - p.sinds >= POGINGVENSTER) this.pogingen.set(k, { aantal: 1, sinds: Date.now() });
+      else p.aantal += 1;
+    }
   }
 
   // ----------------------------------------------------------- gebruikers
@@ -362,14 +420,15 @@ export class Club {
   }
 
   /** Je eigen wachtwoord wijzigen: eerst het huidige, met dezelfde pogingenteller als inloggen. */
-  async wijzigEigenWachtwoord(g, huidig, nieuw, sessie) {
+  async wijzigEigenWachtwoord(g, huidig, nieuw, sessie, adres = '?') {
     controleerWachtwoord(nieuw);
-    const sleutel = `inloggen:${g.gebruikersnaam}`;
-    this.controleerPogingen(sleutel);
+    const sleutels = this.pogingSleutels(`inloggen:${g.gebruikersnaam}`, adres);
+    this.controleerPogingen(sleutels);
+    this.telPoging(sleutels);
     if (!(await wachtwoordKlopt(String(huidig ?? ''), g.wachtwoord))) {
-      this.telFout(sleutel);
       throw new Fout(403, 'Je huidige wachtwoord klopt niet.');
     }
+    this.telGoed(sleutels);
     await this.wijzigGebruiker(g.id, { wachtwoord: nieuw }, sessie);
   }
 
@@ -436,11 +495,14 @@ export class Club {
 
   async wijzigTeam(id, { naam, leden } = {}) {
     const t = this.vindTeam(id);
-    if (leden !== undefined) t.leden = this.geldigeLeden(leden);
-    if (naam !== undefined) {
-      t.naam = schoneNaam(naam, 'teamnaam');
+    // Eerst alles controleren, dan pas iets veranderen.
+    const nieuweLeden = leden === undefined ? null : this.geldigeLeden(leden);
+    const nieuweNaam = naam === undefined ? null : schoneNaam(naam, 'teamnaam');
+    const doc = nieuweNaam === null ? null : await this.doc(id);
+    if (nieuweLeden) t.leden = nieuweLeden;
+    if (nieuweNaam !== null) {
+      t.naam = nieuweNaam;
       // Ook in de teamgegevens, zodat de kop van de app meeverandert.
-      const doc = await this.doc(id);
       const team = doc.delen.team.data || { spelers: [] };
       if (team.naam !== t.naam) await this.zetDelen(id, doc, { team: { ...team, naam: t.naam } }, null);
     }
@@ -468,9 +530,13 @@ export class Club {
     let doc;
     try {
       doc = JSON.parse(await readFile(this.docPad(id), 'utf8'));
+      if (!doc || typeof doc.versie !== 'number' || !doc.delen) throw new Error('geen teamgegevens');
     } catch (e) {
-      // Weg of onleesbaar: leeg beginnen in plaats van het team onbruikbaar te maken.
-      doc = leegDoc(this.data.teams.find((t) => t.id === id)?.naam || 'Team');
+      // Nooit stilletjes leeg beginnen: de eerstvolgende wijziging zou dan
+      // het echte bestand overschrijven. De telefoons hebben hun eigen kopie
+      // en werken door; de beheerder ziet dit in het logboek.
+      this.log(`teamgegevens van ${id} niet te lezen: ${e.message}`);
+      throw new Fout(503, 'De gegevens van dit team zijn nu niet te lezen. Je kunt doorwerken; kijk in het logboek van de server.');
     }
     // Twee verzoeken kunnen tegelijk hebben zitten lezen; de eerste wint.
     if (!this.docs.has(id)) this.docs.set(id, doc);
@@ -479,32 +545,35 @@ export class Club {
 
   /**
    * De delen die na versie `na` zijn veranderd. Zonder `na`, of als de
-   * vraagsteller een versie noemt die de server niet kent (teruggezette
-   * back-up), komt alles mee.
+   * vraagsteller een versie noemt die de server niet kent, komt alles mee.
    */
   delenSinds(doc, na = 0) {
     const volledig = !(na > 0) || na > doc.versie;
     const delen = {};
     for (const d of DELEN) if (volledig || doc.delen[d].versie > na) delen[d] = doc.delen[d].data;
-    return { versie: doc.versie, delen, volledig };
+    return { versie: doc.versie, delen, volledig, tijdperk: this.tijdperk };
   }
 
   /**
    * Bewaart wijzigingen, maar alleen als ze gebaseerd zijn op de huidige
-   * versie. Anders: { conflict } met wat er sindsdien veranderd is, zodat de
-   * app kan samenvoegen en het opnieuw kan proberen.
+   * versie (van dit tijdperk). Anders: { conflict } met wat er sindsdien
+   * veranderd is, zodat de app kan samenvoegen en het opnieuw kan proberen.
    */
-  async bewaarDelen(teamId, basisVersie, delen, g) {
+  async bewaarDelen(teamId, basisVersie, delen, g, tijdperk) {
     controleerDelen(delen);
     const doc = await this.doc(teamId);
     // Vanaf hier geen await tot de versie is opgehoogd: twee verzoeken op
     // dezelfde basis kunnen dus nooit allebei slagen.
+    if (tijdperk !== this.tijdperk) return { conflict: this.delenSinds(doc, 0) };
     if (basisVersie !== doc.versie) return { conflict: this.delenSinds(doc, basisVersie) };
-    if (!Object.keys(delen).length) return { versie: doc.versie };
-    await this.zetDelen(teamId, doc, delen, g);
-    return { versie: doc.versie };
+    if (!Object.keys(delen).length) return { versie: doc.versie, tijdperk: this.tijdperk };
+    // De versie die déze wijziging kreeg: terwijl hij wordt weggeschreven
+    // kan er al een volgende binnenkomen.
+    const versie = await this.zetDelen(teamId, doc, delen, g);
+    return { versie, tijdperk: this.tijdperk };
   }
 
+  /** Geeft de versie terug die deze wijziging kreeg. */
   async zetDelen(teamId, doc, delen, g) {
     const versie = doc.versie + 1;
     for (const [deel, data] of Object.entries(delen)) doc.delen[deel] = { versie, data };
@@ -521,6 +590,7 @@ export class Club {
     }
     this.meld(teamId, doc);
     await this.bewaarDoc(teamId);
+    return versie;
   }
 
   // --------------------------------------------------- wachten en aanwezig

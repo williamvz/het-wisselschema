@@ -25,8 +25,8 @@
 //   POST /api/teams                 PATCH|DELETE /api/teams/:id
 
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFile, stat } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { join, normalize } from 'node:path';
 import { Club, Fout, publiek } from './club.mjs';
 
@@ -34,6 +34,7 @@ const POORT = Number(process.env.PORT || 8099);
 const WWW = process.env.WWW_DIR || '/opt/wisselschema/www';
 const DATA = process.env.DATA_DIR || '/data';
 const MAX = 4 * 1024 * 1024; // 4 MB is ruim voor een heel seizoen
+const MAX_OPEN = 16 * 1024;  // inloggen en inrichten: meer is nooit nodig
 const LANGSTE_WACHT = 25;    // seconden; ruim binnen de time-outs van proxy's
 
 const opties = (() => {
@@ -70,12 +71,19 @@ function corsKoppen(req, res) {
   if (req.headers['access-control-request-private-network']) res.setHeader('access-control-allow-private-network', 'true');
 }
 
-async function leesLichaam(req) {
+/** Het adres van de bezoeker, voor de pogingenteller: achter Cloudflare of een proxy uit hun kop. */
+function klantAdres(req) {
+  const kop = req.headers['cf-connecting-ip'] || req.headers['x-real-ip']
+    || String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  return String(kop || req.socket.remoteAddress || '?').slice(0, 64);
+}
+
+async function leesLichaam(req, max = MAX) {
   const stukken = [];
   let n = 0;
   for await (const s of req) {
     n += s.length;
-    if (n > MAX) throw new Fout(413, 'Dat is te veel gegevens in één keer.');
+    if (n > max) throw new Fout(413, 'Dat is te veel gegevens in één keer.');
     stukken.push(s);
   }
   const tekst = Buffer.concat(stukken).toString('utf8');
@@ -104,19 +112,20 @@ route('GET', /^\/api\/status$/, async () => {
   };
 }, 'open');
 
-route('POST', /^\/api\/inrichten$/, async ({ body }) => inlogAntwoord(await club.richtIn(body)), 'open');
+route('POST', /^\/api\/inrichten$/, async ({ req, body }) => inlogAntwoord(await club.richtIn(body, klantAdres(req))), 'open');
 
-route('POST', /^\/api\/inloggen$/, async ({ body }) =>
-  inlogAntwoord(await club.logIn(body.gebruikersnaam, body.wachtwoord)), 'open');
+route('POST', /^\/api\/inloggen$/, async ({ req, body }) =>
+  inlogAntwoord(await club.logIn(body.gebruikersnaam, body.wachtwoord, klantAdres(req))), 'open');
 
-route('POST', /^\/api\/herstellen$/, async ({ body }) => inlogAntwoord(await club.herstelWachtwoord(body)), 'open');
+route('POST', /^\/api\/herstellen$/, async ({ req, body }) =>
+  inlogAntwoord(await club.herstelWachtwoord(body, klantAdres(req))), 'open');
 
 route('POST', /^\/api\/uitloggen$/, async ({ sessie }) => { await club.logUit(sessie); return {}; });
 
 route('GET', /^\/api\/ik$/, async ({ gebruiker }) => ({ gebruiker: publiek(gebruiker), teams: club.teamsVoor(gebruiker) }));
 
-route('POST', /^\/api\/ik\/wachtwoord$/, async ({ body, gebruiker, sessie }) => {
-  await club.wijzigEigenWachtwoord(gebruiker, body.huidig, body.nieuw, sessie);
+route('POST', /^\/api\/ik\/wachtwoord$/, async ({ req, body, gebruiker, sessie }) => {
+  await club.wijzigEigenWachtwoord(gebruiker, body.huidig, body.nieuw, sessie, klantAdres(req));
   return {};
 });
 
@@ -146,13 +155,13 @@ route('PUT', /^\/api\/teams\/([a-z0-9]+)$/, async ({ res, params: [id], body, ge
   const basisVersie = Number(body.basisVersie);
   if (!Number.isInteger(basisVersie) || basisVersie < 0) throw new Fout(400, 'De basisversie ontbreekt.');
   club.zie(id, gebruiker);
-  const uit = await club.bewaarDelen(id, basisVersie, body.delen, gebruiker);
+  const uit = await club.bewaarDelen(id, basisVersie, body.delen, gebruiker, body.tijdperk);
   const aanwezig = club.aanwezig(id, gebruiker.id);
   if (uit.conflict) {
     stuur(res, 409, { fout: 'Iemand anders was je net voor.', ...uit.conflict, aanwezig });
     return null;
   }
-  return { versie: uit.versie, aanwezig };
+  return { versie: uit.versie, tijdperk: uit.tijdperk, aanwezig };
 });
 
 // ---- beheer
@@ -216,7 +225,7 @@ async function api(req, res, pad) {
 
   const url = new URL(req.url, 'http://x');
   const ctx = { req, res, params: r.patroon.exec(pad).slice(1), query: url.searchParams, body: {} };
-  if (req.method !== 'GET' && req.method !== 'DELETE') ctx.body = await leesLichaam(req);
+  if (req.method !== 'GET' && req.method !== 'DELETE') ctx.body = await leesLichaam(req, r.soort === 'open' ? MAX_OPEN : MAX);
   if (!ctx.body || typeof ctx.body !== 'object' || Array.isArray(ctx.body)) throw new Fout(400, 'Verwacht een JSON-object.');
 
   if (r.soort !== 'open') {
@@ -248,19 +257,23 @@ const server = createServer(async (req, res) => {
     const relatief = normalize(pad === '/' ? '/index.html' : pad).replace(/^(\.\.[/\\])+/, '');
     const bestand = join(WWW, relatief);
     if (!bestand.startsWith(WWW)) { res.writeHead(403).end(); return; }
-    if (!existsSync(bestand)) { res.writeHead(404, { 'content-type': 'text/plain' }).end('niet gevonden'); return; }
+    // Alleen gewone bestanden: een map (bv. /%2F) zou pas bij het lezen falen.
+    const info = await stat(bestand).catch(() => null);
+    if (!info || !info.isFile()) { res.writeHead(404, { 'content-type': 'text/plain' }).end('niet gevonden'); return; }
 
+    const inhoud = req.method === 'HEAD' ? undefined : await readFile(bestand);
     const ext = bestand.slice(bestand.lastIndexOf('.'));
     res.writeHead(200, {
       'content-type': TYPES[ext] || 'application/octet-stream', 'cache-control': 'no-cache',
       'x-content-type-options': 'nosniff', 'referrer-policy': 'same-origin',
     });
-    res.end(req.method === 'HEAD' ? undefined : await readFile(bestand));
+    res.end(inhoud);
   } catch (e) {
     const status = e instanceof Fout ? e.status : 500;
-    if (status >= 500) log('fout:', e.stack || e.message);
-    if (pad.startsWith('/api')) stuur(res, status, { fout: status >= 500 ? 'Er ging iets mis op de server.' : e.message });
-    else if (!res.headersSent) res.writeHead(status, { 'content-type': 'text/plain' }).end('fout');
+    if (status >= 500 && !(e instanceof Fout)) log('fout:', e.stack || e.message);
+    if (res.headersSent) { if (!res.writableEnded) res.destroy(); return; }
+    if (pad.startsWith('/api')) stuur(res, status, { fout: e instanceof Fout ? e.message : 'Er ging iets mis op de server.' });
+    else res.writeHead(status, { 'content-type': 'text/plain' }).end('fout');
   }
 });
 

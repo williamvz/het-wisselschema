@@ -13,11 +13,13 @@ async function telefoon(browser, basis, gebruikersnaam, wachtwoord, fouten) {
   const ctx = await browser.newContext({ viewport: { width: 414, height: 900 } });
   const p = await ctx.newPage();
   p.on('pageerror', (e) => fouten.push(`${gebruikersnaam}: ${e}`));
-  // De browser meldt zelf elk mislukt verzoek. Zonder bereik is dat de
-  // bedoeling, en een 409 is het gewone "iemand was je net voor" waarna de
-  // app samenvoegt en opnieuw verstuurt.
+  // De browser meldt zelf elk mislukt verzoek. Zonder bereik of tijdens een
+  // herstart van de server is dat de bedoeling, en een 409 is het gewone
+  // "iemand was je net voor" waarna de app samenvoegt en opnieuw verstuurt.
   p.on('console', (m) => {
-    if (m.type() === 'error' && !/ERR_INTERNET_DISCONNECTED|status of 409/.test(m.text())) fouten.push(`${gebruikersnaam}: ${m.text()}`);
+    if (m.type() === 'error' && !/ERR_INTERNET_DISCONNECTED|ERR_CONNECTION_REFUSED|status of 409/.test(m.text())) {
+      fouten.push(`${gebruikersnaam}: ${m.text()}`);
+    }
   });
   await p.goto(`${basis}/`);
   await p.getByLabel('Gebruikersnaam').fill(gebruikersnaam);
@@ -156,4 +158,86 @@ test('ongedaan maken draait alleen je eigen stap terug', async (t) => {
   await D.waitForFunction((v) => [...document.querySelectorAll('svg.veld .naam')].map((x) => x.textContent).sort().join() === v, voor, { timeout: 6000 });
   assert.equal((await W.locator('svg.veld .naam').allTextContents()).sort().join(), voor, 'de uitval is teruggedraaid');
   assert.deepEqual(fouten, []);
+});
+
+test('na een herstart met een teruggezette back-up nemen de telefoons die over, en gaan ze gewoon door', async (t) => {
+  let s = await startServer({ poort: POORT, map: MAP });
+  const browser = await chromium.launch({ executablePath: EXE });
+  t.after(async () => { await browser.close(); await s.stop(); });
+  const fouten = [];
+  const { readFile, writeFile } = await import('node:fs/promises');
+
+  const w = await richtIn(s.basis);
+  const { team } = await api(s.basis, '/api/teams', { methode: 'POST', token: w.token, data: { naam: 'JO9-1', leden: [w.gebruiker.id] } });
+  await api(s.basis, '/api/gebruikers', { methode: 'POST', token: w.token,
+    data: { naam: 'Dennis', gebruikersnaam: 'dennis', wachtwoord: 'bal-doel-1234', teams: [team.id] } });
+  const { p: W } = await telefoon(browser, s.basis, 'william', 'geheim-123', fouten);
+  const { p: D } = await telefoon(browser, s.basis, 'dennis', 'bal-doel-1234', fouten);
+  const bestand = `${MAP}/teams/${team.id}.json`;
+  const spelersOpServer = async () => JSON.parse(await readFile(bestand, 'utf8')).delen.team.data.spelers.length;
+
+  await W.getByRole('button', { name: 'Voorbeeldteam' }).click();
+  await D.waitForFunction(() => document.querySelectorAll('.spelerrij').length === 7, null, { timeout: 6000 });
+  await W.waitForSelector('.accountknop .stip.ok');
+  const backup = await readFile(bestand, 'utf8');
+
+  // Na de back-up komt er nog een speler bij.
+  await W.locator('#app').getByRole('button', { name: 'Speler', exact: true }).click();
+  await W.locator('.overlay').getByLabel('Naam').fill('Nieuwkomer');
+  await W.locator('.overlay').getByRole('button', { name: 'Opslaan' }).click();
+  await D.waitForSelector('text=Nieuwkomer', { timeout: 6000 });
+  await W.waitForSelector('.accountknop .stip.ok');
+  assert.equal(await spelersOpServer(), 8);
+
+  // De beheerder zet de back-up terug en start de server opnieuw.
+  await s.stop({ opruimen: false });
+  await writeFile(bestand, backup);
+  s = await startServer({ poort: POORT, map: MAP, schoon: false });
+
+  // Beide telefoons nemen de teruggezette stand over, en zetten hem niet terug.
+  const zeven = () => document.querySelectorAll('.spelerrij').length === 7;
+  await W.waitForFunction(zeven, null, { timeout: 20000 });
+  await D.waitForFunction(zeven, null, { timeout: 20000 });
+  await W.waitForTimeout(1500);
+  assert.equal(await spelersOpServer(), 7, 'de back-up blijft staan');
+
+  // En daarna werkt het samenwerken gewoon weer.
+  await D.locator('#app').getByRole('button', { name: 'Speler', exact: true }).click();
+  await D.locator('.overlay').getByLabel('Naam').fill('Na de herstart');
+  await D.locator('.overlay').getByRole('button', { name: 'Opslaan' }).click();
+  await W.waitForSelector('text=Na de herstart', { timeout: 8000 });
+  assert.deepEqual(fouten, []);
+});
+
+test('een proxy die even een fout geeft, kost geen wijzigingen en geen team', async (t) => {
+  const s = await startServer({ poort: POORT, map: MAP });
+  const browser = await chromium.launch({ executablePath: EXE });
+  t.after(async () => { await browser.close(); await s.stop(); });
+  const fouten = [];
+  const { readFile } = await import('node:fs/promises');
+
+  const w = await richtIn(s.basis);
+  const { team } = await api(s.basis, '/api/teams', { methode: 'POST', token: w.token, data: { naam: 'JO9-1', leden: [w.gebruiker.id] } });
+  const { p: W } = await telefoon(browser, s.basis, 'william', 'geheim-123', fouten);
+  await W.waitForSelector('.accountknop .stip.ok');
+
+  // De eerste twee keer dat er iets verstuurd wordt: eerst een 502 van een
+  // herstartende add-on, dan een 403-pagina van een proxy of firewall.
+  let onderschept = 0;
+  await W.route('**/api/teams/**', (route) => {
+    if (route.request().method() === 'PUT' && onderschept < 2) {
+      onderschept += 1;
+      return route.fulfill({ status: onderschept === 1 ? 502 : 403, contentType: 'text/html', body: '<h1>Even niet</h1>' });
+    }
+    return route.continue();
+  });
+  await W.getByRole('button', { name: 'Voorbeeldteam' }).click();
+
+  const op = async () => JSON.parse(await readFile(`${MAP}/teams/${team.id}.json`, 'utf8')).delen.team.data.spelers.length;
+  for (let i = 0; i < 40 && (await op()) !== 7; i++) await W.waitForTimeout(250);
+  assert.equal(onderschept, 2, 'beide fouten zijn voorbijgekomen');
+  assert.equal(await op(), 7, 'toch aangekomen, zonder nieuwe wijziging');
+  assert.ok((await W.locator('.kop .teamknop').textContent()).includes('JO9-1'), 'het team staat nog open');
+  await W.waitForSelector('.accountknop .stip.ok');
+  assert.deepEqual(fouten.filter((f) => !/status of (403|502)/.test(f)), []);
 });

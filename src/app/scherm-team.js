@@ -1,7 +1,7 @@
 // Scherm: het team. Spelers toevoegen, plakken of uploaden.
 
 import { h, icoon, toonSheet, bevestig, melding, saldoTekst, initialen, downloadBestand } from './ui.js';
-import { S, wijzig, nieuweSpeler, uid, exporteer, neemOver, lokaleGegevens } from './store.js';
+import { S, wijzig, nieuweSpeler, uid, exporteer, neemOver, lokaleGegevens, metServer } from './store.js';
 
 const ROLNAAM = { V: 'Verdediging', M: 'Middenveld', A: 'Aanval' };
 
@@ -140,7 +140,12 @@ export function bewerkSpeler(bestaand) {
         if (!p.naam) { melding('Vul een naam in'); return; }
         wijzig((s) => {
           const i = s.team.spelers.findIndex((q) => q.id === p.id);
-          if (i >= 0) s.team.spelers[i] = p; else s.team.spelers.push(p);
+          if (i < 0) { s.team.spelers.push(p); return; }
+          // Alleen wat hier is aangepast: een collega kan intussen iets
+          // anders aan deze speler hebben veranderd, of het saldo is bijgewerkt.
+          const aangepast = ['naam', 'nummer', 'keeper', 'posities', 'sterkte']
+            .filter((k) => JSON.stringify(p[k]) !== JSON.stringify(bestaand[k]));
+          for (const k of aangepast) s.team.spelers[i][k] = p[k];
         });
         sluit();
       } }, 'Opslaan')));
@@ -248,7 +253,7 @@ function bestandSheet() {
 
 function voorbeeldTeam() {
   wijzig((s) => {
-    s.team.naam = 'JO9-1';
+    if (!metServer()) s.team.naam = 'JO9-1'; // een clubteam houdt zijn eigen naam
     s.team.spelers = leesSpelers(
       'Daan, 1, keeper\nSem, 4, keeper\nLuuk, 2, V\nNoud, 6, M\nTijn, 8, M\nBram, 9, A\nFinn, 11, A');
   }, { terugdraaibaar: true });

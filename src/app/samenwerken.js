@@ -14,7 +14,7 @@
 // ingress van Home Assistant en door een Cloudflare-tunnel.
 
 import { S, wijzig, herteken, gebruikTeamOpslag, laadTeamDeel, teamDeel, zetKlokVerschil, klokVerschil } from './store.js';
-import { vraag, vraagBijAfsluiten, zetServer, zetToken, paginaServer, normaliseerAdres, vergeetKlok } from './api.js';
+import { vraag, vraagBijAfsluiten, zetServer, zetToken, paginaServer, normaliseerAdres, vergeetKlok, ApiFout } from './api.js';
 import { voegSamen, gelijk } from '../lib/samenvoegen.js';
 
 const ACCOUNT = 'wisselschema.account';
@@ -43,6 +43,9 @@ const ts = {
   teamId: null,
   basis: null,        // laatst bekende stand op de server
   versie: 0,
+  tijdperk: null,     // van welke serverstart die versie is (zie club.mjs)
+  volledigNodig: false,
+  duwFouten: 0,
   bezig: false,       // er is een verzending onderweg
   timer: null,
   luisteraar: null,   // AbortController van het openstaande verzoek
@@ -94,7 +97,7 @@ function bewaarCache() {
   const staat = teamDeel();
   try {
     localStorage.setItem(CACHE + ts.teamId, JSON.stringify({
-      gebruikerId: account.gebruiker?.id, versie: ts.versie, staat,
+      gebruikerId: account.gebruiker?.id, versie: ts.versie, tijdperk: ts.tijdperk, staat,
       basis: ts.basis && gelijk(staat, ts.basis) ? 'zelfde' : ts.basis,
     }));
   } catch (e) { /* vol: de server heeft het, of krijgt het straks */ }
@@ -120,14 +123,16 @@ export function herstelAccount() {
     if (id) openTeam(id);
     return;
   }
-  if (eigenAdres()) account.modus = 'verbinden';
+  // Er is misschien een server. Staat hier al een team, laat dat dan zien
+  // terwijl we kijken; anders een leeg scherm met "verbinden".
+  if (eigenAdres()) account.modus = S.team.spelers.length || S.archief.length || S.wedstrijd ? 'lokaal' : 'verbinden';
 }
 
 /** Op de achtergrond: de server zoeken, of het account bijwerken. */
 export async function verbind() {
   if (account.modus === 'team') { await vernieuwIk(); return; }
   const adres = eigenAdres();
-  if (!adres) { account.modus = 'lokaal'; herteken(); return; }
+  if (!adres) { if (account.modus !== 'lokaal') { account.modus = 'lokaal'; herteken(); } return; }
   await zoekServer(adres, { handmatig: !!normaliseerAdres(S.instellingen.syncUrl) });
 }
 
@@ -269,6 +274,7 @@ function openTeam(id) {
   const c = leesCache(id);
   ts.basis = c ? (c.basis === 'zelfde' ? c.staat : c.basis) : null;
   ts.versie = c && ts.basis ? c.versie : 0;
+  ts.tijdperk = (c && c.tijdperk) || null;
   laadTeamDeel(c ? c.staat : leegTeam(teamNaam(id)));
   account.onverstuurd = !!(ts.basis && !gelijk(teamDeel(), ts.basis));
   bewaarAccount();
@@ -280,13 +286,19 @@ function stopTeam() {
   ts.luisteraar?.abort();
   ts.wekker?.();
   clearTimeout(ts.timer);
-  Object.assign(ts, { teamId: null, basis: null, versie: 0, bezig: false, fouten: 0, geweigerd: false });
+  Object.assign(ts, {
+    teamId: null, basis: null, versie: 0, tijdperk: null, volledigNodig: false,
+    bezig: false, fouten: 0, duwFouten: 0, geweigerd: false,
+  });
 }
 
 function teamKwijt(id) {
   const naam = teamNaam(id);
   account.teams = account.teams.filter((t) => t.id !== id);
-  try { localStorage.removeItem(CACHE + id); } catch (e) { /* niets aan te doen */ }
+  // Wat nog niet verstuurd was, blijft bewaard: krijg je weer toegang, dan
+  // gaat het alsnog mee.
+  if (account.teamId === id && wijzigingen()) bewaarCache();
+  else try { localStorage.removeItem(CACHE + id); } catch (e) { /* niets aan te doen */ }
   if (account.teamId === id) {
     stopTeam();
     account.teamId = null;
@@ -297,6 +309,27 @@ function teamKwijt(id) {
   bewaarAccount();
   account.melding = `Je hebt geen toegang meer tot ${naam}.`;
   herteken();
+}
+
+/**
+ * Een 403 of 404 kan ook van een proxy komen: een foutpagina van Cloudflare
+ * of Nginx. Pas als de server het zelf zegt, én het team ook niet meer in
+ * het lijstje staat, is de toegang echt weg. Anders is het tijdelijk.
+ */
+async function toegangWeg(e, teamId) {
+  if (!e.data || !e.data.fout) return false;
+  try {
+    const r = await vraag('api/ik');
+    account.gebruiker = r.gebruiker;
+    account.teams = r.teams || [];
+    bewaarAccount();
+  } catch (e2) {
+    if (e2.status === 401) { sessieVerlopen(); return true; }
+    return false;
+  }
+  if (account.teams.some((t) => t.id === teamId)) return false;
+  teamKwijt(teamId);
+  return true;
 }
 
 /** Na een wijziging in het beheer: teamlijst bijwerken en zo nodig een team openen. */
@@ -320,29 +353,33 @@ function zetAanwezig(lijst) {
   if (namen(lijst) !== namen(account.aanwezig)) { account.aanwezig = lijst; herteken(); }
 }
 
-/** Verwerkt een antwoord van de server: { versie, delen, volledig, aanwezig }. */
+const bruikbaar = (r) => !!r && typeof r.versie === 'number' && !!r.delen && typeof r.delen === 'object';
+
+/** Verwerkt een antwoord van de server: { versie, delen, volledig, tijdperk, aanwezig }. */
 function verwerk(r) {
   zetAanwezig(r.aanwezig);
-  if (typeof r.versie !== 'number' || !r.delen) return;
-  if (!r.volledig && (!ts.basis || r.versie <= ts.versie)) return; // niets nieuws
-  if (r.volledig && ts.basis && r.versie === ts.versie) return;
+  if (!bruikbaar(r)) return;
+  const zelfdeTijdperk = !!ts.basis && !!r.tijdperk && r.tijdperk === ts.tijdperk;
+  if (!r.volledig) {
+    // Alleen wat er veranderde. Daar is de rest van onze basis bij nodig, en
+    // die moet uit dezelfde geschiedenis komen; anders eerst alles ophalen.
+    if (!zelfdeTijdperk) { ts.volledigNodig = true; return; }
+    if (r.versie <= ts.versie) return; // niets nieuws
+  } else if (zelfdeTijdperk && r.versie === ts.versie) return;
 
   const remote = r.volledig ? leegTeam(teamNaam(ts.teamId)) : { ...ts.basis };
   for (const d of DELEN) if (d in r.delen) remote[d] = r.delen[d];
   const mijn = teamDeel();
-
-  let samen;
-  if (ts.basis && r.versie < ts.versie) {
-    // De server is teruggegaan (back-up teruggezet, of hij verloor iets):
-    // wat deze telefoon heeft is leidend en gaat er opnieuw heen.
-    samen = mijn;
-  } else {
-    // Nog nooit gesynchroniseerd: vergelijk met een leeg team, zodat wat hier
-    // al werd ingevoerd blijft staan en ook naar de server gaat.
-    samen = voegSamen(ts.basis || leegTeam(teamNaam(ts.teamId)), mijn, remote);
-  }
+  // Samenvoegen met de laatste stand die we kenden. Nog nooit verbonden:
+  // dan met een leeg team, zodat wat hier al werd ingevoerd blijft staan.
+  // Na een herstart of een teruggezette back-up (ander tijdperk) werkt het
+  // net zo: wat de server nu anders heeft dan wij kenden, komt erin - ook
+  // als dat terugzetten was - en wat hier nog niet verstuurd was, blijft.
+  const samen = voegSamen(ts.basis || leegTeam(teamNaam(ts.teamId)), mijn, remote);
   ts.basis = remote;
   ts.versie = r.versie;
+  ts.tijdperk = r.tijdperk || null;
+  ts.volledigNodig = false;
   if (!gelijk(samen, mijn)) laadTeamDeel(samen, { vanAfstand: true });
   bewaarCache();
   if (!gelijk(samen, remote)) planDuw(0);
@@ -357,19 +394,23 @@ async function luister(gen) {
     ts.luisteraar = ctrl;
     const wacht = direct ? 0 : ts.wacht;
     const begin = Date.now();
+    const na = ts.basis && ts.tijdperk && !ts.volledigNodig ? ts.versie : 0;
     try {
-      const r = await vraag(`api/teams/${ts.teamId}?na=${ts.basis ? ts.versie : 0}&wacht=${wacht}`, { signaal: ctrl.signal, wacht });
+      const r = await vraag(`api/teams/${ts.teamId}?na=${na}&wacht=${wacht}`, { signaal: ctrl.signal, wacht });
       if (gen !== ts.generatie) return;
+      // Een inlogpagina van een wifi-netwerk, of iets anders dat geen
+      // antwoord van onze server is: als storing behandelen, niet als "bij".
+      if (!bruikbaar(r)) throw new ApiFout(502, 'Onverwacht antwoord van de server.');
       ts.fouten = 0;
       zetVerbinding('ok');
       verwerk(r);
       planDuw(0);
-      direct = false;
-      if (!ts.basis) await slaap(5000); // onbruikbaar antwoord: niet blijven hameren
+      direct = ts.volledigNodig;
     } catch (e) {
       if (gen !== ts.generatie) return;
       if (e.status === 401) { sessieVerlopen(); return; }
-      if (e.status === 403 || e.status === 404) { teamKwijt(ts.teamId); return; }
+      if ((e.status === 403 || e.status === 404) && await toegangWeg(e, ts.teamId)) return;
+      if (gen !== ts.generatie) return;
       if (e.afgebroken) { direct = true; continue; } // bewust gewekt (terug uit de achtergrond): meteen opnieuw
       const open = (Date.now() - begin) / 1000;
       if (wacht && e.status === 0 && open > 5 && ts.fouten === 0) {
@@ -427,23 +468,43 @@ async function duw() {
   const gen = ts.generatie;
   const teamId = ts.teamId;
   const basisVersie = ts.versie;
+  const tijdperk = ts.tijdperk;
   const verstuurd = { ...ts.basis, ...delen };
   ts.bezig = true;
   let opnieuw = 300;
   try {
-    const r = await vraag(`api/teams/${teamId}`, { methode: 'PUT', data: { basisVersie, delen } });
+    const r = await vraag(`api/teams/${teamId}`, { methode: 'PUT', data: { basisVersie, tijdperk, delen } });
     if (gen !== ts.generatie) return;
-    if (r.versie > ts.versie) { ts.basis = verstuurd; ts.versie = r.versie; }
+    if (typeof r.versie !== 'number') throw new ApiFout(502, 'Onverwacht antwoord van de server.');
+    // Alleen als dit precies onze wijziging was, en er intussen niets
+    // anders binnenkwam. Anders brengt de luisterlus de juiste stand.
+    if (r.versie === basisVersie + 1 && r.tijdperk === tijdperk && ts.versie === basisVersie && ts.tijdperk === tijdperk) {
+      ts.basis = verstuurd;
+      ts.versie = r.versie;
+    }
     ts.geweigerd = false;
+    ts.duwFouten = 0;
     zetAanwezig(r.aanwezig);
     zetVerbinding('ok');
   } catch (e) {
     if (gen !== ts.generatie) return;
-    if (e.status === 409 && e.data) { verwerk(e.data); opnieuw = 0; }
-    else if (e.status === 401) sessieVerlopen();
-    else if (e.status === 403 || e.status === 404) { teamKwijt(teamId); return; }
-    else if (e.status === 0) { zetVerbinding('offline'); opnieuw = null; } // de luisterlus probeert het straks weer
-    else { ts.geweigerd = delen; opnieuw = null; console.warn('Server weigerde de wijziging:', e.message); }
+    if (e.status === 409 && bruikbaar(e.data)) { verwerk(e.data); opnieuw = 0; }
+    else if (e.status === 401) { sessieVerlopen(); opnieuw = null; }
+    else if ((e.status === 403 || e.status === 404) && await toegangWeg(e, teamId)) return;
+    else if ((e.status === 400 || e.status === 413) && e.data && e.data.fout) {
+      // De server zelf wil deze gegevens niet. Opnieuw sturen helpt niet;
+      // pas bij een volgende wijziging proberen we het weer.
+      ts.geweigerd = delen;
+      opnieuw = null;
+      console.warn('Server weigerde de wijziging:', e.message);
+    } else {
+      // Geen verbinding, een proxy die even niet kan, een server die
+      // herstart: straks opnieuw, steeds iets later.
+      if (gen !== ts.generatie) return;
+      ts.duwFouten += 1;
+      if (e.status === 0 || e.status >= 500) zetVerbinding('offline');
+      opnieuw = Math.min(30000, 1000 * 2 ** Math.min(ts.duwFouten, 5));
+    }
   } finally {
     if (gen === ts.generatie) {
       ts.bezig = false;
@@ -459,5 +520,5 @@ async function duw() {
 export function duwBijAfsluiten() {
   if (account.modus !== 'team' || !ts.teamId || ts.bezig || account.sessieVerlopen) return;
   const delen = wijzigingen();
-  if (delen) vraagBijAfsluiten(`api/teams/${ts.teamId}`, 'PUT', { basisVersie: ts.versie, delen });
+  if (delen) vraagBijAfsluiten(`api/teams/${ts.teamId}`, 'PUT', { basisVersie: ts.versie, tijdperk: ts.tijdperk, delen });
 }

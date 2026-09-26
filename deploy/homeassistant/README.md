@@ -132,6 +132,12 @@ In de map `/data` van de add-on, en dus in de back-ups van Home Assistant:
   verwijderd team wordt niet weggegooid maar opzijgezet als
   `<id>.verwijderd-<tijd>.json`.
 
+Zet je een back-up terug, dan nemen de telefoons die over zodra ze weer
+verbinding hebben; alleen wat een telefoon nog niet had verstuurd, komt erbij.
+Is een teambestand ooit onleesbaar, dan maakt de server er geen leeg team van:
+het logboek meldt het, de telefoons werken met hun eigen kopie door, en na het
+terugzetten van een back-up is het team er weer.
+
 ---
 
 ## Een eigen domein: `wisselschema.williamvanzweden.nl`

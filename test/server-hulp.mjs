@@ -6,9 +6,12 @@ import { once } from 'node:events';
 export const INRICHTCODE = 'TEST-CODE';
 export const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 
-export async function startServer({ poort, map, oud = null, env = {} }) {
-  await rm(map, { recursive: true, force: true });
-  await mkdir(map, { recursive: true });
+/** `schoon: false` start op de gegevens die er al staan (een herstart). */
+export async function startServer({ poort, map, oud = null, env = {}, schoon = true }) {
+  if (schoon) {
+    await rm(map, { recursive: true, force: true });
+    await mkdir(map, { recursive: true });
+  }
   if (oud) await writeFile(`${map}/state.json`, JSON.stringify(oud));
   const proces = spawn(process.execPath, ['deploy/homeassistant/addon/server.mjs'], {
     env: {
@@ -30,16 +33,18 @@ export async function startServer({ poort, map, oud = null, env = {} }) {
   return {
     basis: `http://127.0.0.1:${poort}`,
     log: () => log,
-    async stop() {
+    /** Stoppen; zonder `opruimen` blijven de gegevens staan voor een herstart. */
+    async stop({ opruimen = true } = {}) {
       if (proces.exitCode === null) { proces.kill(); await once(proces, 'exit').catch(() => {}); }
-      await rm(map, { recursive: true, force: true });
+      if (opruimen) await rm(map, { recursive: true, force: true });
     },
   };
 }
 
 /** Eén API-verzoek; geeft { status, ...json } terug. */
-export async function api(basis, pad, { methode = 'GET', token, data } = {}) {
+export async function api(basis, pad, { methode = 'GET', token, data, adres } = {}) {
   const koppen = {};
+  if (adres) koppen['x-real-ip'] = adres;
   if (data !== undefined) koppen['content-type'] = 'application/json';
   if (token) koppen['x-wissel-sessie'] = token;
   const r = await fetch(basis + pad, { method: methode, headers: koppen, body: data !== undefined ? JSON.stringify(data) : undefined });

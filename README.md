@@ -142,6 +142,14 @@ stap terug, en laat de goal staan die je collega daarna invoerde.
 De klok rekent met de tijd van de server. Elk antwoord van de server heeft
 zijn klok erbij, en de app schat daarmee het verschil met de eigen klok. Zo
 lopen twee telefoons gelijk, ook als er een een halve minuut verkeerd staat.
+Dat de klok aan het eind van een periode vanzelf stopt, telt daarbij niet als
+wijziging van een trainer: een telefoon die offline de oude klok liet
+doorlopen, wint daarmee niet van wat een collega intussen echt deed.
+
+Na een herstart van de server halen de telefoons alles één keer opnieuw op en
+voegen ze samen met wat ze kenden. Daardoor werkt ook een teruggezette back-up
+zoals je verwacht: de back-up geldt, en alleen wat een telefoon nog niet had
+verstuurd, komt erbij.
 
 Wijzigingen van de ander komen binnen via één verzoek dat openstaat tot er
 iets verandert (long polling). Dat werkt door elke proxy heen, ook door de
@@ -153,7 +161,7 @@ lange verzoeken toch af, dan wacht de app voortaan korter.
 ```bash
 npm install        # alleen nodig voor de tests
 npm run build      # src/ -> index.html (één bestand, geen bundler-afhankelijkheid)
-npm test           # 63 tests: motor, samenvoegen, server, en de app in een browser
+npm test           # 77 tests: motor, samenvoegen, server, en de app in een browser
 npm run check      # laadt alle modules, vangt import- en syntaxfouten
 npm run serve      # draait de server lokaal op poort 8099 (inrichtcode in de uitvoer)
 ```
@@ -183,8 +191,10 @@ kunnen downloaden en openen zonder iets te installeren. Hij wordt gemaakt door
   niets naar buiten.
 - Met een server staan de teams op die server, in gewone JSON-bestanden onder
   `/data`, en gaan ze mee in de back-ups van Home Assistant. Wachtwoorden
-  staan er alleen als scrypt-hash, sessies alleen als hash van het token. De
-  server heeft geen afhankelijkheden, net als de app.
+  staan er alleen als scrypt-hash, sessies alleen als hash van het token. Na
+  tien foute pogingen vanaf één adres (of vijftig in totaal) wacht een
+  gebruikersnaam een kwartier. De server heeft geen afhankelijkheden, net als
+  de app.
 - Gelijke speeltijd is in de KNVB-jeugd tot en met JO12 het uitgangspunt. De
   app is daarop ingesteld. Er is een schuif om accent op basisspelers te
   leggen, met een waarschuwing erbij; hij staat standaard dicht.
