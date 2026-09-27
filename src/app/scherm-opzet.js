@@ -1,7 +1,7 @@
 // Scherm: wedstrijd klaarzetten. Wie is er vandaag, hoe spelen we, hoe lang.
 
-import { h, icoon, melding, datumTekst, bevestig } from './ui.js';
-import { S, wijzig, nieuweWedstrijd, genereer } from './store.js';
+import { h, icoon, melding, datumTekst, bevestig, toonSheet } from './ui.js';
+import { S, wijzig, nieuweWedstrijd, nieuweGast, genereer } from './store.js';
 import { FORMATIONS, SPEELVORMEN, formationsForSize, getFormation } from '../lib/formations.js';
 import { tekenMiniVeld } from './veld.js';
 
@@ -54,10 +54,11 @@ export function schermOpzet(ganaar) {
 
   // ---- aanwezigheid
   const aanwezig = new Set(w.selectie);
+  const gasten = w.gasten || [];
   const kaartAanwezig = h('div', { class: 'kaart' });
   kaartAanwezig.appendChild(h('div', { class: 'kaart-kop' },
     h('h2', {}, 'Wie speelt er vandaag?'),
-    h('span', { class: 'mini' }, `${aanwezig.size} van ${S.team.spelers.length}`)));
+    h('span', { class: 'mini' }, `${aanwezig.size} van ${S.team.spelers.length + gasten.length}`)));
   const rij = h('div', { class: 'chiprij' });
   for (const p of S.team.spelers) {
     rij.appendChild(h('button', { class: 'chip', 'aria-pressed': String(aanwezig.has(p.id)),
@@ -67,10 +68,24 @@ export function schermOpzet(ganaar) {
       }) },
       h('i', { class: 'dot' }), p.naam, p.keeper ? h('span', { class: 'vlag K' }, 'K') : null));
   }
+  // Een gast doet alleen vandaag mee: wegtikken is weghalen.
+  for (const g of gasten) {
+    rij.appendChild(h('button', { class: 'chip gast', 'aria-pressed': 'true', 'aria-label': `${g.naam}, gastspeler. Tik om weg te halen.`,
+      onclick: () => zet((m) => {
+        m.gasten = (m.gasten || []).filter((x) => x.id !== g.id);
+        m.selectie = m.selectie.filter((x) => x !== g.id);
+        delete m.beschikbaar[g.id];
+      }) },
+      h('i', { class: 'dot' }), g.naam, g.keeper ? h('span', { class: 'vlag K' }, 'K') : null, h('span', { class: 'mini' }, 'gast')));
+  }
   kaartAanwezig.appendChild(rij);
   kaartAanwezig.appendChild(h('div', { class: 'knoprij', style: { marginTop: '10px' } },
-    h('button', { class: 'knop klein stil', onclick: () => zet((m) => { m.selectie = S.team.spelers.map((p) => p.id); }) }, 'Iedereen'),
-    h('button', { class: 'knop klein stil', onclick: () => zet((m) => { m.selectie = []; }) }, 'Niemand')));
+    h('button', { class: 'knop klein stil', onclick: () => zet((m) => { m.selectie = [...S.team.spelers, ...(m.gasten || [])].map((p) => p.id); }) }, 'Iedereen'),
+    h('button', { class: 'knop klein stil', onclick: () => zet((m) => { m.selectie = []; m.gasten = []; }) }, 'Niemand'),
+    h('button', { class: 'knop klein', onclick: () => gastSheet((g) => zet((m) => {
+      m.gasten = [...(m.gasten || []), g];
+      m.selectie = [...m.selectie, g.id];
+    })) }, icoon('plus', 16), 'Gastspeler')));
   wrap.appendChild(kaartAanwezig);
 
   // ---- speelvorm en opstelling
@@ -155,6 +170,34 @@ export function schermOpzet(ganaar) {
       () => { wijzig((s) => { s.wedstrijd = null; }, { terugdraaibaar: true }); }, { knop: 'Weggooien', gevaar: true }) },
     'Deze wedstrijd weggooien'));
   return wrap;
+}
+
+/**
+ * Een speler van een ander team die vandaag meedoet: naam, en of hij kan
+ * keepen. Hij komt niet in het team en krijgt geen seizoenssaldo.
+ */
+export function gastSheet(opToevoegen, { uitleg = 'Doet er vandaag iemand van een ander team mee? Die zet je hier alleen in deze wedstrijd; in je team komt hij niet.' } = {}) {
+  toonSheet('Gastspeler', (c, sluit) => {
+    let keeper = false;
+    const naam = h('input', { type: 'text', placeholder: 'Voornaam', autocomplete: 'off', required: true });
+    const keeperKnop = h('button', { class: 'schakel', type: 'button', 'aria-pressed': 'false', 'aria-label': 'Kan keepen',
+      onclick: () => { keeper = !keeper; keeperKnop.setAttribute('aria-pressed', String(keeper)); } }, h('i', {}));
+    c.appendChild(h('p', { class: 'uitleg' }, uitleg));
+    c.appendChild(h('form', { onsubmit: (e) => {
+      e.preventDefault();
+      if (!naam.value.trim()) { melding('Vul een naam in'); return; }
+      const g = nieuweGast(naam.value.trim(), keeper);
+      sluit();
+      opToevoegen(g);
+    } },
+      h('label', { class: 'veld' }, h('span', {}, 'Naam'), naam),
+      h('div', { class: 'strook' },
+        h('div', { class: 'kop2' }, 'Kan keepen', h('small', {}, 'Alleen dan kan hij op doel komen')),
+        keeperKnop),
+      h('div', { class: 'knoprij', style: { marginTop: '16px' } },
+        h('button', { class: 'knop', type: 'button', onclick: sluit }, 'Annuleren'),
+        h('button', { class: 'knop primair', type: 'submit', style: { flex: '2' } }, 'Toevoegen'))));
+  });
 }
 
 const accentTekst = (v) => (v < 0.05 ? 'volledig gelijk' : v < 0.35 ? 'licht accent' : v < 0.7 ? 'duidelijk accent' : 'sterk accent');

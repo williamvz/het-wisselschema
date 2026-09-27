@@ -2,11 +2,12 @@
 // waar het langs de lijn om draait: "wissel gedaan" en "speler eruit".
 
 import { h, icoon, toonSheet, bevestig, melding, mmss, minutenTekst, piep, tril, voornaam } from './ui.js';
-import { S, wijzig, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal } from './store.js';
+import { S, wijzig, wedstrijdSpelers, spelerMetId, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal } from './store.js';
 import { getFormation } from '../lib/formations.js';
 import { totaleSpeeltijd } from '../lib/schedule.js';
 import { tekenVeld } from './veld.js';
 import { blokLabel } from './scherm-schema.js';
+import { gastSheet } from './scherm-opzet.js';
 import { stand, plusMin, verloop, goalMinuut } from '../lib/score.js';
 
 let tikkers = [];
@@ -63,10 +64,10 @@ export function schermLive(ganaar, herteken) {
   veldKaart.appendChild(h('div', { class: 'kaart-kop' },
     h('h2', {}, `Nu op het veld`),
     h('span', { class: 'mini' }, `${blokLabel(blok, w)} · tot ${Math.round(blok.totSec / 60)} min`)));
-  veldKaart.appendChild(tekenVeld(blok, S.team.spelers, w.formationId));
+  veldKaart.appendChild(tekenVeld(blok, wedstrijdSpelers(), w.formationId));
 
   const opVeld = new Set(Object.values(blok.opstelling));
-  const bank = w.selectie.map((id) => S.team.spelers.find((q) => q.id === id))
+  const bank = w.selectie.map((id) => spelerMetId(id))
     .filter((q) => q && !opVeld.has(q.id));
   if (bank.length) {
     veldKaart.appendChild(h('div', { class: 'tussenkop' }, 'Bank'));
@@ -235,7 +236,7 @@ function scoreKaart(w) {
 }
 
 function goalSheet(d) {
-  const naam = (id) => voornaam((S.team.spelers.find((q) => q.id === id) || {}).naam);
+  const naam = (id) => voornaam((spelerMetId(id) || {}).naam);
   toonSheet(`${d.wie === 'wij' ? 'Goal' : 'Tegengoal'} · ${mmss(d.sec)}`, (c, sluit) => {
     c.appendChild(h('div', { class: 'tussenkop', style: { marginTop: 0 } }, 'Op het veld'));
     c.appendChild(h('p', {}, d.opVeld.map(naam).join(', ') || 'onbekend'));
@@ -257,7 +258,7 @@ function uitvalSheet(p, idx) {
   const t = klokStand();
   const totaal = totaleSpeeltijd(w);
   const inzetbaar = w.selectie
-    .map((id) => S.team.spelers.find((q) => q.id === id))
+    .map((id) => spelerMetId(id))
     .filter(Boolean)
     .filter((q) => (((w.beschikbaar || {})[q.id] || {}).tot ?? totaal) >= totaal);
 
@@ -296,7 +297,7 @@ function doeUitval(speler, t) {
     .filter(([sid, id]) => voorVeld.has(id) && voor.blokken[actiefBlokIndex(voor.blokken)].opstelling[sid] !== id)
     .map(([sid, id]) => ({ id, slot: formatie.slots.find((s) => s.id === sid) }));
 
-  const naam = (id) => (S.team.spelers.find((q) => q.id === id) || {}).naam;
+  const naam = (id) => (spelerMetId(id) || {}).naam;
   toonSheet(`${speler.naam} gaat eruit`, (c, sluit) => {
     c.appendChild(h('div', { class: 'wissel' },
       h('div', { class: 'wanneer' }, `Doe dit nu · ${mmss(t)}`),
@@ -328,14 +329,10 @@ function erbijSheet(p) {
   const nogNiet = S.team.spelers.filter((q) => !w.selectie.includes(q.id));
 
   toonSheet('Speler erbij', (c, sluit) => {
-    if (!uitgevallen.length && !nogNiet.length) {
-      c.appendChild(h('div', { class: 'leeg' }, 'Iedereen doet al mee.'));
-      return;
-    }
-    c.appendChild(h('p', { class: 'uitleg' }, `Deze speler doet vanaf ${mmss(t)} weer mee en wordt in het resterende schema ingepast.`));
+    c.appendChild(h('p', { class: 'uitleg' }, `Deze speler doet vanaf ${mmss(t)} mee en wordt in het resterende schema ingepast.`));
     const lijst = h('div', {});
     for (const id of uitgevallen) {
-      const q = S.team.spelers.find((x) => x.id === id);
+      const q = spelerMetId(id);
       if (!q) continue;
       lijst.appendChild(h('button', { class: 'spelerrij', style: { width: '100%', textAlign: 'left', background: 'none', border: 0, borderBottom: '1px solid var(--rand)' },
         onclick: () => { herplanNu(t, [{ type: 'terug', spelerId: id }]); sluit(); melding(`${q.naam} doet weer mee`); } },
@@ -346,6 +343,12 @@ function erbijSheet(p) {
         onclick: () => { herplanNu(t, [{ type: 'erin', spelerId: q.id }]); sluit(); melding(`${q.naam} sluit aan`); } },
         h('div', { class: 'bal' }, '+'), h('div', { class: 'naam' }, q.naam, h('small', {}, 'stond niet in de selectie'))));
     }
+    lijst.appendChild(h('button', { class: 'spelerrij', style: { width: '100%', textAlign: 'left', background: 'none', border: 0, borderBottom: '1px solid var(--rand)' },
+      onclick: () => gastSheet((g) => {
+        herplanNu(t, [{ type: 'erin', spelerId: g.id }], { gast: g });
+        melding(`${g.naam} doet mee als gast`);
+      }, { uitleg: `Iemand van een ander team valt in. Hij doet vanaf ${mmss(t)} mee, alleen in deze wedstrijd.` }) },
+      h('div', { class: 'bal' }, '+'), h('div', { class: 'naam' }, 'Gastspeler', h('small', {}, 'iemand van een ander team, alleen vandaag'))));
     c.appendChild(lijst);
   });
 }

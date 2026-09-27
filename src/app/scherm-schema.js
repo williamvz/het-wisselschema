@@ -2,7 +2,7 @@
 // speelt, plus per blok de opstelling en de wisselinstructie.
 
 import { h, icoon, toonSheet, melding, minutenTekst, mmss, kopieer, bevestig, voornaam } from './ui.js';
-import { S, wijzig, plan, genereer, deelLink, klokStart } from './store.js';
+import { S, wijzig, wedstrijdSpelers, spelerMetId, plan, genereer, deelLink, klokStart } from './store.js';
 import { getFormation, slotsForCount } from '../lib/formations.js';
 import { tekenVeld } from './veld.js';
 
@@ -23,7 +23,7 @@ export function schermSchema(ganaar) {
 
   const p = plan();
   const formatie = getFormation(w.formationId);
-  const spelers = w.selectie.map((id) => S.team.spelers.find((q) => q.id === id)).filter(Boolean);
+  const spelers = w.selectie.map((id) => spelerMetId(id)).filter(Boolean);
   const wrap = h('div', {});
 
   // ---- waarschuwingen
@@ -138,7 +138,7 @@ function blokDetail(w, p, spelers, formatie, i) {
     kaart.appendChild(h('p', { class: 'uitleg' }, 'Beginopstelling.'));
   }
 
-  kaart.appendChild(tekenVeld(blok, S.team.spelers, w.formationId, {
+  kaart.appendChild(tekenVeld(blok, wedstrijdSpelers(), w.formationId, {
     opTik: blok.vast ? null : (spelerId) => ruilSheet(w, p, i, spelerId),
   }));
 
@@ -182,10 +182,10 @@ export function ruilSheet(w, p, blokIndex, spelerId) {
   const blok = p.blokken[blokIndex];
   if (blok.vast) { melding('Dit blok is al gespeeld'); return; }
 
-  const ik = S.team.spelers.find((q) => q.id === spelerId);
+  const ik = spelerMetId(spelerId);
   const mijnSlot = Object.keys(blok.opstelling).find((sid) => blok.opstelling[sid] === spelerId);
   const anderen = w.selectie
-    .map((id) => S.team.spelers.find((q) => q.id === id))
+    .map((id) => spelerMetId(id))
     .filter((q) => q && q.id !== spelerId && kanSpelen(w, q.id, blok));
 
   toonSheet(`${ik.naam} ruilen`, (c, sluit) => {
@@ -255,10 +255,10 @@ function tekstSheet() {
   p.blokken.forEach((b) => {
     const slots = slotsForCount(formatie, Object.keys(b.opstelling).length);
     const opstelling = slots.filter((s) => b.opstelling[s.id])
-      .map((s) => `${s.label} ${voornaam((S.team.spelers.find((q) => q.id === b.opstelling[s.id]) || {}).naam)}`);
+      .map((s) => `${s.label} ${voornaam((spelerMetId(b.opstelling[s.id]) || {}).naam)}`);
     const opVeld = new Set(Object.values(b.opstelling));
     const bank = w.selectie.filter((id) => !opVeld.has(id))
-      .map((id) => voornaam((S.team.spelers.find((q) => q.id === id) || {}).naam));
+      .map((id) => voornaam((spelerMetId(id) || {}).naam));
     regels.push(`${blokLabel(b, w)} (${Math.round(b.vanSec / 60)}-${Math.round(b.totSec / 60)} min)`);
     regels.push(`  ${opstelling.join(', ')}`);
     if (bank.length) regels.push(`  bank: ${bank.join(', ')}`);

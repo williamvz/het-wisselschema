@@ -99,6 +99,8 @@ input, select, textarea { font: inherit; color: inherit; }
 .merk { width: 34px; height: 34px; border-radius: 10px; flex: none;
   background: linear-gradient(140deg, var(--accent-fel), var(--accent));
   display: grid; place-items: center; color: #fff; font-weight: 800; font-size: .9rem; }
+/* Clubbeheer heeft een eigen kleur: zo zie je meteen dat je niet in je team zit. */
+.kop.beheerkop .merk { background: var(--rol-M); }
 
 /* ------------------------------------------------------------------ account */
 .teamknop { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; border-radius: 8px; }
@@ -160,6 +162,7 @@ input, select, textarea { font: inherit; color: inherit; }
 /* ------------------------------------------------------------------ velden */
 label.veld { display: block; margin-bottom: 12px; }
 label.veld > span { display: block; font-size: .8rem; font-weight: 600; color: var(--zacht); margin-bottom: 5px; }
+input[readonly] { color: var(--zacht); }
 input[type=text], input[type=password], input[type=date], input[type=number], select, textarea {
   width: 100%; min-height: 46px; padding: 10px 12px;
   background: var(--vlak-2); border: 1px solid var(--rand); border-radius: 11px;
@@ -188,6 +191,7 @@ input:focus, select:focus, textarea:focus, .knop:focus-visible, .chip:focus-visi
 .chip[aria-pressed="true"] { background: var(--accent-zacht); border-color: var(--accent); color: var(--accent); }
 .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bank); flex: none; }
 .chip[aria-pressed="true"] .dot { background: var(--accent); }
+.chip.gast { border-style: dashed; }
 .chiprij { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .vlag { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: .68rem;
@@ -267,6 +271,7 @@ table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; col
 .melding.hoog { background: var(--alarm-zacht); color: var(--alarm); }
 .melding.midden { background: var(--waarschuwing-zacht); color: var(--waarschuwing); }
 .melding.info { background: var(--vlak-2); color: var(--zacht); }
+.melding.goed { background: var(--accent-zacht); color: var(--accent); }
 
 /* ------------------------------------------------------------------ live */
 .klok-kaart { text-align: center; padding: 18px 14px 14px; }
@@ -316,6 +321,8 @@ table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; col
 }
 .nav button[aria-current="page"] { color: var(--accent); background: var(--accent-zacht); }
 .nav button svg { width: 21px; height: 21px; }
+.nav button.beheertab[aria-current="page"] { color: var(--rol-M); background: color-mix(in srgb, var(--rol-M) 14%, transparent); }
+.nav .scheiding { flex: none; width: 1px; margin: 8px 3px; background: var(--rand); }
 .nav button .punt { position: absolute; margin: -2px 0 0 18px; width: 7px; height: 7px;
   border-radius: 50%; background: var(--alarm); }
 
@@ -380,7 +387,7 @@ function __mod(naam) {
 __defs["app/main.js"] = function () {
 // De romp: kopbalk, schermkeuze, navigatie en het opstarten.
 
-const { h, icoon, leegmaken, toonSheet, melding, houdSchermAan, minutenTekst, voornaam } = __mod("app/ui.js");
+const { h, icoon, leegmaken, toonSheet, sluitSheet, melding, houdSchermAan, minutenTekst, voornaam } = __mod("app/ui.js");
 const { S, wijzig, abonneer, laadLokaal, plan, klokStand, leesDeelLink, nieuweSpeler, nieuweWedstrijd, bewaarNu } = __mod("app/store.js");
 const { getFormation } = __mod("lib/formations.js");
 const { account, herstelAccount, verbind, wek, duwBijAfsluiten } = __mod("app/samenwerken.js");
@@ -390,9 +397,10 @@ const { schermOpzet } = __mod("app/scherm-opzet.js");
 const { schermSchema } = __mod("app/scherm-schema.js");
 const { schermLive, tikLive, actiefBlokIndex } = __mod("app/scherm-live.js");
 const { schermArchief } = __mod("app/scherm-archief.js");
-const { schermVerbinden, schermInloggen, schermInrichten, schermGeenTeam } = __mod("app/scherm-inloggen.js");
+const { schermVerbinden, schermInloggen, schermInrichten, schermSessieVerlopen, schermGeenTeam } = __mod("app/scherm-inloggen.js");
 const { schermBeheer, vergeetBeheer } = __mod("app/scherm-beheer.js");
 
+// Wat je als trainer doet: je team en de wedstrijden.
 const SCHERMEN = [
   { id: 'team', naam: 'Team', ico: 'team' },
   { id: 'opzet', naam: 'Wedstrijd', ico: 'opzet' },
@@ -400,8 +408,14 @@ const SCHERMEN = [
   { id: 'live', naam: 'Live', ico: 'live' },
   { id: 'archief', naam: 'Archief', ico: 'archief' },
 ];
+// Wat je als beheerder doet: de club. Een eigen tab, alleen voor beheerders.
+const BEHEER = { id: 'beheer', naam: 'Club', ico: 'club' };
 
 let wortel = null;
+let wasBinnen = false;
+
+/** Mag je het team zien? Niet zolang je moet inloggen, of na een verlopen sessie. */
+const binnen = () => !account.sessieVerlopen && !['verbinden', 'inloggen', 'inrichten'].includes(account.modus);
 
 function ganaar(scherm) {
   if (scherm === 'beheer') vergeetBeheer(); // altijd vers ophalen
@@ -423,45 +437,55 @@ function render() {
 
   leegmaken(wortel);
 
-  // Nog niet binnen: een scherm zonder kopbalk en navigatie.
-  if (['verbinden', 'inloggen', 'inrichten'].includes(account.modus)) {
-    wortel.appendChild(account.modus === 'verbinden' ? schermVerbinden()
+  // Nog niet (of niet meer) binnen: een scherm zonder kopbalk en navigatie.
+  if (!binnen()) {
+    // Wat er nog openstond, hoort bij het team: dat moet ook weg.
+    if (wasBinnen) sluitSheet();
+    wasBinnen = false;
+    wortel.appendChild(account.sessieVerlopen ? schermSessieVerlopen()
+      : account.modus === 'verbinden' ? schermVerbinden()
       : account.modus === 'inloggen' ? schermInloggen() : schermInrichten());
     document.getElementById('nav')?.remove();
     houdSchermAan(false);
     return;
   }
-
-  for (const deel of kopbalk(ganaar)) wortel.appendChild(deel);
+  wasBinnen = true;
 
   let scherm = S.ui.scherm || 'team';
   const zonderTeam = account.modus === 'team' && !account.teamId;
-  if (scherm === 'beheer' && !account.gebruiker?.beheerder) scherm = 'team';
+  const beheerder = account.modus === 'team' && !!account.gebruiker?.beheerder;
+  if (scherm === 'beheer' && !beheerder) scherm = 'team';
+
+  for (const deel of kopbalk(scherm)) wortel.appendChild(deel);
+
   const inhoud =
     scherm === 'beheer' ? schermBeheer(ganaar)
-    : zonderTeam ? schermGeenTeam(ganaar)
+    : zonderTeam ? schermGeenTeam()
     : scherm === 'team' ? schermTeam()
     : scherm === 'opzet' ? schermOpzet(ganaar)
     : scherm === 'schema' ? schermSchema(ganaar)
     : scherm === 'live' ? schermLive(ganaar, render)
-    : schermArchief(ganaar);
+    : schermArchief();
   wortel.appendChild(inhoud);
 
-  if (zonderTeam) {
-    document.getElementById('nav')?.remove();
+  // Zonder team valt er als trainer niets te doen; een beheerder kan wel naar de club.
+  const tabs = [...(zonderTeam ? [] : SCHERMEN), ...(beheerder ? [BEHEER] : [])];
+  document.getElementById('nav')?.remove();
+  if (!tabs.length) {
     houdSchermAan(false);
     return;
   }
 
-  const open = wisselStaatOpen();
+  const open = !zonderTeam && wisselStaatOpen();
   const nav = h('nav', { class: 'nav niet-printen', 'aria-label': 'Hoofdnavigatie' });
-  for (const s of SCHERMEN) {
+  for (const s of tabs) {
+    if (s === BEHEER && tabs.length > 1) nav.appendChild(h('i', { class: 'scheiding', 'aria-hidden': 'true' }));
     nav.appendChild(h('button', {
+      class: s === BEHEER ? 'beheertab' : null,
       'aria-current': scherm === s.id ? 'page' : null,
       onclick: () => ganaar(s.id),
     }, icoon(s.ico), s.id === 'live' && open ? h('span', { class: 'punt' }) : null, s.naam));
   }
-  document.getElementById('nav')?.remove();
   nav.id = 'nav';
   document.body.appendChild(nav);
 
@@ -476,8 +500,9 @@ async function verwerkDeelLink() {
   if (!data || !data.w) return false;
   history.replaceState(null, '', location.pathname + location.search);
 
-  const spelers = (data.s || []).map(([id, naam, nummer, keeper, posities]) =>
-    ({ ...nieuweSpeler(naam), id, nummer: nummer || '', keeper: !!keeper, posities: (posities || '').split('').filter(Boolean) }));
+  const spelers = (data.s || []).map(([id, naam, nummer, keeper, posities, gast]) =>
+    ({ ...nieuweSpeler(naam), id, nummer: nummer || '', keeper: !!keeper, posities: (posities || '').split('').filter(Boolean),
+      ...(gast ? { gast: true } : {}) }));
   const formatie = getFormation(data.w.f);
   const naam = (id) => voornaam((spelers.find((q) => q.id === id) || {}).naam);
 
@@ -505,8 +530,8 @@ async function verwerkDeelLink() {
 
     // Overnemen kan alleen als duidelijk is waar het heen gaat: dit apparaat,
     // of het team dat open staat.
-    const kanOvernemen = account.modus === 'lokaal' || (account.modus === 'team' && !!account.teamId);
-    if (account.modus === 'team' && account.teamId) {
+    const kanOvernemen = account.modus === 'lokaal' || (binnen() && account.modus === 'team' && !!account.teamId);
+    if (kanOvernemen && account.modus === 'team') {
       c.appendChild(h('p', { class: 'mini', style: { marginTop: '10px' } }, `Overnemen zet dit schema klaar bij ${S.team.naam}.`));
     }
     c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '16px' } },
@@ -515,12 +540,14 @@ async function verwerkDeelLink() {
         wijzig((s) => {
           // Een clubteam heet zoals de club het noemt; lokaal nemen we de naam over.
           if (account.modus !== 'team') s.team.naam = data.t || s.team.naam;
-          for (const sp of spelers) if (!s.team.spelers.some((q) => q.id === sp.id)) s.team.spelers.push(sp);
+          // Gastspelers horen bij de wedstrijd, niet bij het team.
+          for (const sp of spelers) if (!sp.gast && !s.team.spelers.some((q) => q.id === sp.id)) s.team.spelers.push(sp);
           const w = nieuweWedstrijd();
           Object.assign(w, {
             datum: data.w.d, tegenstander: data.w.o, formationId: data.w.f,
             periodes: data.w.p, periodeMin: data.w.m, blokkenPerPeriode: data.w.b,
             speelvorm: formatie.speelvorm, selectie: data.w.sel || spelers.map((x) => x.id),
+            gasten: spelers.filter((x) => x.gast),
             blokken: blokken.map(([van, tot, opstelling], i) => ({
               id: `gd${i}`, periode: Math.floor(van / (data.w.m * 60)), deel: 0,
               vanSec: van, totSec: tot, vast: false, opstelling: opstelling || {}, bank: [],
@@ -551,7 +578,7 @@ async function start() {
   else verbind();
   await verwerkDeelLink();
 
-  setInterval(() => { if (S.ui.scherm === 'live' && S.wedstrijd) tikLive(); }, 250);
+  setInterval(() => { if (S.ui.scherm === 'live' && S.wedstrijd && binnen()) tikLive(); }, 250);
 
   // Terugkomen uit de achtergrond: de klok loopt door op wandkloktijd, dus
   // even bijwerken zodat het scherm meteen weer klopt. En wat de anderen
@@ -559,8 +586,9 @@ async function start() {
   // van de server te wachten.
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
-      tikLive();
       wek();
+      if (!binnen()) return;
+      tikLive();
       houdSchermAan(S.instellingen.schermAan && S.ui.scherm === 'live' && !!S.wedstrijd?.klok?.loopt);
     }
   });
@@ -652,6 +680,7 @@ const PADEN = {
   schema: 'M4 5h16M4 5v14M4 5a0 0 0 0 0 0 0m16 0v14M4 19h16M9.5 5v14M14.5 5v14M4 12h16',
   live: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3.5 2',
   archief: 'M4 8h16M5 8V6a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v2M6 8v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8M10 12h4',
+  club: 'M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3Zm-3 9 2 2 4-4',
   tandwiel: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8.4-3a8.4 8.4 0 0 0-.16-1.6l2.1-1.6-2-3.5-2.5 1a8.4 8.4 0 0 0-2.8-1.6L14.6 2h-4l-.44 2.7a8.4 8.4 0 0 0-2.8 1.6l-2.5-1-2 3.5 2.1 1.6a8.4 8.4 0 0 0 0 3.2l-2.1 1.6 2 3.5 2.5-1a8.4 8.4 0 0 0 2.8 1.6l.44 2.7h4l.44-2.7a8.4 8.4 0 0 0 2.8-1.6l2.5 1 2-3.5-2.1-1.6c.1-.52.16-1.06.16-1.6Z',
   terug: 'M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
   plus: 'M12 5v14M5 12h14',
@@ -796,6 +825,24 @@ function nieuweSpeler(naam = '') {
   return { id: uid('s'), naam, nummer: '', keeper: false, posities: [], sterkte: 3, saldoSec: 0, actief: true };
 }
 
+/**
+ * Een speler van een ander team die één keer meedoet. Hij hoort bij de
+ * wedstrijd, niet bij het team: na afloop staat hij alleen in het archief,
+ * en hij krijgt geen seizoenssaldo.
+ */
+function nieuweGast(naam = '', keeper = false) {
+  return { ...nieuweSpeler(naam), id: uid('gast'), keeper: !!keeper, gast: true };
+}
+
+/** Wie er in deze wedstrijd mee kan doen: het team, plus de gastspelers. */
+function wedstrijdSpelers(w = S.wedstrijd) {
+  const gasten = (w && Array.isArray(w.gasten) ? w.gasten : [])
+    .filter((g) => !S.team.spelers.some((p) => p.id === g.id));
+  return gasten.length ? [...S.team.spelers, ...gasten] : S.team.spelers;
+}
+
+const spelerMetId = (id, w = S.wedstrijd) => wedstrijdSpelers(w).find((p) => p.id === id);
+
 function nieuweWedstrijd(vorige = null) {
   return {
     id: uid('w'), datum: vandaag(), tegenstander: '', thuis: true,
@@ -806,7 +853,7 @@ function nieuweWedstrijd(vorige = null) {
     periodes: vorige?.periodes ?? 4,
     periodeMin: vorige?.periodeMin ?? 15,
     blokkenPerPeriode: vorige?.blokkenPerPeriode ?? 1,
-    selectie: [], beschikbaar: {}, blokken: null, pins: {},
+    selectie: [], gasten: [], beschikbaar: {}, blokken: null, pins: {},
     opties: { seed: Math.floor(Math.random() * 1e6), vormAccent: 0, saldoGewicht: 0.6 },
     status: 'opzet',
     klok: { loopt: false, verstreken: 0, sindsMs: null, pauzeReden: null },
@@ -1044,7 +1091,7 @@ function laadLokaal() {
 let planCache = null;
 function plan() {
   if (!S.wedstrijd) return null;
-  if (!planCache) planCache = planWedstrijd(S.wedstrijd, S.team.spelers);
+  if (!planCache) planCache = planWedstrijd(S.wedstrijd, wedstrijdSpelers());
   return planCache;
 }
 
@@ -1061,21 +1108,23 @@ function genereer({ nieuweSeed = false } = {}) {
     s.wedstrijd.blokken = maakBlokken(s.wedstrijd);
     s.wedstrijd.pins = {};
     planCache = null;
-    const p = planWedstrijd(s.wedstrijd, s.team.spelers);
+    const p = planWedstrijd(s.wedstrijd, wedstrijdSpelers(s.wedstrijd));
     s.wedstrijd.blokken = p.blokken;
   });
 }
 
-function herplanNu(opSec, wijzigingen = []) {
+/** `gast`: een gastspeler die er nu bij komt, in dezelfde stap (dus ook samen terug te draaien). */
+function herplanNu(opSec, wijzigingen = [], { gast = null } = {}) {
   wijzig((s) => {
-    const res = herplan(s.wedstrijd, s.team.spelers, { opSec, wijzigingen });
+    if (gast) s.wedstrijd.gasten = [...(s.wedstrijd.gasten || []), gast];
+    const res = herplan(s.wedstrijd, wedstrijdSpelers(s.wedstrijd), { opSec, wijzigingen });
     s.wedstrijd = { ...s.wedstrijd, ...res.match };
   }, { terugdraaibaar: true });
 }
 
 function bevestigWissel(blokIndex, opSec) {
   wijzig((s) => {
-    const res = wisselUitgevoerd(s.wedstrijd, s.team.spelers, blokIndex, opSec);
+    const res = wisselUitgevoerd(s.wedstrijd, wedstrijdSpelers(s.wedstrijd), blokIndex, opSec);
     s.wedstrijd = { ...s.wedstrijd, ...res.match };
   }, { terugdraaibaar: true });
 }
@@ -1156,7 +1205,8 @@ function rondAf() {
   wijzig((s) => {
     const w = s.wedstrijd;
     if (!w) return;
-    const p = planWedstrijd(w, s.team.spelers);
+    const p = planWedstrijd(w, wedstrijdSpelers(w));
+    const gasten = new Set((w.gasten || []).map((g) => g.id));
     const gemiddeld = p.statistieken.reduce((a, x) => a + x.speelSec, 0) / (p.statistieken.length || 1);
     for (const st of p.statistieken) {
       const speler = s.team.spelers.find((q) => q.id === st.spelerId);
@@ -1165,7 +1215,8 @@ function rondAf() {
     s.archief.unshift({
       id: w.id, datum: w.datum, tegenstander: w.tegenstander, thuis: w.thuis,
       formationId: w.formationId, periodes: w.periodes, periodeMin: w.periodeMin,
-      statistieken: p.statistieken, blokken: w.blokken, selectie: w.selectie,
+      statistieken: p.statistieken.map((st) => (gasten.has(st.spelerId) ? { ...st, gast: true } : st)),
+      blokken: w.blokken, selectie: w.selectie,
       doelpunten: w.doelpunten || [],
     });
     s.archief = s.archief.slice(0, 60);
@@ -1179,8 +1230,8 @@ function rondAf() {
 async function deelLink() {
   const kern = {
     t: S.team.naam,
-    s: S.team.spelers.filter((p) => (S.wedstrijd?.selectie || []).includes(p.id))
-      .map((p) => [p.id, p.naam, p.nummer, p.keeper ? 1 : 0, (p.posities || []).join('')]),
+    s: wedstrijdSpelers().filter((p) => (S.wedstrijd?.selectie || []).includes(p.id))
+      .map((p) => [p.id, p.naam, p.nummer, p.keeper ? 1 : 0, (p.posities || []).join(''), p.gast ? 1 : 0]),
     w: S.wedstrijd && {
       d: S.wedstrijd.datum, o: S.wedstrijd.tegenstander, f: S.wedstrijd.formationId,
       p: S.wedstrijd.periodes, m: S.wedstrijd.periodeMin, b: S.wedstrijd.blokkenPerPeriode,
@@ -1226,7 +1277,7 @@ function vanBase64Url(t) {
 
 
 
-return { uid, nieuweSpeler, nieuweWedstrijd, abonneer, stempel, zetKlokVerschil, klokVerschil, herteken, wijzig, teamDeel, laadTeamDeel, kanTerug, draaiTerug, gebruikTeamOpslag, lokaleGegevens, metServer, bewaarNu, exporteer, neemOver, laadLokaal, plan, leginSchema, genereer, herplanNu, bevestigWissel, noteerGoal, schrapGoal, klokStand, klokStart, klokPauze, klokAutoPauze, klokZet, periodeGrens, rondAf, deelLink, leesDeelLink, SLEUTEL, VERSIE, S, nu, FORMATIONS, getFormation, formationsForSize, totaleSpeeltijd };
+return { uid, nieuweSpeler, nieuweGast, wedstrijdSpelers, nieuweWedstrijd, abonneer, stempel, zetKlokVerschil, klokVerschil, herteken, wijzig, teamDeel, laadTeamDeel, kanTerug, draaiTerug, gebruikTeamOpslag, lokaleGegevens, metServer, bewaarNu, exporteer, neemOver, laadLokaal, plan, leginSchema, genereer, herplanNu, bevestigWissel, noteerGoal, schrapGoal, klokStand, klokStart, klokPauze, klokAutoPauze, klokZet, periodeGrens, rondAf, deelLink, leesDeelLink, SLEUTEL, VERSIE, spelerMetId, S, nu, FORMATIONS, getFormation, formationsForSize, totaleSpeeltijd };
 };
 __defs["lib/schedule.js"] = function () {
 // De wisselschema-motor.
@@ -2306,6 +2357,7 @@ function bewaarAccount() {
     localStorage.setItem(ACCOUNT, JSON.stringify({
       server: account.server, handmatig: account.handmatig, token: account.token,
       gebruiker: account.gebruiker, teams: account.teams, teamId: account.teamId, klokVerschil: klokVerschil(),
+      sessieVerlopen: account.sessieVerlopen,
     }));
   } catch (e) { /* zonder opslag werkt het ook, alleen log je de volgende keer opnieuw in */ }
 }
@@ -2355,7 +2407,7 @@ function herstelAccount() {
     zetKlokVerschil(a.klokVerschil || 0);
     Object.assign(account, {
       modus: 'team', server: a.server, handmatig: !!a.handmatig, token: a.token,
-      gebruiker: a.gebruiker, teams: a.teams || [],
+      gebruiker: a.gebruiker, teams: a.teams || [], sessieVerlopen: !!a.sessieVerlopen,
     });
     gebruikTeamOpslag(opslag);
     const id = kiesStartTeam(a.teamId);
@@ -2480,10 +2532,18 @@ async function vernieuwIk() {
   }
 }
 
+/**
+ * De server kent deze sessie niet meer: het wachtwoord is gewijzigd, de
+ * beheerder heeft het account aangepast, of iemand logde uit. Dan zie je
+ * het team niet meer tot je opnieuw inlogt - ook niet na herladen. Wat nog
+ * niet verstuurd was, blijft in de cache en gaat daarna alsnog mee.
+ */
 function sessieVerlopen() {
   account.sessieVerlopen = true;
-  ts.generatie += 1; // lussen stoppen; wat je nu doet blijft in de cache staan
+  ts.generatie += 1; // lussen stoppen
   ts.luisteraar?.abort();
+  bewaarCache();
+  bewaarAccount();
   herteken();
 }
 
@@ -2517,7 +2577,7 @@ function openTeam(id) {
   laadTeamDeel(c ? c.staat : leegTeam(teamNaam(id)));
   account.onverstuurd = !!(ts.basis && !gelijk(teamDeel(), ts.basis));
   bewaarAccount();
-  luister(ts.generatie);
+  if (!account.sessieVerlopen) luister(ts.generatie);
 }
 
 function stopTeam() {
@@ -2886,8 +2946,10 @@ __defs["app/kop.js"] = function () {
 
 const { h, toonSheet, bevestig, melding, initialen, teamInitialen, datumTekst } = __mod("app/ui.js");
 const { S, herteken } = __mod("app/store.js");
-const { account, kiesTeam, uitloggen, vernieuwIk, wijzigWachtwoord, inloggen } = __mod("app/samenwerken.js");
+const { account, kiesTeam, uitloggen, vernieuwIk, wijzigWachtwoord } = __mod("app/samenwerken.js");
 const { getFormation } = __mod("lib/formations.js");
+
+const hostVan = (adres) => { try { return new URL(adres).host; } catch (e) { return adres || ''; } };
 
 function ondertitel() {
   const w = S.wedstrijd;
@@ -2898,7 +2960,6 @@ function ondertitel() {
 
 /** Hoe het ervoor staat met de verbinding, in één woord voor de stip en een zin voor erbij. */
 function verbindingsStaat() {
-  if (account.sessieVerlopen) return { klasse: 'fout', tekst: 'Je bent uitgelogd. Wat je nu doet, wordt bewaard tot je weer inlogt.' };
   if (account.verbinding === 'offline') {
     return { klasse: 'uit', tekst: account.onverstuurd
       ? 'Geen verbinding. Je wijzigingen staan op dit apparaat en gaan mee zodra er weer bereik is.'
@@ -2909,8 +2970,9 @@ function verbindingsStaat() {
   return { klasse: 'uit', tekst: 'Verbinden…' };
 }
 
-function kopbalk(ganaar) {
-  const kop = h('header', { class: 'kop' }, h('div', { class: 'merk', 'aria-hidden': 'true' }, 'W'));
+function kopbalk(scherm) {
+  const beheer = scherm === 'beheer';
+  const kop = h('header', { class: `kop${beheer ? ' beheerkop' : ''}` }, h('div', { class: 'merk', 'aria-hidden': 'true' }, 'W'));
   const titel = [h('strong', {}, S.team.naam), h('small', {}, ondertitel())];
 
   if (account.modus !== 'team') {
@@ -2918,13 +2980,15 @@ function kopbalk(ganaar) {
     return [kop];
   }
 
-  if (!account.teamId) titel.splice(0, 2, h('strong', {}, 'Het Wisselschema'), h('small', {}, account.gebruiker?.naam || ''));
-  kop.appendChild(account.teamId
+  // Als beheerder ben je niet met een team bezig, maar met de hele club.
+  if (beheer) titel.splice(0, 2, h('strong', {}, 'Clubbeheer'), h('small', {}, 'Teams en trainers van de club'));
+  else if (!account.teamId) titel.splice(0, 2, h('strong', {}, 'Het Wisselschema'), h('small', {}, account.gebruiker?.naam || ''));
+  kop.appendChild(account.teamId && !beheer
     ? h('button', { class: 'titel teamknop', 'aria-label': `Team ${S.team.naam}, kies een ander team`,
-      onclick: () => teamSheet(ganaar) }, ...titel)
+      onclick: () => teamSheet() }, ...titel)
     : h('div', { class: 'titel' }, ...titel));
 
-  if (account.aanwezig.length) {
+  if (account.aanwezig.length && !beheer) {
     const namen = account.aanwezig.map((a) => a.naam);
     kop.appendChild(h('div', { class: 'aanwezig', title: `Kijkt nu mee: ${namen.join(', ')}`,
       'aria-label': `Kijkt nu mee: ${namen.join(', ')}` },
@@ -2933,15 +2997,11 @@ function kopbalk(ganaar) {
 
   const staat = verbindingsStaat();
   kop.appendChild(h('button', { class: 'accountknop', 'aria-label': `${account.gebruiker?.naam || 'Account'}. ${staat.tekst}`,
-    title: staat.tekst, onclick: () => accountSheet(ganaar) },
+    title: staat.tekst, onclick: () => accountSheet() },
     initialen(account.gebruiker?.naam), h('i', { class: `stip ${staat.klasse}` })));
 
   const uit = [kop];
-  if (account.sessieVerlopen) {
-    uit.push(h('div', { class: 'melding hoog balk-melding' }, h('span', { class: 'ico' }, '!'),
-      h('span', { style: { flex: '1' } }, 'Je bent uitgelogd. Je kunt doorwerken; log opnieuw in om het te delen.'),
-      h('button', { class: 'knop klein', onclick: herinlogSheet }, 'Inloggen')));
-  } else if (account.melding) {
+  if (account.melding) {
     const tekst = account.melding;
     uit.push(h('div', { class: 'melding midden balk-melding' }, h('span', { class: 'ico' }, 'i'),
       h('span', { style: { flex: '1' } }, tekst),
@@ -2951,34 +3011,44 @@ function kopbalk(ganaar) {
 }
 
 // ------------------------------------------------------------------- teams
-function teamSheet(ganaar) {
+function teamSheet() {
   vernieuwIk(); // het lijstje kan veranderd zijn; komt het terug, dan tekent de app opnieuw
   toonSheet('Kies een team', (c, sluit) => {
-    if (!account.teams.length) c.appendChild(h('div', { class: 'leeg' }, 'Je hebt nog geen teams.'));
-    for (const t of account.teams) {
+    const rij = (t) => {
       const open = t.id === account.teamId;
       const leden = (t.leden || []).map((l) => l.naam).join(', ');
-      c.appendChild(h('button', { class: 'spelerrij', 'aria-current': open ? 'true' : null,
+      return h('button', { class: 'spelerrij', 'aria-current': open ? 'true' : null,
         style: { width: '100%', textAlign: 'left', background: 'none', border: 0, borderBottom: '1px solid var(--rand)' },
         onclick: () => { sluit(); if (!open) { kiesTeam(t.id); melding(`${t.naam} geopend`); } } },
         h('div', { class: 'bal' }, teamInitialen(t.naam)),
         h('div', { class: 'naam' }, t.naam, h('small', {}, leden || 'nog geen trainers')),
-        open ? h('span', { class: 'vlag' }, 'OPEN') : !t.lid ? h('span', { class: 'mini' }, 'geen lid') : null));
-    }
-    if (account.gebruiker?.beheerder) {
-      c.appendChild(h('button', { class: 'knop breed', style: { marginTop: '14px' },
-        onclick: () => { sluit(); ganaar('beheer'); } }, 'Club beheren'));
+        open ? h('span', { class: 'vlag' }, 'OPEN') : null);
+    };
+    const mijn = account.teams.filter((t) => t.lid);
+    const overig = account.teams.filter((t) => !t.lid);
+    if (!mijn.length) c.appendChild(h('div', { class: 'leeg' }, 'Je bent van geen enkel team trainer.'));
+    for (const t of mijn) c.appendChild(rij(t));
+    // Een beheerder mag bij elk team, maar is daar geen trainer van.
+    if (overig.length) {
+      c.appendChild(h('div', { class: 'tussenkop' }, 'Andere teams van de club'));
+      c.appendChild(h('p', { class: 'mini' }, 'Als beheerder kun je deze openen. Trainer worden doe je onder Club.'));
+      for (const t of overig) c.appendChild(rij(t));
     }
   });
 }
 
 // ----------------------------------------------------------------- account
-function accountSheet(ganaar) {
+function accountSheet() {
   const g = account.gebruiker || {};
   toonSheet(g.naam || 'Account', (c, sluit) => {
-    let host = account.server;
-    try { host = new URL(account.server).host; } catch (e) { /* laat het adres staan */ }
-    c.appendChild(h('p', { class: 'uitleg' }, `Ingelogd als ${g.gebruikersnaam}${g.beheerder ? ' · beheerder' : ''} op ${host}.`));
+    c.appendChild(h('p', { class: 'uitleg' }, `Ingelogd als ${g.gebruikersnaam} op ${hostVan(account.server)}.`));
+    const mijn = account.teams.filter((t) => t.lid).map((t) => t.naam);
+    c.appendChild(h('div', { class: 'strook' },
+      h('div', { class: 'kop2' }, 'Trainer', h('small', {}, mijn.length ? mijn.join(', ') : 'nog van geen team'))));
+    if (g.beheerder) {
+      c.appendChild(h('div', { class: 'strook' },
+        h('div', { class: 'kop2' }, 'Beheerder', h('small', {}, 'Je beheert de teams en trainers van de club, onder Club'))));
+    }
     const staat = verbindingsStaat();
     c.appendChild(h('div', { class: 'strook' },
       h('div', { class: 'kop2' }, 'Verbinding', h('small', {}, staat.tekst)),
@@ -2988,11 +3058,10 @@ function accountSheet(ganaar) {
         h('div', { class: 'kop2' }, 'Kijkt nu mee', h('small', {}, account.aanwezig.map((a) => a.naam).join(', ')))));
     }
     c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '14px', flexDirection: 'column' } },
-      g.beheerder ? h('button', { class: 'knop', onclick: () => { sluit(); ganaar('beheer'); } }, 'Club beheren') : null,
       h('button', { class: 'knop', onclick: () => { sluit(); wachtwoordSheet(); } }, 'Wachtwoord wijzigen'),
       h('button', { class: 'knop gevaar', onclick: () => {
         sluit();
-        if (account.onverstuurd || account.sessieVerlopen) {
+        if (account.onverstuurd) {
           bevestig('Nog niet alles is verstuurd', 'Er staan wijzigingen op dit apparaat die de server nog niet heeft. Als je uitlogt, ben je die kwijt.',
             uitloggen, { knop: 'Toch uitloggen', gevaar: true });
         } else uitloggen();
@@ -3000,37 +3069,55 @@ function accountSheet(ganaar) {
   });
 }
 
+/**
+ * Een echt formulier, met je gebruikersnaam erin: dan
+ * onthoudt de wachtwoordbeheerder van je telefoon het nieuwe wachtwoord, in
+ * plaats van bij de volgende keer inloggen het oude in te vullen.
+ */
 function wachtwoordSheet() {
+  const g = account.gebruiker || {};
   toonSheet('Wachtwoord wijzigen', (c, sluit) => {
-    const huidig = h('input', { type: 'password', autocomplete: 'current-password' });
-    const nieuw = h('input', { type: 'password', autocomplete: 'new-password', minlength: '8' });
+    const naam = h('input', { type: 'text', name: 'username', autocomplete: 'username', value: g.gebruikersnaam || '',
+      readonly: '', tabindex: '-1' });
+    const huidig = h('input', { type: 'password', name: 'current-password', autocomplete: 'current-password', required: true });
+    const nieuw = h('input', { type: 'password', name: 'new-password', autocomplete: 'new-password', required: true, minlength: '8' });
+    const herhaal = h('input', { type: 'password', name: 'new-password-2', autocomplete: 'new-password', required: true, minlength: '8' });
     const fout = h('p', { class: 'fout', role: 'alert' });
-    c.appendChild(h('label', { class: 'veld' }, h('span', {}, 'Huidig wachtwoord'), huidig));
-    c.appendChild(h('label', { class: 'veld' }, h('span', {}, 'Nieuw wachtwoord (minstens 8 tekens)'), nieuw));
-    c.appendChild(fout);
-    c.appendChild(h('div', { class: 'knoprij' },
-      h('button', { class: 'knop', onclick: sluit }, 'Annuleren'),
-      h('button', { class: 'knop primair', style: { flex: '2' }, onclick: async () => {
-        try { await wijzigWachtwoord(huidig.value, nieuw.value); sluit(); melding('Wachtwoord gewijzigd'); }
-        catch (e) { fout.textContent = e.message; }
-      } }, 'Opslaan')));
-  });
-}
+    const knop = h('button', { class: 'knop primair', type: 'submit', style: { flex: '2' } }, 'Wachtwoord wijzigen');
 
-/** Sessie verlopen midden in een wedstrijd: inloggen zonder dat het scherm verdwijnt. */
-function herinlogSheet() {
-  toonSheet('Opnieuw inloggen', (c, sluit) => {
-    const naam = h('input', { type: 'text', autocomplete: 'username', autocapitalize: 'none', value: account.gebruiker?.gebruikersnaam || '' });
-    const wachtwoord = h('input', { type: 'password', autocomplete: 'current-password' });
-    const fout = h('p', { class: 'fout', role: 'alert' });
-    c.appendChild(h('p', { class: 'uitleg' }, 'Wat je intussen hebt gedaan, gaat daarna alsnog mee.'));
-    c.appendChild(h('label', { class: 'veld' }, h('span', {}, 'Gebruikersnaam'), naam));
-    c.appendChild(h('label', { class: 'veld' }, h('span', {}, 'Wachtwoord'), wachtwoord));
-    c.appendChild(fout);
-    c.appendChild(h('button', { class: 'knop primair breed', onclick: async () => {
-      try { await inloggen(naam.value, wachtwoord.value); sluit(); melding('Weer ingelogd'); }
-      catch (e) { fout.textContent = e.message; }
-    } }, 'Inloggen'));
+    const klaar = () => {
+      c.replaceChildren(
+        h('div', { class: 'melding goed', role: 'status' }, h('span', { class: 'ico' }, '✓'),
+          h('span', {}, h('b', {}, 'Je wachtwoord is gewijzigd. '),
+            'Op je andere telefoons en computers ben je nu uitgelogd; daar log je in met het nieuwe wachtwoord.')),
+        h('button', { class: 'knop primair breed', style: { marginTop: '14px' }, onclick: sluit }, 'Klaar'));
+    };
+
+    c.appendChild(h('form', { onsubmit: async (e) => {
+      e.preventDefault();
+      fout.textContent = '';
+      if (nieuw.value.length < 8) { fout.textContent = 'Het nieuwe wachtwoord moet minstens 8 tekens lang zijn.'; nieuw.focus(); return; }
+      if (nieuw.value !== herhaal.value) { fout.textContent = 'De twee nieuwe wachtwoorden zijn niet hetzelfde.'; herhaal.focus(); return; }
+      if (nieuw.value === huidig.value) { fout.textContent = 'Het nieuwe wachtwoord is hetzelfde als het huidige.'; nieuw.focus(); return; }
+      knop.disabled = true;
+      knop.textContent = 'Even geduld…';
+      try {
+        await wijzigWachtwoord(huidig.value, nieuw.value);
+        klaar();
+      } catch (err) {
+        fout.textContent = err.message || 'Dat lukte niet.';
+        knop.disabled = false;
+        knop.textContent = 'Wachtwoord wijzigen';
+      }
+    } },
+      h('label', { class: 'veld' }, h('span', {}, 'Gebruikersnaam'), naam),
+      h('label', { class: 'veld' }, h('span', {}, 'Huidig wachtwoord'), huidig),
+      h('label', { class: 'veld' }, h('span', {}, 'Nieuw wachtwoord'), nieuw, h('small', { class: 'mini' }, 'Minstens 8 tekens.')),
+      h('label', { class: 'veld' }, h('span', {}, 'Nieuw wachtwoord, nog een keer'), herhaal),
+      fout,
+      h('div', { class: 'knoprij' },
+        h('button', { class: 'knop', type: 'button', onclick: sluit }, 'Annuleren'),
+        knop)));
   });
 }
 
@@ -3304,8 +3391,8 @@ return { schermTeam, bewerkSpeler, leesSpelers };
 __defs["app/scherm-opzet.js"] = function () {
 // Scherm: wedstrijd klaarzetten. Wie is er vandaag, hoe spelen we, hoe lang.
 
-const { h, icoon, melding, datumTekst, bevestig } = __mod("app/ui.js");
-const { S, wijzig, nieuweWedstrijd, genereer } = __mod("app/store.js");
+const { h, icoon, melding, datumTekst, bevestig, toonSheet } = __mod("app/ui.js");
+const { S, wijzig, nieuweWedstrijd, nieuweGast, genereer } = __mod("app/store.js");
 const { FORMATIONS, SPEELVORMEN, formationsForSize, getFormation } = __mod("lib/formations.js");
 const { tekenMiniVeld } = __mod("app/veld.js");
 
@@ -3358,10 +3445,11 @@ function schermOpzet(ganaar) {
 
   // ---- aanwezigheid
   const aanwezig = new Set(w.selectie);
+  const gasten = w.gasten || [];
   const kaartAanwezig = h('div', { class: 'kaart' });
   kaartAanwezig.appendChild(h('div', { class: 'kaart-kop' },
     h('h2', {}, 'Wie speelt er vandaag?'),
-    h('span', { class: 'mini' }, `${aanwezig.size} van ${S.team.spelers.length}`)));
+    h('span', { class: 'mini' }, `${aanwezig.size} van ${S.team.spelers.length + gasten.length}`)));
   const rij = h('div', { class: 'chiprij' });
   for (const p of S.team.spelers) {
     rij.appendChild(h('button', { class: 'chip', 'aria-pressed': String(aanwezig.has(p.id)),
@@ -3371,10 +3459,24 @@ function schermOpzet(ganaar) {
       }) },
       h('i', { class: 'dot' }), p.naam, p.keeper ? h('span', { class: 'vlag K' }, 'K') : null));
   }
+  // Een gast doet alleen vandaag mee: wegtikken is weghalen.
+  for (const g of gasten) {
+    rij.appendChild(h('button', { class: 'chip gast', 'aria-pressed': 'true', 'aria-label': `${g.naam}, gastspeler. Tik om weg te halen.`,
+      onclick: () => zet((m) => {
+        m.gasten = (m.gasten || []).filter((x) => x.id !== g.id);
+        m.selectie = m.selectie.filter((x) => x !== g.id);
+        delete m.beschikbaar[g.id];
+      }) },
+      h('i', { class: 'dot' }), g.naam, g.keeper ? h('span', { class: 'vlag K' }, 'K') : null, h('span', { class: 'mini' }, 'gast')));
+  }
   kaartAanwezig.appendChild(rij);
   kaartAanwezig.appendChild(h('div', { class: 'knoprij', style: { marginTop: '10px' } },
-    h('button', { class: 'knop klein stil', onclick: () => zet((m) => { m.selectie = S.team.spelers.map((p) => p.id); }) }, 'Iedereen'),
-    h('button', { class: 'knop klein stil', onclick: () => zet((m) => { m.selectie = []; }) }, 'Niemand')));
+    h('button', { class: 'knop klein stil', onclick: () => zet((m) => { m.selectie = [...S.team.spelers, ...(m.gasten || [])].map((p) => p.id); }) }, 'Iedereen'),
+    h('button', { class: 'knop klein stil', onclick: () => zet((m) => { m.selectie = []; m.gasten = []; }) }, 'Niemand'),
+    h('button', { class: 'knop klein', onclick: () => gastSheet((g) => zet((m) => {
+      m.gasten = [...(m.gasten || []), g];
+      m.selectie = [...m.selectie, g.id];
+    })) }, icoon('plus', 16), 'Gastspeler')));
   wrap.appendChild(kaartAanwezig);
 
   // ---- speelvorm en opstelling
@@ -3461,6 +3563,34 @@ function schermOpzet(ganaar) {
   return wrap;
 }
 
+/**
+ * Een speler van een ander team die vandaag meedoet: naam, en of hij kan
+ * keepen. Hij komt niet in het team en krijgt geen seizoenssaldo.
+ */
+function gastSheet(opToevoegen, { uitleg = 'Doet er vandaag iemand van een ander team mee? Die zet je hier alleen in deze wedstrijd; in je team komt hij niet.' } = {}) {
+  toonSheet('Gastspeler', (c, sluit) => {
+    let keeper = false;
+    const naam = h('input', { type: 'text', placeholder: 'Voornaam', autocomplete: 'off', required: true });
+    const keeperKnop = h('button', { class: 'schakel', type: 'button', 'aria-pressed': 'false', 'aria-label': 'Kan keepen',
+      onclick: () => { keeper = !keeper; keeperKnop.setAttribute('aria-pressed', String(keeper)); } }, h('i', {}));
+    c.appendChild(h('p', { class: 'uitleg' }, uitleg));
+    c.appendChild(h('form', { onsubmit: (e) => {
+      e.preventDefault();
+      if (!naam.value.trim()) { melding('Vul een naam in'); return; }
+      const g = nieuweGast(naam.value.trim(), keeper);
+      sluit();
+      opToevoegen(g);
+    } },
+      h('label', { class: 'veld' }, h('span', {}, 'Naam'), naam),
+      h('div', { class: 'strook' },
+        h('div', { class: 'kop2' }, 'Kan keepen', h('small', {}, 'Alleen dan kan hij op doel komen')),
+        keeperKnop),
+      h('div', { class: 'knoprij', style: { marginTop: '16px' } },
+        h('button', { class: 'knop', type: 'button', onclick: sluit }, 'Annuleren'),
+        h('button', { class: 'knop primair', type: 'submit', style: { flex: '2' } }, 'Toevoegen'))));
+  });
+}
+
 const accentTekst = (v) => (v < 0.05 ? 'volledig gelijk' : v < 0.35 ? 'licht accent' : v < 0.7 ? 'duidelijk accent' : 'sterk accent');
 
 function geenWedstrijd(ganaar) {
@@ -3488,7 +3618,7 @@ function geenWedstrijd(ganaar) {
   return wrap;
 }
 
-return { schermOpzet };
+return { schermOpzet, gastSheet };
 };
 __defs["app/veld.js"] = function () {
 // Het speelveld als SVG. Staand formaat, eigen doel onderaan - zoals je er
@@ -3585,7 +3715,7 @@ __defs["app/scherm-schema.js"] = function () {
 // speelt, plus per blok de opstelling en de wisselinstructie.
 
 const { h, icoon, toonSheet, melding, minutenTekst, mmss, kopieer, bevestig, voornaam } = __mod("app/ui.js");
-const { S, wijzig, plan, genereer, deelLink, klokStart } = __mod("app/store.js");
+const { S, wijzig, wedstrijdSpelers, spelerMetId, plan, genereer, deelLink, klokStart } = __mod("app/store.js");
 const { getFormation, slotsForCount } = __mod("lib/formations.js");
 const { tekenVeld } = __mod("app/veld.js");
 
@@ -3606,7 +3736,7 @@ function schermSchema(ganaar) {
 
   const p = plan();
   const formatie = getFormation(w.formationId);
-  const spelers = w.selectie.map((id) => S.team.spelers.find((q) => q.id === id)).filter(Boolean);
+  const spelers = w.selectie.map((id) => spelerMetId(id)).filter(Boolean);
   const wrap = h('div', {});
 
   // ---- waarschuwingen
@@ -3721,7 +3851,7 @@ function blokDetail(w, p, spelers, formatie, i) {
     kaart.appendChild(h('p', { class: 'uitleg' }, 'Beginopstelling.'));
   }
 
-  kaart.appendChild(tekenVeld(blok, S.team.spelers, w.formationId, {
+  kaart.appendChild(tekenVeld(blok, wedstrijdSpelers(), w.formationId, {
     opTik: blok.vast ? null : (spelerId) => ruilSheet(w, p, i, spelerId),
   }));
 
@@ -3765,10 +3895,10 @@ function ruilSheet(w, p, blokIndex, spelerId) {
   const blok = p.blokken[blokIndex];
   if (blok.vast) { melding('Dit blok is al gespeeld'); return; }
 
-  const ik = S.team.spelers.find((q) => q.id === spelerId);
+  const ik = spelerMetId(spelerId);
   const mijnSlot = Object.keys(blok.opstelling).find((sid) => blok.opstelling[sid] === spelerId);
   const anderen = w.selectie
-    .map((id) => S.team.spelers.find((q) => q.id === id))
+    .map((id) => spelerMetId(id))
     .filter((q) => q && q.id !== spelerId && kanSpelen(w, q.id, blok));
 
   toonSheet(`${ik.naam} ruilen`, (c, sluit) => {
@@ -3838,10 +3968,10 @@ function tekstSheet() {
   p.blokken.forEach((b) => {
     const slots = slotsForCount(formatie, Object.keys(b.opstelling).length);
     const opstelling = slots.filter((s) => b.opstelling[s.id])
-      .map((s) => `${s.label} ${voornaam((S.team.spelers.find((q) => q.id === b.opstelling[s.id]) || {}).naam)}`);
+      .map((s) => `${s.label} ${voornaam((spelerMetId(b.opstelling[s.id]) || {}).naam)}`);
     const opVeld = new Set(Object.values(b.opstelling));
     const bank = w.selectie.filter((id) => !opVeld.has(id))
-      .map((id) => voornaam((S.team.spelers.find((q) => q.id === id) || {}).naam));
+      .map((id) => voornaam((spelerMetId(id) || {}).naam));
     regels.push(`${blokLabel(b, w)} (${Math.round(b.vanSec / 60)}-${Math.round(b.totSec / 60)} min)`);
     regels.push(`  ${opstelling.join(', ')}`);
     if (bank.length) regels.push(`  bank: ${bank.join(', ')}`);
@@ -3864,11 +3994,12 @@ __defs["app/scherm-live.js"] = function () {
 // waar het langs de lijn om draait: "wissel gedaan" en "speler eruit".
 
 const { h, icoon, toonSheet, bevestig, melding, mmss, minutenTekst, piep, tril, voornaam } = __mod("app/ui.js");
-const { S, wijzig, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal } = __mod("app/store.js");
+const { S, wijzig, wedstrijdSpelers, spelerMetId, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal } = __mod("app/store.js");
 const { getFormation } = __mod("lib/formations.js");
 const { totaleSpeeltijd } = __mod("lib/schedule.js");
 const { tekenVeld } = __mod("app/veld.js");
 const { blokLabel } = __mod("app/scherm-schema.js");
+const { gastSheet } = __mod("app/scherm-opzet.js");
 const { stand, plusMin, verloop, goalMinuut } = __mod("lib/score.js");
 
 let tikkers = [];
@@ -3925,10 +4056,10 @@ function schermLive(ganaar, herteken) {
   veldKaart.appendChild(h('div', { class: 'kaart-kop' },
     h('h2', {}, `Nu op het veld`),
     h('span', { class: 'mini' }, `${blokLabel(blok, w)} · tot ${Math.round(blok.totSec / 60)} min`)));
-  veldKaart.appendChild(tekenVeld(blok, S.team.spelers, w.formationId));
+  veldKaart.appendChild(tekenVeld(blok, wedstrijdSpelers(), w.formationId));
 
   const opVeld = new Set(Object.values(blok.opstelling));
-  const bank = w.selectie.map((id) => S.team.spelers.find((q) => q.id === id))
+  const bank = w.selectie.map((id) => spelerMetId(id))
     .filter((q) => q && !opVeld.has(q.id));
   if (bank.length) {
     veldKaart.appendChild(h('div', { class: 'tussenkop' }, 'Bank'));
@@ -4097,7 +4228,7 @@ function scoreKaart(w) {
 }
 
 function goalSheet(d) {
-  const naam = (id) => voornaam((S.team.spelers.find((q) => q.id === id) || {}).naam);
+  const naam = (id) => voornaam((spelerMetId(id) || {}).naam);
   toonSheet(`${d.wie === 'wij' ? 'Goal' : 'Tegengoal'} · ${mmss(d.sec)}`, (c, sluit) => {
     c.appendChild(h('div', { class: 'tussenkop', style: { marginTop: 0 } }, 'Op het veld'));
     c.appendChild(h('p', {}, d.opVeld.map(naam).join(', ') || 'onbekend'));
@@ -4119,7 +4250,7 @@ function uitvalSheet(p, idx) {
   const t = klokStand();
   const totaal = totaleSpeeltijd(w);
   const inzetbaar = w.selectie
-    .map((id) => S.team.spelers.find((q) => q.id === id))
+    .map((id) => spelerMetId(id))
     .filter(Boolean)
     .filter((q) => (((w.beschikbaar || {})[q.id] || {}).tot ?? totaal) >= totaal);
 
@@ -4158,7 +4289,7 @@ function doeUitval(speler, t) {
     .filter(([sid, id]) => voorVeld.has(id) && voor.blokken[actiefBlokIndex(voor.blokken)].opstelling[sid] !== id)
     .map(([sid, id]) => ({ id, slot: formatie.slots.find((s) => s.id === sid) }));
 
-  const naam = (id) => (S.team.spelers.find((q) => q.id === id) || {}).naam;
+  const naam = (id) => (spelerMetId(id) || {}).naam;
   toonSheet(`${speler.naam} gaat eruit`, (c, sluit) => {
     c.appendChild(h('div', { class: 'wissel' },
       h('div', { class: 'wanneer' }, `Doe dit nu · ${mmss(t)}`),
@@ -4190,14 +4321,10 @@ function erbijSheet(p) {
   const nogNiet = S.team.spelers.filter((q) => !w.selectie.includes(q.id));
 
   toonSheet('Speler erbij', (c, sluit) => {
-    if (!uitgevallen.length && !nogNiet.length) {
-      c.appendChild(h('div', { class: 'leeg' }, 'Iedereen doet al mee.'));
-      return;
-    }
-    c.appendChild(h('p', { class: 'uitleg' }, `Deze speler doet vanaf ${mmss(t)} weer mee en wordt in het resterende schema ingepast.`));
+    c.appendChild(h('p', { class: 'uitleg' }, `Deze speler doet vanaf ${mmss(t)} mee en wordt in het resterende schema ingepast.`));
     const lijst = h('div', {});
     for (const id of uitgevallen) {
-      const q = S.team.spelers.find((x) => x.id === id);
+      const q = spelerMetId(id);
       if (!q) continue;
       lijst.appendChild(h('button', { class: 'spelerrij', style: { width: '100%', textAlign: 'left', background: 'none', border: 0, borderBottom: '1px solid var(--rand)' },
         onclick: () => { herplanNu(t, [{ type: 'terug', spelerId: id }]); sluit(); melding(`${q.naam} doet weer mee`); } },
@@ -4208,6 +4335,12 @@ function erbijSheet(p) {
         onclick: () => { herplanNu(t, [{ type: 'erin', spelerId: q.id }]); sluit(); melding(`${q.naam} sluit aan`); } },
         h('div', { class: 'bal' }, '+'), h('div', { class: 'naam' }, q.naam, h('small', {}, 'stond niet in de selectie'))));
     }
+    lijst.appendChild(h('button', { class: 'spelerrij', style: { width: '100%', textAlign: 'left', background: 'none', border: 0, borderBottom: '1px solid var(--rand)' },
+      onclick: () => gastSheet((g) => {
+        herplanNu(t, [{ type: 'erin', spelerId: g.id }], { gast: g });
+        melding(`${g.naam} doet mee als gast`);
+      }, { uitleg: `Iemand van een ander team valt in. Hij doet vanaf ${mmss(t)} mee, alleen in deze wedstrijd.` }) },
+      h('div', { class: 'bal' }, '+'), h('div', { class: 'naam' }, 'Gastspeler', h('small', {}, 'iemand van een ander team, alleen vandaag'))));
     c.appendChild(lijst);
   });
 }
@@ -4259,7 +4392,7 @@ return { stand, plusMin, verloop, goalMinuut };
 __defs["app/scherm-archief.js"] = function () {
 // Scherm: gespeelde wedstrijden en instellingen.
 
-const { h, icoon, toonSheet, bevestig, melding, datumTekst, minutenTekst, saldoTekst, voornaam, downloadBestand } = __mod("app/ui.js");
+const { h, toonSheet, bevestig, melding, datumTekst, minutenTekst, saldoTekst, voornaam, downloadBestand } = __mod("app/ui.js");
 const { S, wijzig, exporteer, neemOver } = __mod("app/store.js");
 const { account, verbindMet } = __mod("app/samenwerken.js");
 const { verbindingsStaat } = __mod("app/kop.js");
@@ -4267,7 +4400,7 @@ const { getFormation } = __mod("lib/formations.js");
 const { stand, plusMin, verloop, goalMinuut } = __mod("lib/score.js");
 const { plusMinLabel } = __mod("app/scherm-live.js");
 
-function schermArchief(ganaar) {
+function schermArchief() {
   const wrap = h('div', {});
 
   if (!S.archief.length) {
@@ -4281,7 +4414,7 @@ function schermArchief(ganaar) {
   wrap.appendChild(h('div', { class: 'tussenkop' }, 'Instellingen'));
   wrap.appendChild(instellingenKaart());
   wrap.appendChild(h('div', { class: 'tussenkop' }, 'Samenwerken'));
-  wrap.appendChild(samenwerkKaart(ganaar));
+  wrap.appendChild(samenwerkKaart());
   wrap.appendChild(overKaart());
   return wrap;
 }
@@ -4309,14 +4442,15 @@ function archiefKaart(a) {
   const pm = goals.length ? plusMin(goals) : null;
 
   const totaalSec = a.statistieken.reduce((n, s) => n + s.speelSec, 0);
+  const gasten = a.statistieken.filter((st) => st.gast).length;
   kaart.appendChild(h('div', { class: 'tussenkop', style: { marginTop: '10px' } },
-    `Speeltijd · ${a.statistieken.length} spelers · ${minutenTekst(totaalSec / (a.statistieken.length || 1))} gemiddeld`));
+    `Speeltijd · ${a.statistieken.length - gasten} spelers${gasten ? ` + ${gasten} gast${gasten === 1 ? '' : 'en'}` : ''} · ${minutenTekst(totaalSec / (a.statistieken.length || 1))} gemiddeld`));
 
   const max = Math.max(1, ...a.statistieken.map((s) => s.speelSec));
   for (const st of a.statistieken) {
     kaart.appendChild(h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 0' } },
-      h('span', { style: { width: '76px', fontSize: '.82rem', fontWeight: '600', overflow: 'hidden',
-        textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, voornaam(st.naam)),
+      h('span', { title: st.gast ? `${st.naam} (gastspeler)` : null, style: { width: '76px', fontSize: '.82rem', fontWeight: '600', overflow: 'hidden',
+        textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontStyle: st.gast ? 'italic' : null } }, voornaam(st.naam)),
       h('div', { style: { flex: '1', height: '14px', background: 'var(--vlak-2)', borderRadius: '4px', overflow: 'hidden' } },
         h('i', { style: { display: 'block', height: '100%', width: `${(st.speelSec / max) * 100}%`,
           background: 'var(--accent)', borderRadius: '4px' } })),
@@ -4371,7 +4505,7 @@ function instellingenKaart() {
   return kaart;
 }
 
-function samenwerkKaart(ganaar) {
+function samenwerkKaart() {
   const kaart = h('div', { class: 'kaart' });
   if (account.modus === 'team') {
     const team = account.teams.find((t) => t.id === account.teamId);
@@ -4384,9 +4518,6 @@ function samenwerkKaart(ganaar) {
     kaart.appendChild(h('div', { class: 'strook' },
       h('div', { class: 'kop2' }, 'Verbinding', h('small', {}, verbindingsStaat().tekst)),
       h('i', { class: `stip los ${verbindingsStaat().klasse}` })));
-    if (account.gebruiker?.beheerder) {
-      kaart.appendChild(h('button', { class: 'knop klein', style: { marginTop: '10px' }, onclick: () => ganaar('beheer') }, 'Club beheren'));
-    }
     return kaart;
   }
   kaart.appendChild(h('p', { class: 'uitleg', style: { marginTop: '0' } },
@@ -4415,7 +4546,7 @@ __defs["app/scherm-inloggen.js"] = function () {
 // Schermen voor wie nog niet binnen is: verbinden, inloggen, de server
 // inrichten, en de melding dat je (nog) geen team hebt.
 
-const { h, icoon, melding, toonSheet, sluitSheet } = __mod("app/ui.js");
+const { h, melding, toonSheet, sluitSheet, bevestig } = __mod("app/ui.js");
 const { account, inloggen, inrichten, herstellen, terugNaarLokaal, uitloggen, vernieuwIk, naBeheer } = __mod("app/samenwerken.js");
 const { vraag } = __mod("app/api.js");
 
@@ -4469,6 +4600,35 @@ function schermInloggen() {
     account.handmatig
       ? h('button', { class: 'knop stil breed', onclick: terugNaarLokaal }, 'Zonder server verder, alleen op dit apparaat')
       : null);
+}
+
+/**
+ * De server kent deze sessie niet meer. Tot je opnieuw inlogt, zie je niets
+ * van het team: wie de telefoon vindt nadat je je wachtwoord veranderde,
+ * moet er ook echt uit zijn.
+ */
+function schermSessieVerlopen() {
+  const g = account.gebruiker || {};
+  const naam = h('input', { type: 'text', name: 'username', autocomplete: 'username', autocapitalize: 'none',
+    spellcheck: 'false', required: true, value: g.gebruikersnaam || '' });
+  const wachtwoord = h('input', { type: 'password', name: 'password', autocomplete: 'current-password', required: true });
+  const anderAccount = () => {
+    if (!account.onverstuurd) { uitloggen(); return; }
+    bevestig('Nog niet alles is verstuurd', 'Er staan wijzigingen op dit apparaat die de server nog niet heeft. Als je met een ander account verdergaat, ben je die kwijt.',
+      uitloggen, { knop: 'Toch doorgaan', gevaar: true });
+  };
+  return h('div', { class: 'inlog' },
+    ...kop('Je bent uitgelogd. Log opnieuw in om verder te gaan.'),
+    h('div', { class: 'melding midden' }, h('span', { class: 'ico' }, 'i'),
+      h('span', {}, account.onverstuurd
+        ? 'Dat gebeurt als je wachtwoord is gewijzigd, of als de beheerder je account heeft aangepast. Wat je nog niet had verstuurd, staat veilig op dit apparaat en gaat na het inloggen alsnog mee.'
+        : 'Dat gebeurt als je wachtwoord is gewijzigd, of als de beheerder je account heeft aangepast.')),
+    formulier([veld('Gebruikersnaam', naam), veld('Wachtwoord', wachtwoord)], 'Inloggen', async () => {
+      await inloggen(naam.value, wachtwoord.value);
+      melding('Weer ingelogd');
+    }),
+    h('button', { class: 'knop stil breed', onclick: vergetenSheet }, 'Wachtwoord vergeten?'),
+    h('button', { class: 'knop stil breed', onclick: anderAccount }, 'Met een ander account inloggen'));
 }
 
 function schermInrichten() {
@@ -4531,20 +4691,19 @@ function gebruikersnaamVoor(naam) {
     .toLowerCase().replace(/[^a-z0-9._-]/g, '');
 }
 
-function schermGeenTeam(ganaar) {
+function schermGeenTeam() {
   const wrap = h('div', {});
   if (account.gebruiker?.beheerder) {
     const naam = h('input', { type: 'text', required: true, placeholder: 'JO9-1' });
     wrap.appendChild(formulier([
       h('h2', {}, 'Maak je eerste team'),
-      h('p', { class: 'uitleg' }, 'Daarna voeg je spelers toe, en kun je onder Club beheren trainers aan het team koppelen.'),
+      h('p', { class: 'uitleg' }, 'Daarna voeg je spelers toe, en koppel je onder Club trainers aan het team.'),
       veld('Teamnaam', naam),
     ], 'Team aanmaken', async () => {
       const r = await vraag('api/teams', { methode: 'POST', data: { naam: naam.value, leden: [account.gebruiker.id] } });
       await naBeheer(r.team.id);
       melding(`${r.team.naam} aangemaakt`);
     }));
-    wrap.appendChild(h('button', { class: 'knop breed', onclick: () => ganaar('beheer') }, icoon('team', 18), 'Club beheren'));
   } else {
     wrap.appendChild(h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
       h('h2', { style: { marginBottom: '6px' } }, 'Nog geen team'),
@@ -4556,7 +4715,7 @@ function schermGeenTeam(ganaar) {
   return wrap;
 }
 
-return { schermVerbinden, schermInloggen, schermInrichten, gebruikersnaamVoor, schermGeenTeam };
+return { schermVerbinden, schermInloggen, schermSessieVerlopen, schermInrichten, gebruikersnaamVoor, schermGeenTeam };
 };
 __defs["app/scherm-beheer.js"] = function () {
 // Scherm: de club beheren. Alleen voor beheerders: trainers en teams
@@ -4606,8 +4765,6 @@ const teamNaamVan = (id) => (beheer.teams.find((t) => t.id === id) || {}).naam |
 
 function schermBeheer(ganaar) {
   const wrap = h('div', {});
-  wrap.appendChild(h('button', { class: 'knop stil klein', style: { marginBottom: '6px', paddingLeft: '2px' },
-    onclick: () => ganaar('team') }, '← Terug'));
 
   if (!account.gebruiker?.beheerder) {
     wrap.appendChild(h('div', { class: 'kaart' }, h('div', { class: 'leeg' }, 'Alleen een beheerder kan de club beheren.')));
@@ -4618,7 +4775,7 @@ function schermBeheer(ganaar) {
   wrap.appendChild(h('div', { class: 'kaart' },
     h('h2', {}, 'Club beheren'),
     h('p', { class: 'uitleg', style: { margin: '0' } },
-      'Maak trainers en teams aan en koppel ze aan elkaar. Een trainer ziet alleen zijn eigen teams; een beheerder ziet alles en kan dit scherm openen.')));
+      'Maak trainers en teams aan en koppel ze aan elkaar. Een trainer ziet alleen zijn eigen teams. Alleen beheerders zien dit tabblad.')));
 
   if (beheer.fout) {
     wrap.appendChild(h('div', { class: 'melding hoog' }, h('span', { class: 'ico' }, '!'), h('span', { style: { flex: '1' } }, beheer.fout),

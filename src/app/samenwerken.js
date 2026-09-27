@@ -67,6 +67,7 @@ function bewaarAccount() {
     localStorage.setItem(ACCOUNT, JSON.stringify({
       server: account.server, handmatig: account.handmatig, token: account.token,
       gebruiker: account.gebruiker, teams: account.teams, teamId: account.teamId, klokVerschil: klokVerschil(),
+      sessieVerlopen: account.sessieVerlopen,
     }));
   } catch (e) { /* zonder opslag werkt het ook, alleen log je de volgende keer opnieuw in */ }
 }
@@ -116,7 +117,7 @@ export function herstelAccount() {
     zetKlokVerschil(a.klokVerschil || 0);
     Object.assign(account, {
       modus: 'team', server: a.server, handmatig: !!a.handmatig, token: a.token,
-      gebruiker: a.gebruiker, teams: a.teams || [],
+      gebruiker: a.gebruiker, teams: a.teams || [], sessieVerlopen: !!a.sessieVerlopen,
     });
     gebruikTeamOpslag(opslag);
     const id = kiesStartTeam(a.teamId);
@@ -241,10 +242,18 @@ export async function vernieuwIk() {
   }
 }
 
+/**
+ * De server kent deze sessie niet meer: het wachtwoord is gewijzigd, de
+ * beheerder heeft het account aangepast, of iemand logde uit. Dan zie je
+ * het team niet meer tot je opnieuw inlogt - ook niet na herladen. Wat nog
+ * niet verstuurd was, blijft in de cache en gaat daarna alsnog mee.
+ */
 function sessieVerlopen() {
   account.sessieVerlopen = true;
-  ts.generatie += 1; // lussen stoppen; wat je nu doet blijft in de cache staan
+  ts.generatie += 1; // lussen stoppen
   ts.luisteraar?.abort();
+  bewaarCache();
+  bewaarAccount();
   herteken();
 }
 
@@ -278,7 +287,7 @@ function openTeam(id) {
   laadTeamDeel(c ? c.staat : leegTeam(teamNaam(id)));
   account.onverstuurd = !!(ts.basis && !gelijk(teamDeel(), ts.basis));
   bewaarAccount();
-  luister(ts.generatie);
+  if (!account.sessieVerlopen) luister(ts.generatie);
 }
 
 function stopTeam() {

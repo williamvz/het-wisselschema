@@ -11,14 +11,15 @@
 
 ## Trainers en teams
 
-Tik rechtsboven op je initialen en kies **Club beheren**.
+Beheerders hebben onderin een eigen tabblad **Club**. Trainers zien dat niet.
 
 - **Team**: een naam, en welke trainers erbij horen. Zij zien het team in de
   app en kunnen er samen aan werken, ook tegelijk tijdens de wedstrijd.
 - **Trainer**: naam, gebruikersnaam, wachtwoord (de app bedenkt er een) en
   teams. Na het aanmaken krijg je een berichtje met adres, gebruikersnaam en
   wachtwoord om door te sturen.
-- **Beheerder**: een trainer die ook dit scherm mag openen en alle teams ziet.
+- **Beheerder**: mag het tabblad Club openen en kan elk team openen, ook als
+  hij er zelf geen trainer van is.
   Maak er gerust een tweede, voor als jij er niet bent.
 
 Rechtsboven zie je wie er verder meekijkt, en een stip: groen is alles

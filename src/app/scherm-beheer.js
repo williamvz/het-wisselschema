@@ -45,8 +45,6 @@ const teamNaamVan = (id) => (beheer.teams.find((t) => t.id === id) || {}).naam |
 
 export function schermBeheer(ganaar) {
   const wrap = h('div', {});
-  wrap.appendChild(h('button', { class: 'knop stil klein', style: { marginBottom: '6px', paddingLeft: '2px' },
-    onclick: () => ganaar('team') }, '← Terug'));
 
   if (!account.gebruiker?.beheerder) {
     wrap.appendChild(h('div', { class: 'kaart' }, h('div', { class: 'leeg' }, 'Alleen een beheerder kan de club beheren.')));
@@ -57,7 +55,7 @@ export function schermBeheer(ganaar) {
   wrap.appendChild(h('div', { class: 'kaart' },
     h('h2', {}, 'Club beheren'),
     h('p', { class: 'uitleg', style: { margin: '0' } },
-      'Maak trainers en teams aan en koppel ze aan elkaar. Een trainer ziet alleen zijn eigen teams; een beheerder ziet alles en kan dit scherm openen.')));
+      'Maak trainers en teams aan en koppel ze aan elkaar. Een trainer ziet alleen zijn eigen teams. Alleen beheerders zien dit tabblad.')));
 
   if (beheer.fout) {
     wrap.appendChild(h('div', { class: 'melding hoog' }, h('span', { class: 'ico' }, '!'), h('span', { style: { flex: '1' } }, beheer.fout),

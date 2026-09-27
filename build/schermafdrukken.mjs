@@ -112,8 +112,7 @@ try {
   await D.evaluate(() => window.scrollTo(0, 0));
   await D.screenshot({ path: 'docs/beeld/11-samen.png' }); console.log('  11-samen');
 
-  await W.locator('.accountknop').click();
-  await W.locator('.overlay').getByRole('button', { name: 'Club beheren' }).click();
+  await W.locator('nav').getByRole('button', { name: 'Club' }).click();
   await W.waitForSelector('text=Trainers ·');
   await W.waitForTimeout(400);
   await W.screenshot({ path: 'docs/beeld/12-beheer.png' }); console.log('  12-beheer');

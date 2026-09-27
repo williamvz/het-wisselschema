@@ -22,6 +22,24 @@ export function nieuweSpeler(naam = '') {
   return { id: uid('s'), naam, nummer: '', keeper: false, posities: [], sterkte: 3, saldoSec: 0, actief: true };
 }
 
+/**
+ * Een speler van een ander team die één keer meedoet. Hij hoort bij de
+ * wedstrijd, niet bij het team: na afloop staat hij alleen in het archief,
+ * en hij krijgt geen seizoenssaldo.
+ */
+export function nieuweGast(naam = '', keeper = false) {
+  return { ...nieuweSpeler(naam), id: uid('gast'), keeper: !!keeper, gast: true };
+}
+
+/** Wie er in deze wedstrijd mee kan doen: het team, plus de gastspelers. */
+export function wedstrijdSpelers(w = S.wedstrijd) {
+  const gasten = (w && Array.isArray(w.gasten) ? w.gasten : [])
+    .filter((g) => !S.team.spelers.some((p) => p.id === g.id));
+  return gasten.length ? [...S.team.spelers, ...gasten] : S.team.spelers;
+}
+
+export const spelerMetId = (id, w = S.wedstrijd) => wedstrijdSpelers(w).find((p) => p.id === id);
+
 export function nieuweWedstrijd(vorige = null) {
   return {
     id: uid('w'), datum: vandaag(), tegenstander: '', thuis: true,
@@ -32,7 +50,7 @@ export function nieuweWedstrijd(vorige = null) {
     periodes: vorige?.periodes ?? 4,
     periodeMin: vorige?.periodeMin ?? 15,
     blokkenPerPeriode: vorige?.blokkenPerPeriode ?? 1,
-    selectie: [], beschikbaar: {}, blokken: null, pins: {},
+    selectie: [], gasten: [], beschikbaar: {}, blokken: null, pins: {},
     opties: { seed: Math.floor(Math.random() * 1e6), vormAccent: 0, saldoGewicht: 0.6 },
     status: 'opzet',
     klok: { loopt: false, verstreken: 0, sindsMs: null, pauzeReden: null },
@@ -270,7 +288,7 @@ export function laadLokaal() {
 let planCache = null;
 export function plan() {
   if (!S.wedstrijd) return null;
-  if (!planCache) planCache = planWedstrijd(S.wedstrijd, S.team.spelers);
+  if (!planCache) planCache = planWedstrijd(S.wedstrijd, wedstrijdSpelers());
   return planCache;
 }
 
@@ -287,21 +305,23 @@ export function genereer({ nieuweSeed = false } = {}) {
     s.wedstrijd.blokken = maakBlokken(s.wedstrijd);
     s.wedstrijd.pins = {};
     planCache = null;
-    const p = planWedstrijd(s.wedstrijd, s.team.spelers);
+    const p = planWedstrijd(s.wedstrijd, wedstrijdSpelers(s.wedstrijd));
     s.wedstrijd.blokken = p.blokken;
   });
 }
 
-export function herplanNu(opSec, wijzigingen = []) {
+/** `gast`: een gastspeler die er nu bij komt, in dezelfde stap (dus ook samen terug te draaien). */
+export function herplanNu(opSec, wijzigingen = [], { gast = null } = {}) {
   wijzig((s) => {
-    const res = herplan(s.wedstrijd, s.team.spelers, { opSec, wijzigingen });
+    if (gast) s.wedstrijd.gasten = [...(s.wedstrijd.gasten || []), gast];
+    const res = herplan(s.wedstrijd, wedstrijdSpelers(s.wedstrijd), { opSec, wijzigingen });
     s.wedstrijd = { ...s.wedstrijd, ...res.match };
   }, { terugdraaibaar: true });
 }
 
 export function bevestigWissel(blokIndex, opSec) {
   wijzig((s) => {
-    const res = wisselUitgevoerd(s.wedstrijd, s.team.spelers, blokIndex, opSec);
+    const res = wisselUitgevoerd(s.wedstrijd, wedstrijdSpelers(s.wedstrijd), blokIndex, opSec);
     s.wedstrijd = { ...s.wedstrijd, ...res.match };
   }, { terugdraaibaar: true });
 }
@@ -382,7 +402,8 @@ export function rondAf() {
   wijzig((s) => {
     const w = s.wedstrijd;
     if (!w) return;
-    const p = planWedstrijd(w, s.team.spelers);
+    const p = planWedstrijd(w, wedstrijdSpelers(w));
+    const gasten = new Set((w.gasten || []).map((g) => g.id));
     const gemiddeld = p.statistieken.reduce((a, x) => a + x.speelSec, 0) / (p.statistieken.length || 1);
     for (const st of p.statistieken) {
       const speler = s.team.spelers.find((q) => q.id === st.spelerId);
@@ -391,7 +412,8 @@ export function rondAf() {
     s.archief.unshift({
       id: w.id, datum: w.datum, tegenstander: w.tegenstander, thuis: w.thuis,
       formationId: w.formationId, periodes: w.periodes, periodeMin: w.periodeMin,
-      statistieken: p.statistieken, blokken: w.blokken, selectie: w.selectie,
+      statistieken: p.statistieken.map((st) => (gasten.has(st.spelerId) ? { ...st, gast: true } : st)),
+      blokken: w.blokken, selectie: w.selectie,
       doelpunten: w.doelpunten || [],
     });
     s.archief = s.archief.slice(0, 60);
@@ -405,8 +427,8 @@ export function rondAf() {
 export async function deelLink() {
   const kern = {
     t: S.team.naam,
-    s: S.team.spelers.filter((p) => (S.wedstrijd?.selectie || []).includes(p.id))
-      .map((p) => [p.id, p.naam, p.nummer, p.keeper ? 1 : 0, (p.posities || []).join('')]),
+    s: wedstrijdSpelers().filter((p) => (S.wedstrijd?.selectie || []).includes(p.id))
+      .map((p) => [p.id, p.naam, p.nummer, p.keeper ? 1 : 0, (p.posities || []).join(''), p.gast ? 1 : 0]),
     w: S.wedstrijd && {
       d: S.wedstrijd.datum, o: S.wedstrijd.tegenstander, f: S.wedstrijd.formationId,
       p: S.wedstrijd.periodes, m: S.wedstrijd.periodeMin, b: S.wedstrijd.blokkenPerPeriode,
