@@ -207,3 +207,39 @@ test('een lopende wedstrijd wordt niet per ongeluk gewist vanuit het opzetscherm
   await pagina.waitForSelector('.klok');
   assert.notEqual(await pagina.locator('.klok').textContent(), '0:00', 'de gespeelde tijd is bewaard');
 });
+
+test('een gastspeler doet één wedstrijd mee en verdwijnt daarna weer', async (t) => {
+  const browser = await chromium.launch({ executablePath: EXE });
+  t.after(() => browser.close());
+  const { pagina, fouten } = await open(browser);
+
+  await pagina.getByRole('button', { name: 'Voorbeeldteam' }).click();
+  await pagina.locator('nav').getByRole('button', { name: 'Wedstrijd' }).click();
+  await pagina.getByRole('button', { name: 'Nieuwe wedstrijd' }).click();
+  await pagina.getByRole('button', { name: 'Gastspeler' }).click();
+  await pagina.getByLabel('Naam').fill('Kees');
+  await pagina.getByLabel('Naam').press('Enter');
+  await pagina.waitForSelector('.chip.gast');
+  assert.match(await pagina.locator('.kaart-kop .mini').first().textContent(), /8 van 8/);
+
+  await pagina.getByRole('button', { name: 'Maak het wisselschema' }).click();
+  await pagina.waitForSelector('table.schema');
+  assert.ok((await pagina.locator('table.schema').textContent()).includes('Kees'), 'Kees staat in het schema');
+
+  // Tijdens de wedstrijd valt er nog iemand in.
+  await pagina.getByRole('button', { name: 'Wedstrijd starten' }).click();
+  await pagina.getByRole('button', { name: 'Speler erbij' }).click();
+  await pagina.locator('.overlay .spelerrij', { hasText: 'Gastspeler' }).click();
+  await pagina.getByLabel('Naam').fill('Piet');
+  await pagina.getByRole('button', { name: 'Toevoegen' }).click();
+  await pagina.waitForSelector('text=Piet doet mee als gast');
+
+  await pagina.getByRole('button', { name: 'Wedstrijd afronden' }).click();
+  await pagina.locator('.overlay').getByRole('button', { name: 'Afronden' }).click();
+  await pagina.waitForSelector('text=7 spelers + 2 gasten');
+
+  await pagina.locator('nav').getByRole('button', { name: 'Team' }).click();
+  await pagina.waitForSelector('.spelerrij');
+  assert.equal(await pagina.locator('.spelerrij').count(), 7, 'de gasten staan niet in het team');
+  assert.deepEqual(fouten, []);
+});

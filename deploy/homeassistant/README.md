@@ -109,19 +109,20 @@ hieronder bij *De eerste keer*.
 
 ### Trainers en teams
 
-Tik rechtsboven op je initialen en kies **Club beheren**. Dezelfde uitleg
-staat ook in de app zelf, in het tabblad **Documentatie**.
+Beheerders hebben onderin een eigen tabblad **Club**; trainers zien dat niet.
+Dezelfde uitleg staat ook in Home Assistant, bij de app onder
+**Documentatie**.
 
 - **Team** — naam, en welke trainers erbij horen. Zij zien het team in de app
   en kunnen er samen aan werken, ook tegelijk tijdens de wedstrijd.
 - **Trainer** — naam, gebruikersnaam, wachtwoord (de app bedenkt er een) en
   teams. Na het aanmaken krijg je een berichtje met adres, gebruikersnaam en
   wachtwoord om door te sturen via de groepsapp.
-- **Beheerder** — een trainer die ook dit scherm mag openen en alle teams
-  ziet. Maak er gerust een tweede, voor als jij er niet bent.
+- **Beheerder** — mag het tabblad Club openen en kan elk team openen, ook als
+  hij er zelf geen trainer van is. Maak er gerust een tweede, voor als jij er niet bent.
 
-Een trainer die zijn wachtwoord kwijt is, geef je onder Club beheren een
-nieuw; zijn oude sessies vervallen dan meteen. Wie de app al zonder account
+Een trainer die zijn wachtwoord kwijt is, geef je onder Club een nieuw; op
+zijn telefoons is hij dan meteen uitgelogd. Wie de app al zonder account
 gebruikte, vindt na het inloggen onder **Team → Bestand** de knop om het team
 van zijn telefoon over te nemen.
 

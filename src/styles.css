@@ -82,6 +82,8 @@ input, select, textarea { font: inherit; color: inherit; }
 .merk { width: 34px; height: 34px; border-radius: 10px; flex: none;
   background: linear-gradient(140deg, var(--accent-fel), var(--accent));
   display: grid; place-items: center; color: #fff; font-weight: 800; font-size: .9rem; }
+/* Clubbeheer heeft een eigen kleur: zo zie je meteen dat je niet in je team zit. */
+.kop.beheerkop .merk { background: var(--rol-M); }
 
 /* ------------------------------------------------------------------ account */
 .teamknop { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; border-radius: 8px; }
@@ -143,6 +145,7 @@ input, select, textarea { font: inherit; color: inherit; }
 /* ------------------------------------------------------------------ velden */
 label.veld { display: block; margin-bottom: 12px; }
 label.veld > span { display: block; font-size: .8rem; font-weight: 600; color: var(--zacht); margin-bottom: 5px; }
+input[readonly] { color: var(--zacht); }
 input[type=text], input[type=password], input[type=date], input[type=number], select, textarea {
   width: 100%; min-height: 46px; padding: 10px 12px;
   background: var(--vlak-2); border: 1px solid var(--rand); border-radius: 11px;
@@ -171,6 +174,7 @@ input:focus, select:focus, textarea:focus, .knop:focus-visible, .chip:focus-visi
 .chip[aria-pressed="true"] { background: var(--accent-zacht); border-color: var(--accent); color: var(--accent); }
 .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bank); flex: none; }
 .chip[aria-pressed="true"] .dot { background: var(--accent); }
+.chip.gast { border-style: dashed; }
 .chiprij { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .vlag { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: .68rem;
@@ -250,6 +254,7 @@ table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; col
 .melding.hoog { background: var(--alarm-zacht); color: var(--alarm); }
 .melding.midden { background: var(--waarschuwing-zacht); color: var(--waarschuwing); }
 .melding.info { background: var(--vlak-2); color: var(--zacht); }
+.melding.goed { background: var(--accent-zacht); color: var(--accent); }
 
 /* ------------------------------------------------------------------ live */
 .klok-kaart { text-align: center; padding: 18px 14px 14px; }
@@ -299,6 +304,8 @@ table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; col
 }
 .nav button[aria-current="page"] { color: var(--accent); background: var(--accent-zacht); }
 .nav button svg { width: 21px; height: 21px; }
+.nav button.beheertab[aria-current="page"] { color: var(--rol-M); background: color-mix(in srgb, var(--rol-M) 14%, transparent); }
+.nav .scheiding { flex: none; width: 1px; margin: 8px 3px; background: var(--rand); }
 .nav button .punt { position: absolute; margin: -2px 0 0 18px; width: 7px; height: 7px;
   border-radius: 50%; background: var(--alarm); }
 

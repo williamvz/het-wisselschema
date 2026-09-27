@@ -1,7 +1,7 @@
 // Schermen voor wie nog niet binnen is: verbinden, inloggen, de server
 // inrichten, en de melding dat je (nog) geen team hebt.
 
-import { h, icoon, melding, toonSheet, sluitSheet } from './ui.js';
+import { h, melding, toonSheet, sluitSheet, bevestig } from './ui.js';
 import { account, inloggen, inrichten, herstellen, terugNaarLokaal, uitloggen, vernieuwIk, naBeheer } from './samenwerken.js';
 import { vraag } from './api.js';
 
@@ -55,6 +55,35 @@ export function schermInloggen() {
     account.handmatig
       ? h('button', { class: 'knop stil breed', onclick: terugNaarLokaal }, 'Zonder server verder, alleen op dit apparaat')
       : null);
+}
+
+/**
+ * De server kent deze sessie niet meer. Tot je opnieuw inlogt, zie je niets
+ * van het team: wie de telefoon vindt nadat je je wachtwoord veranderde,
+ * moet er ook echt uit zijn.
+ */
+export function schermSessieVerlopen() {
+  const g = account.gebruiker || {};
+  const naam = h('input', { type: 'text', name: 'username', autocomplete: 'username', autocapitalize: 'none',
+    spellcheck: 'false', required: true, value: g.gebruikersnaam || '' });
+  const wachtwoord = h('input', { type: 'password', name: 'password', autocomplete: 'current-password', required: true });
+  const anderAccount = () => {
+    if (!account.onverstuurd) { uitloggen(); return; }
+    bevestig('Nog niet alles is verstuurd', 'Er staan wijzigingen op dit apparaat die de server nog niet heeft. Als je met een ander account verdergaat, ben je die kwijt.',
+      uitloggen, { knop: 'Toch doorgaan', gevaar: true });
+  };
+  return h('div', { class: 'inlog' },
+    ...kop('Je bent uitgelogd. Log opnieuw in om verder te gaan.'),
+    h('div', { class: 'melding midden' }, h('span', { class: 'ico' }, 'i'),
+      h('span', {}, account.onverstuurd
+        ? 'Dat gebeurt als je wachtwoord is gewijzigd, of als de beheerder je account heeft aangepast. Wat je nog niet had verstuurd, staat veilig op dit apparaat en gaat na het inloggen alsnog mee.'
+        : 'Dat gebeurt als je wachtwoord is gewijzigd, of als de beheerder je account heeft aangepast.')),
+    formulier([veld('Gebruikersnaam', naam), veld('Wachtwoord', wachtwoord)], 'Inloggen', async () => {
+      await inloggen(naam.value, wachtwoord.value);
+      melding('Weer ingelogd');
+    }),
+    h('button', { class: 'knop stil breed', onclick: vergetenSheet }, 'Wachtwoord vergeten?'),
+    h('button', { class: 'knop stil breed', onclick: anderAccount }, 'Met een ander account inloggen'));
 }
 
 export function schermInrichten() {
@@ -117,20 +146,19 @@ export function gebruikersnaamVoor(naam) {
     .toLowerCase().replace(/[^a-z0-9._-]/g, '');
 }
 
-export function schermGeenTeam(ganaar) {
+export function schermGeenTeam() {
   const wrap = h('div', {});
   if (account.gebruiker?.beheerder) {
     const naam = h('input', { type: 'text', required: true, placeholder: 'JO9-1' });
     wrap.appendChild(formulier([
       h('h2', {}, 'Maak je eerste team'),
-      h('p', { class: 'uitleg' }, 'Daarna voeg je spelers toe, en kun je onder Club beheren trainers aan het team koppelen.'),
+      h('p', { class: 'uitleg' }, 'Daarna voeg je spelers toe, en koppel je onder Club trainers aan het team.'),
       veld('Teamnaam', naam),
     ], 'Team aanmaken', async () => {
       const r = await vraag('api/teams', { methode: 'POST', data: { naam: naam.value, leden: [account.gebruiker.id] } });
       await naBeheer(r.team.id);
       melding(`${r.team.naam} aangemaakt`);
     }));
-    wrap.appendChild(h('button', { class: 'knop breed', onclick: () => ganaar('beheer') }, icoon('team', 18), 'Club beheren'));
   } else {
     wrap.appendChild(h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
       h('h2', { style: { marginBottom: '6px' } }, 'Nog geen team'),

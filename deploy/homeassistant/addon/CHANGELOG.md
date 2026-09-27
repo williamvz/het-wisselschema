@@ -1,5 +1,20 @@
 # Wijzigingen
 
+## 2.1.0
+
+- Gastspeler: doet er iemand van een ander team mee, dan zet je die bij
+  **Wedstrijd** (of tijdens de wedstrijd bij **Speler erbij**) alleen in deze
+  wedstrijd. Hij speelt mee in het schema, staat daarna in het archief, maar
+  komt niet in je team en krijgt geen seizoenssaldo.
+- Uitgelogd is echt uitgelogd. Geldt je sessie niet meer (bijvoorbeeld na een
+  nieuw wachtwoord), dan zie je het team pas weer na opnieuw inloggen, ook na
+  herladen. Wat nog niet verstuurd was, gaat daarna alsnog mee.
+- Wachtwoord wijzigen: nieuw wachtwoord twee keer invullen, en een
+  bevestiging die blijft staan tot je op Klaar tikt. De wachtwoordbeheerder
+  van je telefoon onthoudt het nieuwe wachtwoord.
+- Clubbeheer heeft een eigen tabblad **Club**, alleen voor beheerders. In de
+  teamkeuze staan je eigen teams los van de andere teams van de club.
+
 ## 2.0.1
 
 - Bouwt weer op de huidige Home Assistant. Die geeft bij het bouwen geen

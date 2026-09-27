@@ -4,8 +4,10 @@
 
 import { h, toonSheet, bevestig, melding, initialen, teamInitialen, datumTekst } from './ui.js';
 import { S, herteken } from './store.js';
-import { account, kiesTeam, uitloggen, vernieuwIk, wijzigWachtwoord, inloggen } from './samenwerken.js';
+import { account, kiesTeam, uitloggen, vernieuwIk, wijzigWachtwoord } from './samenwerken.js';
 import { getFormation } from '../lib/formations.js';
+
+const hostVan = (adres) => { try { return new URL(adres).host; } catch (e) { return adres || ''; } };
 
 function ondertitel() {
   const w = S.wedstrijd;
@@ -16,7 +18,6 @@ function ondertitel() {
 
 /** Hoe het ervoor staat met de verbinding, in één woord voor de stip en een zin voor erbij. */
 export function verbindingsStaat() {
-  if (account.sessieVerlopen) return { klasse: 'fout', tekst: 'Je bent uitgelogd. Wat je nu doet, wordt bewaard tot je weer inlogt.' };
   if (account.verbinding === 'offline') {
     return { klasse: 'uit', tekst: account.onverstuurd
       ? 'Geen verbinding. Je wijzigingen staan op dit apparaat en gaan mee zodra er weer bereik is.'
@@ -27,8 +28,9 @@ export function verbindingsStaat() {
   return { klasse: 'uit', tekst: 'Verbinden…' };
 }
 
-export function kopbalk(ganaar) {
-  const kop = h('header', { class: 'kop' }, h('div', { class: 'merk', 'aria-hidden': 'true' }, 'W'));
+export function kopbalk(scherm) {
+  const beheer = scherm === 'beheer';
+  const kop = h('header', { class: `kop${beheer ? ' beheerkop' : ''}` }, h('div', { class: 'merk', 'aria-hidden': 'true' }, 'W'));
   const titel = [h('strong', {}, S.team.naam), h('small', {}, ondertitel())];
 
   if (account.modus !== 'team') {
@@ -36,13 +38,15 @@ export function kopbalk(ganaar) {
     return [kop];
   }
 
-  if (!account.teamId) titel.splice(0, 2, h('strong', {}, 'Het Wisselschema'), h('small', {}, account.gebruiker?.naam || ''));
-  kop.appendChild(account.teamId
+  // Als beheerder ben je niet met een team bezig, maar met de hele club.
+  if (beheer) titel.splice(0, 2, h('strong', {}, 'Clubbeheer'), h('small', {}, 'Teams en trainers van de club'));
+  else if (!account.teamId) titel.splice(0, 2, h('strong', {}, 'Het Wisselschema'), h('small', {}, account.gebruiker?.naam || ''));
+  kop.appendChild(account.teamId && !beheer
     ? h('button', { class: 'titel teamknop', 'aria-label': `Team ${S.team.naam}, kies een ander team`,
-      onclick: () => teamSheet(ganaar) }, ...titel)
+      onclick: () => teamSheet() }, ...titel)
     : h('div', { class: 'titel' }, ...titel));
 
-  if (account.aanwezig.length) {
+  if (account.aanwezig.length && !beheer) {
     const namen = account.aanwezig.map((a) => a.naam);
     kop.appendChild(h('div', { class: 'aanwezig', title: `Kijkt nu mee: ${namen.join(', ')}`,
       'aria-label': `Kijkt nu mee: ${namen.join(', ')}` },
@@ -51,15 +55,11 @@ export function kopbalk(ganaar) {
 
   const staat = verbindingsStaat();
   kop.appendChild(h('button', { class: 'accountknop', 'aria-label': `${account.gebruiker?.naam || 'Account'}. ${staat.tekst}`,
-    title: staat.tekst, onclick: () => accountSheet(ganaar) },
+    title: staat.tekst, onclick: () => accountSheet() },
     initialen(account.gebruiker?.naam), h('i', { class: `stip ${staat.klasse}` })));
 
   const uit = [kop];
-  if (account.sessieVerlopen) {
-    uit.push(h('div', { class: 'melding hoog balk-melding' }, h('span', { class: 'ico' }, '!'),
-      h('span', { style: { flex: '1' } }, 'Je bent uitgelogd. Je kunt doorwerken; log opnieuw in om het te delen.'),
-      h('button', { class: 'knop klein', onclick: herinlogSheet }, 'Inloggen')));
-  } else if (account.melding) {
+  if (account.melding) {
     const tekst = account.melding;
     uit.push(h('div', { class: 'melding midden balk-melding' }, h('span', { class: 'ico' }, 'i'),
       h('span', { style: { flex: '1' } }, tekst),
@@ -69,34 +69,44 @@ export function kopbalk(ganaar) {
 }
 
 // ------------------------------------------------------------------- teams
-function teamSheet(ganaar) {
+function teamSheet() {
   vernieuwIk(); // het lijstje kan veranderd zijn; komt het terug, dan tekent de app opnieuw
   toonSheet('Kies een team', (c, sluit) => {
-    if (!account.teams.length) c.appendChild(h('div', { class: 'leeg' }, 'Je hebt nog geen teams.'));
-    for (const t of account.teams) {
+    const rij = (t) => {
       const open = t.id === account.teamId;
       const leden = (t.leden || []).map((l) => l.naam).join(', ');
-      c.appendChild(h('button', { class: 'spelerrij', 'aria-current': open ? 'true' : null,
+      return h('button', { class: 'spelerrij', 'aria-current': open ? 'true' : null,
         style: { width: '100%', textAlign: 'left', background: 'none', border: 0, borderBottom: '1px solid var(--rand)' },
         onclick: () => { sluit(); if (!open) { kiesTeam(t.id); melding(`${t.naam} geopend`); } } },
         h('div', { class: 'bal' }, teamInitialen(t.naam)),
         h('div', { class: 'naam' }, t.naam, h('small', {}, leden || 'nog geen trainers')),
-        open ? h('span', { class: 'vlag' }, 'OPEN') : !t.lid ? h('span', { class: 'mini' }, 'geen lid') : null));
-    }
-    if (account.gebruiker?.beheerder) {
-      c.appendChild(h('button', { class: 'knop breed', style: { marginTop: '14px' },
-        onclick: () => { sluit(); ganaar('beheer'); } }, 'Club beheren'));
+        open ? h('span', { class: 'vlag' }, 'OPEN') : null);
+    };
+    const mijn = account.teams.filter((t) => t.lid);
+    const overig = account.teams.filter((t) => !t.lid);
+    if (!mijn.length) c.appendChild(h('div', { class: 'leeg' }, 'Je bent van geen enkel team trainer.'));
+    for (const t of mijn) c.appendChild(rij(t));
+    // Een beheerder mag bij elk team, maar is daar geen trainer van.
+    if (overig.length) {
+      c.appendChild(h('div', { class: 'tussenkop' }, 'Andere teams van de club'));
+      c.appendChild(h('p', { class: 'mini' }, 'Als beheerder kun je deze openen. Trainer worden doe je onder Club.'));
+      for (const t of overig) c.appendChild(rij(t));
     }
   });
 }
 
 // ----------------------------------------------------------------- account
-function accountSheet(ganaar) {
+function accountSheet() {
   const g = account.gebruiker || {};
   toonSheet(g.naam || 'Account', (c, sluit) => {
-    let host = account.server;
-    try { host = new URL(account.server).host; } catch (e) { /* laat het adres staan */ }
-    c.appendChild(h('p', { class: 'uitleg' }, `Ingelogd als ${g.gebruikersnaam}${g.beheerder ? ' · beheerder' : ''} op ${host}.`));
+    c.appendChild(h('p', { class: 'uitleg' }, `Ingelogd als ${g.gebruikersnaam} op ${hostVan(account.server)}.`));
+    const mijn = account.teams.filter((t) => t.lid).map((t) => t.naam);
+    c.appendChild(h('div', { class: 'strook' },
+      h('div', { class: 'kop2' }, 'Trainer', h('small', {}, mijn.length ? mijn.join(', ') : 'nog van geen team'))));
+    if (g.beheerder) {
+      c.appendChild(h('div', { class: 'strook' },
+        h('div', { class: 'kop2' }, 'Beheerder', h('small', {}, 'Je beheert de teams en trainers van de club, onder Club'))));
+    }
     const staat = verbindingsStaat();
     c.appendChild(h('div', { class: 'strook' },
       h('div', { class: 'kop2' }, 'Verbinding', h('small', {}, staat.tekst)),
@@ -106,11 +116,10 @@ function accountSheet(ganaar) {
         h('div', { class: 'kop2' }, 'Kijkt nu mee', h('small', {}, account.aanwezig.map((a) => a.naam).join(', ')))));
     }
     c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '14px', flexDirection: 'column' } },
-      g.beheerder ? h('button', { class: 'knop', onclick: () => { sluit(); ganaar('beheer'); } }, 'Club beheren') : null,
       h('button', { class: 'knop', onclick: () => { sluit(); wachtwoordSheet(); } }, 'Wachtwoord wijzigen'),
       h('button', { class: 'knop gevaar', onclick: () => {
         sluit();
-        if (account.onverstuurd || account.sessieVerlopen) {
+        if (account.onverstuurd) {
           bevestig('Nog niet alles is verstuurd', 'Er staan wijzigingen op dit apparaat die de server nog niet heeft. Als je uitlogt, ben je die kwijt.',
             uitloggen, { knop: 'Toch uitloggen', gevaar: true });
         } else uitloggen();
@@ -118,36 +127,54 @@ function accountSheet(ganaar) {
   });
 }
 
+/**
+ * Een echt formulier, met je gebruikersnaam erin: dan
+ * onthoudt de wachtwoordbeheerder van je telefoon het nieuwe wachtwoord, in
+ * plaats van bij de volgende keer inloggen het oude in te vullen.
+ */
 function wachtwoordSheet() {
+  const g = account.gebruiker || {};
   toonSheet('Wachtwoord wijzigen', (c, sluit) => {
-    const huidig = h('input', { type: 'password', autocomplete: 'current-password' });
-    const nieuw = h('input', { type: 'password', autocomplete: 'new-password', minlength: '8' });
+    const naam = h('input', { type: 'text', name: 'username', autocomplete: 'username', value: g.gebruikersnaam || '',
+      readonly: '', tabindex: '-1' });
+    const huidig = h('input', { type: 'password', name: 'current-password', autocomplete: 'current-password', required: true });
+    const nieuw = h('input', { type: 'password', name: 'new-password', autocomplete: 'new-password', required: true, minlength: '8' });
+    const herhaal = h('input', { type: 'password', name: 'new-password-2', autocomplete: 'new-password', required: true, minlength: '8' });
     const fout = h('p', { class: 'fout', role: 'alert' });
-    c.appendChild(h('label', { class: 'veld' }, h('span', {}, 'Huidig wachtwoord'), huidig));
-    c.appendChild(h('label', { class: 'veld' }, h('span', {}, 'Nieuw wachtwoord (minstens 8 tekens)'), nieuw));
-    c.appendChild(fout);
-    c.appendChild(h('div', { class: 'knoprij' },
-      h('button', { class: 'knop', onclick: sluit }, 'Annuleren'),
-      h('button', { class: 'knop primair', style: { flex: '2' }, onclick: async () => {
-        try { await wijzigWachtwoord(huidig.value, nieuw.value); sluit(); melding('Wachtwoord gewijzigd'); }
-        catch (e) { fout.textContent = e.message; }
-      } }, 'Opslaan')));
-  });
-}
+    const knop = h('button', { class: 'knop primair', type: 'submit', style: { flex: '2' } }, 'Wachtwoord wijzigen');
 
-/** Sessie verlopen midden in een wedstrijd: inloggen zonder dat het scherm verdwijnt. */
-function herinlogSheet() {
-  toonSheet('Opnieuw inloggen', (c, sluit) => {
-    const naam = h('input', { type: 'text', autocomplete: 'username', autocapitalize: 'none', value: account.gebruiker?.gebruikersnaam || '' });
-    const wachtwoord = h('input', { type: 'password', autocomplete: 'current-password' });
-    const fout = h('p', { class: 'fout', role: 'alert' });
-    c.appendChild(h('p', { class: 'uitleg' }, 'Wat je intussen hebt gedaan, gaat daarna alsnog mee.'));
-    c.appendChild(h('label', { class: 'veld' }, h('span', {}, 'Gebruikersnaam'), naam));
-    c.appendChild(h('label', { class: 'veld' }, h('span', {}, 'Wachtwoord'), wachtwoord));
-    c.appendChild(fout);
-    c.appendChild(h('button', { class: 'knop primair breed', onclick: async () => {
-      try { await inloggen(naam.value, wachtwoord.value); sluit(); melding('Weer ingelogd'); }
-      catch (e) { fout.textContent = e.message; }
-    } }, 'Inloggen'));
+    const klaar = () => {
+      c.replaceChildren(
+        h('div', { class: 'melding goed', role: 'status' }, h('span', { class: 'ico' }, '✓'),
+          h('span', {}, h('b', {}, 'Je wachtwoord is gewijzigd. '),
+            'Op je andere telefoons en computers ben je nu uitgelogd; daar log je in met het nieuwe wachtwoord.')),
+        h('button', { class: 'knop primair breed', style: { marginTop: '14px' }, onclick: sluit }, 'Klaar'));
+    };
+
+    c.appendChild(h('form', { onsubmit: async (e) => {
+      e.preventDefault();
+      fout.textContent = '';
+      if (nieuw.value.length < 8) { fout.textContent = 'Het nieuwe wachtwoord moet minstens 8 tekens lang zijn.'; nieuw.focus(); return; }
+      if (nieuw.value !== herhaal.value) { fout.textContent = 'De twee nieuwe wachtwoorden zijn niet hetzelfde.'; herhaal.focus(); return; }
+      if (nieuw.value === huidig.value) { fout.textContent = 'Het nieuwe wachtwoord is hetzelfde als het huidige.'; nieuw.focus(); return; }
+      knop.disabled = true;
+      knop.textContent = 'Even geduld…';
+      try {
+        await wijzigWachtwoord(huidig.value, nieuw.value);
+        klaar();
+      } catch (err) {
+        fout.textContent = err.message || 'Dat lukte niet.';
+        knop.disabled = false;
+        knop.textContent = 'Wachtwoord wijzigen';
+      }
+    } },
+      h('label', { class: 'veld' }, h('span', {}, 'Gebruikersnaam'), naam),
+      h('label', { class: 'veld' }, h('span', {}, 'Huidig wachtwoord'), huidig),
+      h('label', { class: 'veld' }, h('span', {}, 'Nieuw wachtwoord'), nieuw, h('small', { class: 'mini' }, 'Minstens 8 tekens.')),
+      h('label', { class: 'veld' }, h('span', {}, 'Nieuw wachtwoord, nog een keer'), herhaal),
+      fout,
+      h('div', { class: 'knoprij' },
+        h('button', { class: 'knop', type: 'button', onclick: sluit }, 'Annuleren'),
+        knop)));
   });
 }

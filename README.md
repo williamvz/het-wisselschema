@@ -27,6 +27,9 @@ je hem met de hele club.
 
 - **Team beheren** — namen plakken uit een appje, of een lijst uploaden. Per
   speler: rugnummer, of hij kan keepen, en voorkeursposities.
+- **Gastspeler** — valt er iemand van een ander team in, dan zet je die met
+  één tik alleen in deze wedstrijd. Hij speelt mee in het schema, maar komt
+  niet in je team en krijgt geen seizoenssaldo.
 - **Wedstrijd klaarzetten** — wie is er vandaag, welke speelvorm (4-, 6-, 7-,
   8- of 11-tal), hoeveel perioden van hoeveel minuten, en welke opstelling.
 - **Schema maken** — zo eerlijk mogelijk verdeeld, met een echte keeper in elk
@@ -53,7 +56,8 @@ je hem met de hele club.
   zegt of alles verstuurd is. Geen bereik? Gewoon doorwerken: zodra er weer
   verbinding is, wordt alles samengevoegd.
 - **De club** — de beheerder maakt trainers en teams aan en koppelt ze aan
-  elkaar. Iedere trainer ziet alleen zijn eigen teams. Voor een nieuwe trainer
+  elkaar, in een eigen tabblad dat alleen beheerders zien. Iedere trainer
+  ziet alleen zijn eigen teams. Voor een nieuwe trainer
   maakt de app een berichtje met adres, gebruikersnaam en wachtwoord, klaar om
   door te sturen.
 
@@ -163,7 +167,7 @@ lange verzoeken toch af, dan wacht de app voortaan korter.
 ```bash
 npm install        # alleen nodig voor de tests
 npm run build      # src/ -> index.html (één bestand, geen bundler-afhankelijkheid)
-npm test           # 78 tests: motor, samenvoegen, server, en de app in een browser
+npm test           # 82 tests: motor, samenvoegen, server, en de app in een browser
 npm run check      # laadt alle modules, vangt import- en syntaxfouten
 npm run serve      # draait de server lokaal op poort 8099 (inrichtcode in de uitvoer)
 ```
@@ -197,7 +201,9 @@ rechtstreeks uit deze repository. Verhoog bij een nieuwe versie `version` in
   niets naar buiten.
 - Met een server staan de teams op die server, in gewone JSON-bestanden onder
   `/data`, en gaan ze mee in de back-ups van Home Assistant. Wachtwoorden
-  staan er alleen als scrypt-hash, sessies alleen als hash van het token. Na
+  staan er alleen als scrypt-hash, sessies alleen als hash van het token.
+  Een nieuw wachtwoord sluit de sessies op je andere apparaten; die zien het
+  team pas weer na opnieuw inloggen. Na
   tien foute pogingen vanaf één adres (of vijftig in totaal) wacht een
   gebruikersnaam een kwartier. De server heeft geen afhankelijkheden, net als
   de app.

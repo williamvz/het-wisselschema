@@ -1,6 +1,6 @@
 // Scherm: gespeelde wedstrijden en instellingen.
 
-import { h, icoon, toonSheet, bevestig, melding, datumTekst, minutenTekst, saldoTekst, voornaam, downloadBestand } from './ui.js';
+import { h, toonSheet, bevestig, melding, datumTekst, minutenTekst, saldoTekst, voornaam, downloadBestand } from './ui.js';
 import { S, wijzig, exporteer, neemOver } from './store.js';
 import { account, verbindMet } from './samenwerken.js';
 import { verbindingsStaat } from './kop.js';
@@ -8,7 +8,7 @@ import { getFormation } from '../lib/formations.js';
 import { stand, plusMin, verloop, goalMinuut } from '../lib/score.js';
 import { plusMinLabel } from './scherm-live.js';
 
-export function schermArchief(ganaar) {
+export function schermArchief() {
   const wrap = h('div', {});
 
   if (!S.archief.length) {
@@ -22,7 +22,7 @@ export function schermArchief(ganaar) {
   wrap.appendChild(h('div', { class: 'tussenkop' }, 'Instellingen'));
   wrap.appendChild(instellingenKaart());
   wrap.appendChild(h('div', { class: 'tussenkop' }, 'Samenwerken'));
-  wrap.appendChild(samenwerkKaart(ganaar));
+  wrap.appendChild(samenwerkKaart());
   wrap.appendChild(overKaart());
   return wrap;
 }
@@ -50,14 +50,15 @@ function archiefKaart(a) {
   const pm = goals.length ? plusMin(goals) : null;
 
   const totaalSec = a.statistieken.reduce((n, s) => n + s.speelSec, 0);
+  const gasten = a.statistieken.filter((st) => st.gast).length;
   kaart.appendChild(h('div', { class: 'tussenkop', style: { marginTop: '10px' } },
-    `Speeltijd · ${a.statistieken.length} spelers · ${minutenTekst(totaalSec / (a.statistieken.length || 1))} gemiddeld`));
+    `Speeltijd · ${a.statistieken.length - gasten} spelers${gasten ? ` + ${gasten} gast${gasten === 1 ? '' : 'en'}` : ''} · ${minutenTekst(totaalSec / (a.statistieken.length || 1))} gemiddeld`));
 
   const max = Math.max(1, ...a.statistieken.map((s) => s.speelSec));
   for (const st of a.statistieken) {
     kaart.appendChild(h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 0' } },
-      h('span', { style: { width: '76px', fontSize: '.82rem', fontWeight: '600', overflow: 'hidden',
-        textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, voornaam(st.naam)),
+      h('span', { title: st.gast ? `${st.naam} (gastspeler)` : null, style: { width: '76px', fontSize: '.82rem', fontWeight: '600', overflow: 'hidden',
+        textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontStyle: st.gast ? 'italic' : null } }, voornaam(st.naam)),
       h('div', { style: { flex: '1', height: '14px', background: 'var(--vlak-2)', borderRadius: '4px', overflow: 'hidden' } },
         h('i', { style: { display: 'block', height: '100%', width: `${(st.speelSec / max) * 100}%`,
           background: 'var(--accent)', borderRadius: '4px' } })),
@@ -112,7 +113,7 @@ function instellingenKaart() {
   return kaart;
 }
 
-function samenwerkKaart(ganaar) {
+function samenwerkKaart() {
   const kaart = h('div', { class: 'kaart' });
   if (account.modus === 'team') {
     const team = account.teams.find((t) => t.id === account.teamId);
@@ -125,9 +126,6 @@ function samenwerkKaart(ganaar) {
     kaart.appendChild(h('div', { class: 'strook' },
       h('div', { class: 'kop2' }, 'Verbinding', h('small', {}, verbindingsStaat().tekst)),
       h('i', { class: `stip los ${verbindingsStaat().klasse}` })));
-    if (account.gebruiker?.beheerder) {
-      kaart.appendChild(h('button', { class: 'knop klein', style: { marginTop: '10px' }, onclick: () => ganaar('beheer') }, 'Club beheren'));
-    }
     return kaart;
   }
   kaart.appendChild(h('p', { class: 'uitleg', style: { marginTop: '0' } },
