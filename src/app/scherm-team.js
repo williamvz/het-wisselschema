@@ -1,7 +1,7 @@
 // Scherm: het team. Spelers toevoegen, plakken of uploaden.
 
 import { h, icoon, toonSheet, bevestig, melding, saldoTekst, initialen, downloadBestand } from './ui.js';
-import { S, wijzig, nieuweSpeler, uid, exporteer, neemOver, lokaleGegevens, metServer } from './store.js';
+import { S, wijzig, nieuweSpeler, uid, exporteer, neemOver, lokaleGegevens, metServer, metWedstrijden } from './store.js';
 
 const ROLNAAM = { V: 'Verdediging', M: 'Middenveld', A: 'Aanval' };
 
@@ -213,7 +213,7 @@ function bestandSheet() {
         if (/\.json$/i.test(bestand.name) || tekst.trim().startsWith('{')) {
           try {
             const data = JSON.parse(tekst);
-            bevestig('Back-up terugzetten?', 'Je huidige team, wedstrijd en archief worden vervangen.', () => {
+            bevestig('Back-up terugzetten?', 'Je huidige team, wedstrijden en archief worden vervangen.', () => {
               wijzig(() => { neemOver(data); });
               sluit(); melding('Back-up teruggezet');
             }, { knop: 'Terugzetten', gevaar: true });
@@ -236,8 +236,8 @@ function bestandSheet() {
       c.appendChild(h('p', { class: 'uitleg' },
         `Op dit apparaat staat nog ${lokaal.team.naam} van voor het inloggen: ${n} speler${n === 1 ? '' : 's'}, ${(lokaal.archief || []).length} gespeelde wedstrijden.`));
       c.appendChild(h('button', { class: 'knop breed', onclick: () => bevestig(`${lokaal.team.naam} overnemen?`,
-        `Spelers, wedstrijd en archief van ${S.team.naam} worden vervangen door die van dit apparaat, voor alle trainers van het team.`, () => {
-          wijzig(() => { neemOver({ team: { ...lokaal.team, naam: S.team.naam }, wedstrijd: lokaal.wedstrijd ?? null, archief: lokaal.archief || [] }); },
+        `Spelers, wedstrijden en archief van ${S.team.naam} worden vervangen door die van dit apparaat, voor alle trainers van het team.`, () => {
+          wijzig(() => { neemOver({ team: { ...lokaal.team, naam: S.team.naam }, wedstrijden: metWedstrijden(lokaal).wedstrijden || [], archief: lokaal.archief || [] }); },
             { terugdraaibaar: true });
           sluit(); melding('Overgenomen');
         }, { knop: 'Overnemen', gevaar: true }) }, `Overnemen in ${S.team.naam}`));

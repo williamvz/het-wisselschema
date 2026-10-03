@@ -163,7 +163,7 @@ input, select, textarea { font: inherit; color: inherit; }
 label.veld { display: block; margin-bottom: 12px; }
 label.veld > span { display: block; font-size: .8rem; font-weight: 600; color: var(--zacht); margin-bottom: 5px; }
 input[readonly] { color: var(--zacht); }
-input[type=text], input[type=password], input[type=date], input[type=number], select, textarea {
+input[type=text], input[type=password], input[type=date], input[type=time], input[type=number], select, textarea {
   width: 100%; min-height: 46px; padding: 10px 12px;
   background: var(--vlak-2); border: 1px solid var(--rand); border-radius: 11px;
 }
@@ -369,7 +369,50 @@ table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; col
   #app { max-width: none; padding: 0; }
   .kaart { border: 1px solid #bbb; box-shadow: none; break-inside: avoid; margin-bottom: 8px; }
   .cel { color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-}</style>
+}
+
+/* ---- de lijst wedstrijden */
+.wedstrijdrij { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px;
+  text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.wedstrijdrij .naam { flex: 1; min-width: 0; font-weight: 600; }
+.wedstrijdrij .naam small { display: block; font-weight: 500; font-size: .76rem; color: var(--zacht); margin-top: 2px; }
+.wedstrijdrij[aria-current="true"] { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.wedstrijdrij .pijl { color: var(--zacht); font-size: 1.3rem; line-height: 1; }
+.vlag.live { background: var(--alarm); color: #fff; border-color: transparent; }
+.terugrij { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px 0 10px; }
+.terugrij .knop { padding-left: 4px; }
+.opslag { font-size: .8rem; font-weight: 600; color: var(--zacht); }
+.opslag.ok { color: var(--accent); }
+.opslag.bezig { color: var(--waarschuwing); }
+.opslag.uit { color: var(--alarm); }
+
+/* ---- slepen om te ruilen (slepen.js) */
+.sleepbaar [data-speler] { touch-action: none; -webkit-user-select: none; user-select: none; }
+.sleepbaar .veld [data-speler] { cursor: grab; }
+.sleepbal { position: fixed; left: 0; top: 0; z-index: 90; pointer-events: none;
+  margin: -46px 0 0 -30px; min-width: 60px; padding: 8px 12px; border-radius: 999px; text-align: center;
+  background: var(--accent); color: #fff; font-weight: 700; font-size: .9rem; box-shadow: var(--schaduw); }
+.bezig-met-slepen .gesleept { opacity: .35; }
+.chip.sleepdoel { outline: 3px solid var(--accent); outline-offset: 2px; }
+.veld .sleepdoel .pion { stroke: #fff; stroke-width: 2.4; }
+.veld .sleepdoel { filter: drop-shadow(0 0 3px rgba(255,255,255,.9)); }
+
+/* ---- de volgende wissel, groot onder de klok */
+.tot-wissel.groot { margin-top: 4px; padding: 10px 12px 12px; border-radius: 14px;
+  background: var(--accent-zacht); color: var(--accent); }
+.tot-wissel.groot .label { font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.tot-wissel.groot .tijd { font-size: 2.4rem; font-weight: 800; line-height: 1.1; color: inherit;
+  font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+.tot-wissel.groot .wie { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px;
+  margin-top: 4px; font-size: .92rem; font-weight: 700; color: var(--tekst); }
+.tot-wissel.groot .wie .erin { color: var(--accent); }
+.tot-wissel.groot .wie .uit { color: var(--alarm); }
+.tot-wissel.groot.bijna { background: color-mix(in srgb, var(--waarschuwing) 16%, transparent); color: var(--waarschuwing); }
+.tot-wissel.groot.nu { background: var(--alarm); color: #fff; }
+.tot-wissel.groot.nu .label { font-size: 1.2rem; }
+.tot-wissel.groot.nu .wie, .tot-wissel.groot.nu .wie span { color: #fff; }
+.tot-wissel.groot .plekken { margin-top: 4px; font-size: .8rem; font-weight: 600; color: var(--zacht); }
+.tot-wissel.groot.nu .plekken { color: #fff; }</style>
 </head>
 <body>
 <div id="app"></div>
@@ -388,7 +431,7 @@ __defs["app/main.js"] = function () {
 // De romp: kopbalk, schermkeuze, navigatie en het opstarten.
 
 const { h, icoon, leegmaken, toonSheet, sluitSheet, melding, houdSchermAan, minutenTekst, voornaam } = __mod("app/ui.js");
-const { S, wijzig, abonneer, laadLokaal, plan, klokStand, leesDeelLink, nieuweSpeler, nieuweWedstrijd, bewaarNu } = __mod("app/store.js");
+const { S, wijzig, abonneer, laadLokaal, plan, klokStand, leesDeelLink, nieuweSpeler, nieuweWedstrijd, bewaarNu, echteWissel } = __mod("app/store.js");
 const { getFormation } = __mod("lib/formations.js");
 const { account, herstelAccount, verbind, wek, duwBijAfsluiten } = __mod("app/samenwerken.js");
 const { kopbalk } = __mod("app/kop.js");
@@ -403,7 +446,7 @@ const { schermBeheer, vergeetBeheer } = __mod("app/scherm-beheer.js");
 // Wat je als trainer doet: je team en de wedstrijden.
 const SCHERMEN = [
   { id: 'team', naam: 'Team', ico: 'team' },
-  { id: 'opzet', naam: 'Wedstrijd', ico: 'opzet' },
+  { id: 'opzet', naam: 'Wedstrijden', ico: 'opzet' },
   { id: 'schema', naam: 'Schema', ico: 'schema' },
   { id: 'live', naam: 'Live', ico: 'live' },
   { id: 'archief', naam: 'Archief', ico: 'archief' },
@@ -419,7 +462,12 @@ const binnen = () => !account.sessieVerlopen && !['verbinden', 'inloggen', 'inri
 
 function ganaar(scherm) {
   if (scherm === 'beheer') vergeetBeheer(); // altijd vers ophalen
-  wijzig((s) => { s.ui.scherm = scherm; });
+  wijzig((s) => {
+    // Nog geen wedstrijd: dan zie je de lijst, en dat blijft zo als een
+    // collega er intussen een toevoegt.
+    if (scherm === 'opzet' && !s.wedstrijd) s.ui.lijst = true;
+    s.ui.scherm = scherm;
+  });
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -428,7 +476,7 @@ function wisselStaatOpen() {
   if (!w || !w.blokken || w.status !== 'bezig') return false;
   const p = plan();
   const i = actiefBlokIndex(p.blokken);
-  return klokStand() >= p.blokken[i].totSec;
+  return klokStand() >= p.blokken[i].totSec && echteWissel(p.wissels[i]);
 }
 
 function render() {
@@ -483,7 +531,11 @@ function render() {
     nav.appendChild(h('button', {
       class: s === BEHEER ? 'beheertab' : null,
       'aria-current': scherm === s.id ? 'page' : null,
-      onclick: () => ganaar(s.id),
+      onclick: () => {
+        // Nog een keer op Wedstrijden tikken brengt je terug bij de lijst.
+        if (s.id === 'opzet' && scherm === 'opzet') wijzig((st) => { st.ui.lijst = true; });
+        ganaar(s.id);
+      },
     }, icoon(s.ico), s.id === 'live' && open ? h('span', { class: 'punt' }) : null, s.naam));
   }
   nav.id = 'nav';
@@ -532,7 +584,7 @@ async function verwerkDeelLink() {
     // of het team dat open staat.
     const kanOvernemen = account.modus === 'lokaal' || (binnen() && account.modus === 'team' && !!account.teamId);
     if (kanOvernemen && account.modus === 'team') {
-      c.appendChild(h('p', { class: 'mini', style: { marginTop: '10px' } }, `Overnemen zet dit schema klaar bij ${S.team.naam}.`));
+      c.appendChild(h('p', { class: 'mini', style: { marginTop: '10px' } }, `Overnemen zet dit schema als nieuwe wedstrijd klaar bij ${S.team.naam}.`));
     }
     c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '16px' } },
       h('button', { class: 'knop', onclick: sluit }, kanOvernemen ? 'Alleen bekijken' : 'Sluiten'),
@@ -554,7 +606,8 @@ async function verwerkDeelLink() {
             })),
           });
           w.pins = Object.fromEntries(w.blokken.map((b) => [b.id, b.opstelling]));
-          s.wedstrijd = w;
+          s.wedstrijd = w; // een nieuwe wedstrijd in de lijst, naast wat er al gepland stond
+          s.ui.lijst = false;
           s.ui.scherm = 'schema';
         }, { terugdraaibaar: true });
         sluit();
@@ -808,7 +861,7 @@ __defs["app/store.js"] = function () {
 // teamgegevens van de server; dan neemt samenwerken.js het bewaren van het
 // team over, en houdt deze module alleen bij wat er in het geheugen staat.
 
-const { planWedstrijd, herplan, wisselUitgevoerd, maakBlokken, totaleSpeeltijd } = __mod("lib/schedule.js");
+const { planWedstrijd, herplan, wisselUitgevoerd, maakBlokken, totaleSpeeltijd, ruilNu } = __mod("lib/schedule.js");
 const { FORMATIONS, getFormation, formationsForSize } = __mod("lib/formations.js");
 const { voegSamen } = __mod("lib/samenvoegen.js");
 
@@ -845,7 +898,7 @@ const spelerMetId = (id, w = S.wedstrijd) => wedstrijdSpelers(w).find((p) => p.i
 
 function nieuweWedstrijd(vorige = null) {
   return {
-    id: uid('w'), datum: vandaag(), tegenstander: '', thuis: true,
+    id: uid('w'), datum: vandaag(), aanvang: '', tegenstander: '', thuis: true,
     formationId: vorige?.formationId ?? '6-1-2-2-1',
     // Speelvorm volgt uit de opstelling, anders lopen ze uiteen als je een
     // wedstrijd overneemt uit het archief (dat bewaart alleen de opstelling).
@@ -865,14 +918,69 @@ function nieuweWedstrijd(vorige = null) {
 const leeg = () => ({
   versie: VERSIE,
   team: { naam: 'Mijn team', spelers: [] },
-  wedstrijd: null,
+  wedstrijden: [],
   archief: [],
   instellingen: { thema: 'auto', geluid: true, trillen: true, schermAan: true, syncUrl: '' },
-  ui: { scherm: 'team' },
+  // wedstrijdId: welke wedstrijd er op dit apparaat open staat.
+  // lijst: op de tab Wedstrijden het overzicht tonen, niet de open wedstrijd.
+  ui: { scherm: 'team', wedstrijdId: null, lijst: false },
   gewijzigdOp: 0,
 });
 
 const S = leeg();
+
+// Een team heeft een lijst wedstrijden: wat er gepland staat, en wat er nu
+// gespeeld wordt. Elke wedstrijd is een los ding met een eigen id, zodat twee
+// trainers er elk een kunnen toevoegen zonder dat de een de ander wegdrukt.
+//
+// `S.wedstrijd` is de wedstrijd die op dit apparaat open staat. Wie hem
+// leest, krijgt het object uit de lijst; wie hem een nieuwe waarde geeft,
+// vervangt hem in de lijst (zelfde id), voegt hem toe (nieuw id) of haalt
+// hem eruit (null). Zo werken de schermen gewoon met "de wedstrijd".
+Object.defineProperty(S, 'wedstrijd', {
+  enumerable: false,
+  get() { return openWedstrijd(S.wedstrijden, S.ui.wedstrijdId); },
+  set(w) {
+    const huidig = openWedstrijd(S.wedstrijden, S.ui.wedstrijdId);
+    if (!w) {
+      if (huidig) S.wedstrijden = S.wedstrijden.filter((x) => x.id !== huidig.id);
+      S.ui.wedstrijdId = null;
+      return;
+    }
+    const i = S.wedstrijden.findIndex((x) => x.id === w.id);
+    if (i >= 0) S.wedstrijden = S.wedstrijden.map((x, j) => (j === i ? w : x));
+    else S.wedstrijden = [...S.wedstrijden, w];
+    S.ui.wedstrijdId = w.id;
+  },
+});
+
+/** Datum en aanvang als sorteerbare tekst. */
+const wanneer = (w) => `${w.datum || ''} ${w.aanvang || ''}`;
+
+/**
+ * Welke wedstrijd er open staat. Zelf gekozen, en anders vanzelf: die bezig
+ * is, of de eerstvolgende. Zo staat op wedstrijddag bij beide trainers
+ * dezelfde wedstrijd klaar, zonder dat iemand iets hoeft te kiezen.
+ */
+function openWedstrijd(lijst, id) {
+  if (!lijst.length) return null;
+  const gekozen = id && lijst.find((w) => w.id === id);
+  if (gekozen) return gekozen;
+  const bezig = lijst.find((w) => w.status === 'bezig');
+  if (bezig) return bezig;
+  const opVolgorde = [...lijst].sort((a, b) => wanneer(a).localeCompare(wanneer(b)));
+  return opVolgorde.find((w) => (w.datum || '') >= vandaag()) || opVolgorde[opVolgorde.length - 1];
+}
+
+/**
+ * Teamgegevens van voor de lijst wedstrijden (één vak `wedstrijd`) omzetten.
+ * Voor een back-up, de opslag op dit apparaat, en wat de server stuurt.
+ */
+function metWedstrijden(doc) {
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc.wedstrijden) || !('wedstrijd' in doc)) return doc;
+  const { wedstrijd, ...rest } = doc;
+  return { ...rest, wedstrijden: wedstrijd ? [wedstrijd] : [] };
+}
 let teller = 0;
 const luisteraars = new Set();
 
@@ -973,17 +1081,17 @@ function tijdstempels(voor, { vanzelf = false } = {}) {
 // ------------------------------------------------------------- teamgegevens
 // Het deel van de toestand dat bij een team hoort en met een server wordt
 // gedeeld. Instellingen en het scherm waar je staat zijn van dit apparaat.
-const teamJson = () => JSON.stringify({ team: S.team, wedstrijd: S.wedstrijd ?? null, archief: S.archief });
+const teamJson = () => JSON.stringify({ team: S.team, wedstrijden: S.wedstrijden, archief: S.archief });
 function teamDeel() { return JSON.parse(teamJson()); }
 
 function zetTeam(bron) {
   // Altijd een eigen kopie: wat er binnenkomt, is ook de basis waarmee de
   // samenwerkmodule vergelijkt. Deelden ze een object, dan veranderde de
   // basis stilletjes mee en werd een nieuwe goal nooit verstuurd.
-  const doc = JSON.parse(JSON.stringify(bron));
+  const doc = metWedstrijden(JSON.parse(JSON.stringify(bron)));
   const team = doc.team && typeof doc.team === 'object' ? doc.team : {};
   S.team = { ...team, naam: team.naam || 'Mijn team', spelers: Array.isArray(team.spelers) ? team.spelers : [] };
-  S.wedstrijd = doc.wedstrijd ?? null;
+  S.wedstrijden = Array.isArray(doc.wedstrijden) ? doc.wedstrijden.filter((w) => w && w.id) : [];
   S.archief = Array.isArray(doc.archief) ? doc.archief : [];
 }
 
@@ -1062,10 +1170,11 @@ function bewaarNu() {
   if (teamOpslag) teamOpslag.bewaar();
 }
 function exporteer() {
-  return { versie: VERSIE, team: S.team, wedstrijd: S.wedstrijd, archief: S.archief, instellingen: S.instellingen, gewijzigdOp: S.gewijzigdOp };
+  return { versie: VERSIE, team: S.team, wedstrijden: S.wedstrijden, archief: S.archief, instellingen: S.instellingen, gewijzigdOp: S.gewijzigdOp };
 }
-function neemOver(data) {
-  if (!data || typeof data !== 'object') return false;
+function neemOver(invoer) {
+  if (!invoer || typeof invoer !== 'object') return false;
+  const data = metWedstrijden(invoer);
   if (data.team) {
     S.team = {
       // Een back-up terugzetten in een clubteam hernoemt dat team niet.
@@ -1073,7 +1182,7 @@ function neemOver(data) {
       spelers: (data.team.spelers || []).map((p) => ({ ...nieuweSpeler(), ...p })),
     };
   }
-  if ('wedstrijd' in data) S.wedstrijd = data.wedstrijd;
+  if (Array.isArray(data.wedstrijden)) S.wedstrijden = data.wedstrijden.filter((w) => w && w.id);
   if (data.archief) S.archief = data.archief;
   if (data.instellingen) S.instellingen = { ...S.instellingen, ...data.instellingen };
   S.gewijzigdOp = data.gewijzigdOp || Date.now();
@@ -1105,7 +1214,8 @@ function genereer({ nieuweSeed = false } = {}) {
   wijzig((s) => {
     if (!s.wedstrijd) return;
     if (nieuweSeed) s.wedstrijd.opties.seed = Math.floor(Math.random() * 1e6);
-    s.wedstrijd.blokken = maakBlokken(s.wedstrijd);
+    // Zonder wissels alleen blokken per periode: halverwege valt er niets te wisselen.
+    s.wedstrijd.blokken = maakBlokken(zonderWissels(s.wedstrijd) ? { ...s.wedstrijd, blokkenPerPeriode: 1 } : s.wedstrijd);
     s.wedstrijd.pins = {};
     planCache = null;
     const p = planWedstrijd(s.wedstrijd, wedstrijdSpelers(s.wedstrijd));
@@ -1122,11 +1232,33 @@ function herplanNu(opSec, wijzigingen = [], { gast = null } = {}) {
   }, { terugdraaibaar: true });
 }
 
-function bevestigWissel(blokIndex, opSec) {
+/** Tijdens de wedstrijd: twee spelers ruilen vanaf nu (slepen in het live-scherm). */
+function ruilLive(a, b) {
+  wijzig((s) => {
+    const res = ruilNu(s.wedstrijd, wedstrijdSpelers(s.wedstrijd), a, b, Math.round(klokStand(s.wedstrijd)));
+    s.wedstrijd = { ...s.wedstrijd, ...res.match };
+  }, { terugdraaibaar: true });
+}
+
+/** `vanzelf`: een wisselmoment waarop niets verandert, door de app zelf afgevinkt. */
+function bevestigWissel(blokIndex, opSec, { vanzelf = false } = {}) {
   wijzig((s) => {
     const res = wisselUitgevoerd(s.wedstrijd, wedstrijdSpelers(s.wedstrijd), blokIndex, opSec);
     s.wedstrijd = { ...s.wedstrijd, ...res.match };
-  }, { terugdraaibaar: true });
+  }, { terugdraaibaar: !vanzelf });
+}
+
+/** Verandert er bij deze wissel echt iets: iemand eruit, erin of op een andere plek? */
+const echteWissel = (wissel) => !!wissel
+  && !!(wissel.eruit?.length || wissel.erin?.length || wissel.verplaatst?.length);
+
+/**
+ * Zijn er geen wissels, omdat er niet meer spelers zijn dan plekken in het
+ * veld? Dan heeft het geen zin om wisselmomenten in te stellen.
+ */
+function zonderWissels(w = S.wedstrijd) {
+  if (!w) return false;
+  return (w.selectie || []).length <= getFormation(w.formationId).speelvorm;
 }
 
 // -------------------------------------------------------------------- score
@@ -1277,7 +1409,7 @@ function vanBase64Url(t) {
 
 
 
-return { uid, nieuweSpeler, nieuweGast, wedstrijdSpelers, nieuweWedstrijd, abonneer, stempel, zetKlokVerschil, klokVerschil, herteken, wijzig, teamDeel, laadTeamDeel, kanTerug, draaiTerug, gebruikTeamOpslag, lokaleGegevens, metServer, bewaarNu, exporteer, neemOver, laadLokaal, plan, leginSchema, genereer, herplanNu, bevestigWissel, noteerGoal, schrapGoal, klokStand, klokStart, klokPauze, klokAutoPauze, klokZet, periodeGrens, rondAf, deelLink, leesDeelLink, SLEUTEL, VERSIE, spelerMetId, S, nu, FORMATIONS, getFormation, formationsForSize, totaleSpeeltijd };
+return { uid, nieuweSpeler, nieuweGast, wedstrijdSpelers, nieuweWedstrijd, openWedstrijd, metWedstrijden, abonneer, stempel, zetKlokVerschil, klokVerschil, herteken, wijzig, teamDeel, laadTeamDeel, kanTerug, draaiTerug, gebruikTeamOpslag, lokaleGegevens, metServer, bewaarNu, exporteer, neemOver, laadLokaal, plan, leginSchema, genereer, herplanNu, ruilLive, bevestigWissel, zonderWissels, noteerGoal, schrapGoal, klokStand, klokStart, klokPauze, klokAutoPauze, klokZet, periodeGrens, rondAf, deelLink, leesDeelLink, SLEUTEL, VERSIE, spelerMetId, S, wanneer, nu, echteWissel, FORMATIONS, getFormation, formationsForSize, totaleSpeeltijd };
 };
 __defs["lib/schedule.js"] = function () {
 // De wisselschema-motor.
@@ -1905,6 +2037,31 @@ function herplan(match, alleSpelers, { opSec = 0, wijzigingen = [], opties = {} 
 }
 
 /**
+ * Twee spelers ruilen nu, tijdens de wedstrijd: van plek in het veld, of een
+ * bankspeler erin voor een veldspeler. Wat tot `opSec` gespeeld is, blijft
+ * staan (het blok wordt hier doorgeknipt). De nieuwe opstelling ligt vast
+ * tot het volgende wisselmoment; de rest van de wedstrijd wordt eromheen
+ * opnieuw verdeeld, zodat de speeltijd eerlijk blijft.
+ */
+function ruilNu(match, alleSpelers, a, b, opSec = 0) {
+  let blokken = match.blokken && match.blokken.length ? match.blokken : maakBlokken(match);
+  if (opSec > 0) blokken = vergrendelTot(splitsOp(blokken, opSec), opSec);
+  const i = blokken.findIndex((x) => !x.vast);
+  if (i < 0) return { match, ...planWedstrijd(match, alleSpelers) };
+
+  const opstelling = { ...blokken[i].opstelling };
+  const plekA = Object.keys(opstelling).find((sid) => opstelling[sid] === a);
+  const plekB = Object.keys(opstelling).find((sid) => opstelling[sid] === b);
+  if (plekA) opstelling[plekA] = b;
+  if (plekB) opstelling[plekB] = a;
+  blokken = blokken.map((x, j) => (j === i ? { ...x, opstelling } : x));
+
+  const bijgewerkt = { ...match, blokken, pins: { ...(match.pins || {}), [blokken[i].id]: opstelling } };
+  const resultaat = planWedstrijd(bijgewerkt, alleSpelers);
+  return { match: { ...bijgewerkt, blokken: resultaat.blokken }, ...resultaat };
+}
+
+/**
  * Registreert dat de wissel op de grens na `blokIndex` werkelijk op `tSec`
  * is uitgevoerd. Je wisselt nooit precies op de seconde; dit houdt de
  * speeltijdboekhouding eerlijk zonder de kwartgrenzen te verschuiven.
@@ -1925,7 +2082,7 @@ function blokOp(blokken, tSec) {
   return blokken.length - 1;
 }
 
-return { mulberry32, blokId, venster, beschikbaarIn, totaleSpeeltijd, maakBlokken, splitsOp, vergrendelTot, verlegGrens, planWedstrijd, statistieken, wisselLijst, herplan, wisselUitgevoerd, blokOp, STANDAARD_OPTIES };
+return { mulberry32, blokId, venster, beschikbaarIn, totaleSpeeltijd, maakBlokken, splitsOp, vergrendelTot, verlegGrens, planWedstrijd, statistieken, wisselLijst, herplan, ruilNu, wisselUitgevoerd, blokOp, STANDAARD_OPTIES };
 };
 __defs["lib/hungarian.js"] = function () {
 // Hongaars algoritme (Kuhn-Munkres, O(n^3) variant met potentialen).
@@ -2162,8 +2319,9 @@ __defs["lib/samenvoegen.js"] = function () {
 // beide kanten iets aan veranderden, wordt dieper gekeken:
 //
 //   objecten              per sleutel
-//   lijsten met een id    per id: spelers, doelpunten, het archief. Twee
-//                         nieuwe goals komen er dus allebei in.
+//   lijsten met een id    per id: spelers, wedstrijden, doelpunten, het
+//                         archief. Twee nieuwe goals komen er dus allebei
+//                         in, en twee nieuwe wedstrijden ook.
 //   lijsten met waarden   als verzameling: de selectie van een wedstrijd
 //
 // Wat dan nog botst, is een echt conflict: beide kanten gaven hetzelfde
@@ -2195,6 +2353,11 @@ function gelijk(a, b) {
   return false;
 }
 
+// Een wedstrijd staat in de lijst `wedstrijden` (of, in oudere gegevens, in
+// het vak `wedstrijd`). Daar gelden de regels voor klok en schema.
+const isWedstrijd = (pad) => pad === 'wedstrijd' || pad === 'wedstrijden[]';
+const isKlok = (pad) => pad === 'wedstrijd.klok' || pad === 'wedstrijden[].klok';
+
 // Het schema (blokken en de vastgezette opstellingen) hoort bij elkaar en
 // wordt nooit half van de een en half van de ander. De wedstrijd onthoudt
 // in `planMs` wanneer het schema voor het laatst veranderde.
@@ -2219,7 +2382,7 @@ function voegSamen(basis, mijn, hun, pad = '') {
     // archief staat.
     if (m !== h) return m === b ? hun : mijn;
   }
-  if (pad === 'wedstrijd.klok') {
+  if (isKlok(pad)) {
     return (hun?.bijgewerkt || 0) > (mijn?.bijgewerkt || 0) ? hun : mijn;
   }
   if (isObject(mijn) && isObject(hun)) return voegObjectSamen(isObject(basis) ? basis : {}, mijn, hun, pad);
@@ -2233,11 +2396,11 @@ function voegSamen(basis, mijn, hun, pad = '') {
 
 function voegObjectSamen(basis, mijn, hun, pad) {
   // Bij de wedstrijd: wiens schema is het nieuwst?
-  const schemaVanHun = pad === 'wedstrijd' && (hun.planMs || 0) > (mijn.planMs || 0);
+  const schemaVanHun = isWedstrijd(pad) && (hun.planMs || 0) > (mijn.planMs || 0);
   const uit = {};
   for (const k of new Set([...Object.keys(mijn), ...Object.keys(hun)])) {
     let v;
-    if (pad === 'wedstrijd' && SCHEMA.has(k) && !gelijk(basis[k], mijn[k]) && !gelijk(basis[k], hun[k])) {
+    if (isWedstrijd(pad) && SCHEMA.has(k) && !gelijk(basis[k], mijn[k]) && !gelijk(basis[k], hun[k])) {
       v = schemaVanHun ? hun[k] : mijn[k];
     } else {
       v = voegSamen(basis[k], mijn[k], hun[k], pad ? `${pad}.${k}` : k);
@@ -2265,14 +2428,20 @@ function voegLijstSamen(basis, mijn, hun, pad) {
     volgorde.splice(j < 0 ? 0 : volgorde.indexOf(mijn[j].id) + 1, 0, x.id);
   });
 
+  // Bij wedstrijden is het andersom: een afgeronde of weggegooide wedstrijd
+  // blijft weg. Je voegt geen goal meer toe aan een wedstrijd die al in het
+  // archief staat.
+  const weghalenWint = pad === 'wedstrijden';
+  const blijft = (id, kant) => !B.has(id) || (!weghalenWint && !gelijk(B.get(id), kant.get(id)));
+
   const uit = [];
   for (const id of volgorde) {
-    const [inB, inM, inH] = [B.has(id), M.has(id), H.has(id)];
+    const [inM, inH] = [M.has(id), H.has(id)];
     if (inM && inH) uit.push(voegSamen(B.get(id), M.get(id), H.get(id), `${pad}[]`));
     // Aan één kant weg: dan blijft hij alleen als hij nieuw is, of als de
     // andere kant hem intussen veranderde (bijwerken wint van weggooien).
-    else if (inM) { if (!inB || !gelijk(B.get(id), M.get(id))) uit.push(M.get(id)); }
-    else if (inH) { if (!inB || !gelijk(B.get(id), H.get(id))) uit.push(H.get(id)); }
+    else if (inM) { if (blijft(id, M)) uit.push(M.get(id)); }
+    else if (inH) { if (blijft(id, H)) uit.push(H.get(id)); }
   }
   return uit;
 }
@@ -2303,13 +2472,14 @@ __defs["app/samenwerken.js"] = function () {
 // seconden met "niets nieuws". Dat werkt door elke proxy heen, ook door de
 // ingress van Home Assistant en door een Cloudflare-tunnel.
 
-const { S, wijzig, herteken, gebruikTeamOpslag, laadTeamDeel, teamDeel, zetKlokVerschil, klokVerschil } = __mod("app/store.js");
+const { S, wijzig, herteken, gebruikTeamOpslag, laadTeamDeel, teamDeel, zetKlokVerschil, klokVerschil, metWedstrijden } = __mod("app/store.js");
 const { vraag, vraagBijAfsluiten, zetServer, zetToken, paginaServer, normaliseerAdres, vergeetKlok, ApiFout } = __mod("app/api.js");
 const { voegSamen, gelijk } = __mod("lib/samenvoegen.js");
+const { melding } = __mod("app/ui.js");
 
 const ACCOUNT = 'wisselschema.account';
 const CACHE = 'wisselschema.team.';
-const DELEN = ['team', 'wedstrijd', 'archief'];
+const DELEN = ['team', 'wedstrijden', 'archief'];
 const WACHT = 25; // seconden dat een verzoek op een wijziging mag wachten
 
 /** Alles wat de schermen over het account en de verbinding moeten weten. */
@@ -2378,7 +2548,10 @@ function wisCaches() {
 function leesCache(teamId) {
   try {
     const c = JSON.parse(localStorage.getItem(CACHE + teamId));
-    if (c && c.gebruikerId === account.gebruiker?.id) return c;
+    if (c && c.gebruikerId === account.gebruiker?.id) {
+      // Bewaard door een versie van voor de lijst wedstrijden.
+      return { ...c, staat: metWedstrijden(c.staat), basis: c.basis === 'zelfde' ? c.basis : metWedstrijden(c.basis) };
+    }
   } catch (e) { /* onleesbaar: opnieuw ophalen */ }
   return null;
 }
@@ -2416,7 +2589,7 @@ function herstelAccount() {
   }
   // Er is misschien een server. Staat hier al een team, laat dat dan zien
   // terwijl we kijken; anders een leeg scherm met "verbinden".
-  if (eigenAdres()) account.modus = S.team.spelers.length || S.archief.length || S.wedstrijd ? 'lokaal' : 'verbinden';
+  if (eigenAdres()) account.modus = S.team.spelers.length || S.archief.length || S.wedstrijden.length ? 'lokaal' : 'verbinden';
 }
 
 /** Op de achtergrond: de server zoeken, of het account bijwerken. */
@@ -2554,7 +2727,7 @@ function kiesStartTeam(voorkeur) {
 }
 
 const teamNaam = (id) => (account.teams.find((t) => t.id === id) || {}).naam || 'Team';
-const leegTeam = (naam) => ({ team: { naam, spelers: [] }, wedstrijd: null, archief: [] });
+const leegTeam = (naam) => ({ team: { naam, spelers: [] }, wedstrijden: [], archief: [] });
 
 function kiesTeam(id) {
   if (id === account.teamId) return;
@@ -2667,8 +2840,10 @@ function verwerk(r) {
   } else if (zelfdeTijdperk && r.versie === ts.versie) return;
 
   const remote = r.volledig ? leegTeam(teamNaam(ts.teamId)) : { ...ts.basis };
-  for (const d of DELEN) if (d in r.delen) remote[d] = r.delen[d];
+  const delen = metWedstrijden(r.delen);
+  for (const d of DELEN) if (d in delen) remote[d] = delen[d];
   const mijn = teamDeel();
+  if (ts.basis) meldNieuweWedstrijden(ts.basis, mijn, remote);
   // Samenvoegen met de laatste stand die we kenden. Nog nooit verbonden:
   // dan met een leeg team, zodat wat hier al werd ingevoerd blijft staan.
   // Na een herstart of een teruggezette back-up (ander tijdperk) werkt het
@@ -2683,6 +2858,17 @@ function verwerk(r) {
   bewaarCache();
   if (!gelijk(samen, remote)) planDuw(0);
   else zetOnverstuurd(false);
+}
+
+/** Een collega zette een wedstrijd erbij: even laten weten, hij staat nu in de lijst. */
+function meldNieuweWedstrijden(basis, mijn, remote) {
+  const bekend = new Set([...(basis.wedstrijden || []), ...(mijn.wedstrijden || [])].map((w) => w.id));
+  const nieuw = (remote.wedstrijden || []).filter((w) => !bekend.has(w.id));
+  if (!nieuw.length) return;
+  const w = nieuw[0];
+  const wie = w.door ? `${w.door} heeft` : 'Er is';
+  melding(nieuw.length > 1 ? `${wie} ${nieuw.length} wedstrijden toegevoegd`
+    : `${wie} een wedstrijd toegevoegd${w.tegenstander ? `: ${w.tegenstander}` : ''}`);
 }
 
 // Houdt steeds één verzoek open dat terugkomt zodra er iets verandert.
@@ -2815,6 +3001,24 @@ async function duw() {
   }
 }
 
+/**
+ * Na "Opslaan": wacht tot de server alles heeft wat hier is ingevoerd.
+ * Geeft 'server' (de medetrainers zien het nu ook), 'lokaal' (er is geen
+ * server; het staat op dit apparaat) of 'later' (nog geen bereik; het gaat
+ * mee zodra dat er is).
+ */
+async function wachtOpOpslaan(ms = 5000) {
+  if (account.modus !== 'team' || !ts.teamId) return 'lokaal';
+  const eind = Date.now() + ms;
+  planDuw(0);
+  while (Date.now() < eind) {
+    if (account.sessieVerlopen) return 'later';
+    if (ts.basis && !ts.bezig && !wijzigingen()) return 'server';
+    await new Promise((klaar) => setTimeout(klaar, 100));
+  }
+  return 'later';
+}
+
 /** De app gaat dicht: nog één poging, zonder op antwoord te wachten. */
 function duwBijAfsluiten() {
   if (account.modus !== 'team' || !ts.teamId || ts.bezig || account.sessieVerlopen) return;
@@ -2822,7 +3026,7 @@ function duwBijAfsluiten() {
   if (delen) vraagBijAfsluiten(`api/teams/${ts.teamId}`, 'PUT', { basisVersie: ts.versie, tijdperk: ts.tijdperk, delen });
 }
 
-return { herstelAccount, verbind, verbindMet, terugNaarLokaal, inloggen, inrichten, herstellen, uitloggen, wijzigWachtwoord, vernieuwIk, kiesTeam, naBeheer, wek, duwBijAfsluiten, account };
+return { herstelAccount, verbind, verbindMet, terugNaarLokaal, inloggen, inrichten, herstellen, uitloggen, wijzigWachtwoord, vernieuwIk, kiesTeam, naBeheer, wek, wachtOpOpslaan, duwBijAfsluiten, account };
 };
 __defs["app/api.js"] = function () {
 // Praten met de server (de app voor Home Assistant, of een andere installatie
@@ -3127,7 +3331,7 @@ __defs["app/scherm-team.js"] = function () {
 // Scherm: het team. Spelers toevoegen, plakken of uploaden.
 
 const { h, icoon, toonSheet, bevestig, melding, saldoTekst, initialen, downloadBestand } = __mod("app/ui.js");
-const { S, wijzig, nieuweSpeler, uid, exporteer, neemOver, lokaleGegevens, metServer } = __mod("app/store.js");
+const { S, wijzig, nieuweSpeler, uid, exporteer, neemOver, lokaleGegevens, metServer, metWedstrijden } = __mod("app/store.js");
 
 const ROLNAAM = { V: 'Verdediging', M: 'Middenveld', A: 'Aanval' };
 
@@ -3339,7 +3543,7 @@ function bestandSheet() {
         if (/\.json$/i.test(bestand.name) || tekst.trim().startsWith('{')) {
           try {
             const data = JSON.parse(tekst);
-            bevestig('Back-up terugzetten?', 'Je huidige team, wedstrijd en archief worden vervangen.', () => {
+            bevestig('Back-up terugzetten?', 'Je huidige team, wedstrijden en archief worden vervangen.', () => {
               wijzig(() => { neemOver(data); });
               sluit(); melding('Back-up teruggezet');
             }, { knop: 'Terugzetten', gevaar: true });
@@ -3362,8 +3566,8 @@ function bestandSheet() {
       c.appendChild(h('p', { class: 'uitleg' },
         `Op dit apparaat staat nog ${lokaal.team.naam} van voor het inloggen: ${n} speler${n === 1 ? '' : 's'}, ${(lokaal.archief || []).length} gespeelde wedstrijden.`));
       c.appendChild(h('button', { class: 'knop breed', onclick: () => bevestig(`${lokaal.team.naam} overnemen?`,
-        `Spelers, wedstrijd en archief van ${S.team.naam} worden vervangen door die van dit apparaat, voor alle trainers van het team.`, () => {
-          wijzig(() => { neemOver({ team: { ...lokaal.team, naam: S.team.naam }, wedstrijd: lokaal.wedstrijd ?? null, archief: lokaal.archief || [] }); },
+        `Spelers, wedstrijden en archief van ${S.team.naam} worden vervangen door die van dit apparaat, voor alle trainers van het team.`, () => {
+          wijzig(() => { neemOver({ team: { ...lokaal.team, naam: S.team.naam }, wedstrijden: metWedstrijden(lokaal).wedstrijden || [], archief: lokaal.archief || [] }); },
             { terugdraaibaar: true });
           sluit(); melding('Overgenomen');
         }, { knop: 'Overnemen', gevaar: true }) }, `Overnemen in ${S.team.naam}`));
@@ -3389,25 +3593,31 @@ function voorbeeldTeam() {
 return { schermTeam, bewerkSpeler, leesSpelers };
 };
 __defs["app/scherm-opzet.js"] = function () {
-// Scherm: wedstrijd klaarzetten. Wie is er vandaag, hoe spelen we, hoe lang.
+// Scherm: de wedstrijden. Een lijst van wat er gepland staat, en per
+// wedstrijd het klaarzetten: wie is er, hoe spelen we, hoe lang.
 
 const { h, icoon, melding, datumTekst, bevestig, toonSheet } = __mod("app/ui.js");
-const { S, wijzig, nieuweWedstrijd, nieuweGast, genereer } = __mod("app/store.js");
+const { S, wijzig, nieuweWedstrijd, nieuweGast, genereer, wanneer, zonderWissels } = __mod("app/store.js");
 const { FORMATIONS, SPEELVORMEN, formationsForSize, getFormation } = __mod("lib/formations.js");
 const { tekenMiniVeld } = __mod("app/veld.js");
+const { account, wachtOpOpslaan } = __mod("app/samenwerken.js");
+const { verbindingsStaat } = __mod("app/kop.js");
 
 const PRESET_MIN = [10, 12.5, 15, 20, 25];
 
 function schermOpzet(ganaar) {
   const w = S.wedstrijd;
-  if (!w) return geenWedstrijd(ganaar);
-  if (!S.team.spelers.length) {
-    return h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
-      h('p', {}, 'Voeg eerst spelers toe aan je team.'),
-      h('button', { class: 'knop primair', onclick: () => ganaar('team') }, 'Naar het team')));
-  }
+  if (!w || S.ui.lijst) return schermWedstrijden(ganaar);
 
   const wrap = h('div', {});
+  wrap.appendChild(terugRij());
+  if (!S.team.spelers.length) {
+    wrap.appendChild(h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
+      h('p', {}, 'Voeg eerst spelers toe aan je team.'),
+      h('button', { class: 'knop primair', onclick: () => ganaar('team') }, 'Naar het team'))));
+    return wrap;
+  }
+
   const bezig = w.status === 'bezig';
 
   // Elke wijziging hier gooit het schema weg en laat het opnieuw berekenen.
@@ -3432,13 +3642,16 @@ function schermOpzet(ganaar) {
 
   // ---- tegenstander en datum
   wrap.appendChild(h('div', { class: 'kaart' },
+    h('label', { class: 'veld' }, h('span', {}, 'Tegenstander'),
+      h('input', { type: 'text', value: w.tegenstander, placeholder: 'SV Voorbeeld',
+        onchange: (e) => wijzig((s) => { s.wedstrijd.tegenstander = e.target.value.trim(); }) })),
     h('div', { class: 'rij2' },
-      h('label', { class: 'veld' }, h('span', {}, 'Tegenstander'),
-        h('input', { type: 'text', value: w.tegenstander, placeholder: 'SV Voorbeeld',
-          onchange: (e) => wijzig((s) => { s.wedstrijd.tegenstander = e.target.value; }) })),
       h('label', { class: 'veld' }, h('span', {}, 'Datum'),
         h('input', { type: 'date', value: w.datum,
-          onchange: (e) => wijzig((s) => { s.wedstrijd.datum = e.target.value; }) }))),
+          onchange: (e) => wijzig((s) => { s.wedstrijd.datum = e.target.value; }) })),
+      h('label', { class: 'veld' }, h('span', {}, 'Aanvang'),
+        h('input', { type: 'time', value: w.aanvang || '',
+          onchange: (e) => wijzig((s) => { s.wedstrijd.aanvang = e.target.value; }) }))),
     h('div', { class: 'segment' },
       ...[[true, 'Thuis'], [false, 'Uit']].map(([v, l]) =>
         h('button', { 'aria-pressed': String(w.thuis === v), onclick: () => wijzig((s) => { s.wedstrijd.thuis = v; }) }, l)))));
@@ -3516,13 +3729,19 @@ function schermOpzet(ganaar) {
         ...PRESET_MIN.map((m2) => h('option', { value: String(m2), selected: w.periodeMin === m2 }, `${m2} min`)),
         PRESET_MIN.includes(w.periodeMin) ? null : h('option', { value: String(w.periodeMin), selected: true }, `${w.periodeMin} min`)))));
 
-  kaartTijd.appendChild(h('label', { class: 'veld' },
-    h('span', {}, 'Wisselmomenten per periode'),
-    h('div', { class: 'segment' },
-      ...[[1, 'Eén: bij de rust'], [2, 'Twee: ook halverwege']].map(([n, l]) =>
-        h('button', { 'aria-pressed': String(w.blokkenPerPeriode === n), onclick: () => zet((m) => { m.blokkenPerPeriode = n; }) }, l)))));
-  kaartTijd.appendChild(h('p', { class: 'uitleg' },
-    `Totaal ${w.periodes * w.periodeMin} minuten, verdeeld over ${w.periodes * w.blokkenPerPeriode} blokken van ${Math.round(w.periodeMin / w.blokkenPerPeriode * 10) / 10} minuten.`));
+  // Niemand op de bank: dan valt er niets te wisselen, en ook niets in te stellen.
+  if (zonderWissels(w)) {
+    kaartTijd.appendChild(h('p', { class: 'uitleg' },
+      `Totaal ${w.periodes * w.periodeMin} minuten. Er zijn niet meer spelers dan plekken, dus geen wissels: iedereen speelt de hele wedstrijd. Bij de rust kan wel iemand anders op doel gaan.`));
+  } else {
+    kaartTijd.appendChild(h('label', { class: 'veld' },
+      h('span', {}, 'Wisselmomenten per periode'),
+      h('div', { class: 'segment' },
+        ...[[1, 'Eén: bij de rust'], [2, 'Twee: ook halverwege']].map(([n, l]) =>
+          h('button', { 'aria-pressed': String(w.blokkenPerPeriode === n), onclick: () => zet((m) => { m.blokkenPerPeriode = n; }) }, l)))));
+    kaartTijd.appendChild(h('p', { class: 'uitleg' },
+      `Totaal ${w.periodes * w.periodeMin} minuten, verdeeld over ${w.periodes * w.blokkenPerPeriode} blokken van ${Math.round(w.periodeMin / w.blokkenPerPeriode * 10) / 10} minuten.`));
+  }
   wrap.appendChild(kaartTijd);
 
   // ---- verdeling
@@ -3557,10 +3776,40 @@ function schermOpzet(ganaar) {
     'Selecteer minstens twee spelers.'));
 
   wrap.appendChild(h('button', { class: 'knop stil breed', style: { marginTop: '14px' },
-    onclick: () => bevestig('Wedstrijd weggooien?', 'De opzet en het schema van deze wedstrijd verdwijnen.',
-      () => { wijzig((s) => { s.wedstrijd = null; }, { terugdraaibaar: true }); }, { knop: 'Weggooien', gevaar: true }) },
+    onclick: () => bevestig('Wedstrijd weggooien?',
+      account.modus === 'team'
+        ? 'De wedstrijd verdwijnt uit de lijst, ook bij je medetrainers. De opzet en het schema zijn dan weg.'
+        : 'De opzet en het schema van deze wedstrijd verdwijnen.',
+      () => { wijzig((s) => { s.wedstrijd = null; s.ui.lijst = true; }, { terugdraaibaar: true }); melding('Wedstrijd weggegooid'); },
+      { knop: 'Weggooien', gevaar: true }) },
     'Deze wedstrijd weggooien'));
   return wrap;
+}
+
+/** Bovenaan een wedstrijd: terug naar de lijst, en of alles is opgeslagen. */
+function terugRij() {
+  const rij = h('div', { class: 'terugrij' },
+    h('button', { class: 'knop klein stil', onclick: () => naarLijst() }, '‹ Alle wedstrijden'));
+  const staat = opslagStaat();
+  if (staat) rij.appendChild(h('span', { class: `opslag ${staat.klasse}`, role: 'status', title: staat.uitleg }, staat.tekst));
+  return rij;
+}
+
+function naarLijst() {
+  wijzig((s) => { s.ui.lijst = true; });
+  window.scrollTo({ top: 0 });
+}
+
+/**
+ * Wat je in een wedstrijd verandert, wordt meteen opgeslagen. Hier zie je
+ * dat het ook bij de server is - en dus bij je medetrainers.
+ */
+function opslagStaat() {
+  if (account.modus !== 'team') return null;
+  const v = verbindingsStaat();
+  if (v.klasse === 'ok') return { klasse: 'ok', tekst: '✓ Opgeslagen', uitleg: 'Je medetrainers zien dit ook.' };
+  if (v.klasse === 'bezig') return { klasse: 'bezig', tekst: 'Opslaan…', uitleg: v.tekst };
+  return { klasse: 'uit', tekst: account.onverstuurd ? 'Nog niet opgeslagen' : 'Geen verbinding', uitleg: v.tekst };
 }
 
 /**
@@ -3593,15 +3842,25 @@ function gastSheet(opToevoegen, { uitleg = 'Doet er vandaag iemand van een ander
 
 const accentTekst = (v) => (v < 0.05 ? 'volledig gelijk' : v < 0.35 ? 'licht accent' : v < 0.7 ? 'duidelijk accent' : 'sterk accent');
 
-function geenWedstrijd(ganaar) {
+// ------------------------------------------------------------- de lijst
+/** Alle wedstrijden van het team die nog gespeeld worden, en de laatst gespeelde. */
+function schermWedstrijden(ganaar) {
   const wrap = h('div', {});
-  wrap.appendChild(h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
-    h('h2', { style: { marginBottom: '6px' } }, 'Geen wedstrijd klaargezet'),
-    h('p', {}, 'Zet een wedstrijd klaar en laat de app het wisselschema maken.'),
-    h('button', { class: 'knop primair groot', style: { marginTop: '8px' }, onclick: () => {
-      const vorige = S.archief[0];
-      wijzig((s) => { s.wedstrijd = nieuweWedstrijd(vorige ? { ...vorige } : null); s.wedstrijd.selectie = s.team.spelers.map((p) => p.id); });
-    } }, icoon('plus', 20), 'Nieuwe wedstrijd'))));
+  wrap.appendChild(h('button', { class: 'knop primair breed groot', onclick: () => nieuweWedstrijdSheet(ganaar) },
+    icoon('plus', 20), 'Nieuwe wedstrijd'));
+
+  const open = S.wedstrijd;
+  const lijst = [...S.wedstrijden].sort((a, b) => wanneer(a).localeCompare(wanneer(b)));
+  if (!lijst.length) {
+    wrap.appendChild(h('div', { class: 'kaart', style: { marginTop: '14px' } }, h('div', { class: 'leeg' },
+      h('h2', { style: { marginBottom: '6px' } }, 'Nog geen wedstrijden gepland'),
+      h('p', {}, account.modus === 'team'
+        ? 'Voeg een wedstrijd toe. Je medetrainers zien hem dan ook, en kunnen meehelpen met klaarzetten.'
+        : 'Voeg een wedstrijd toe en laat de app het wisselschema maken.'))));
+  } else {
+    wrap.appendChild(h('div', { class: 'tussenkop' }, `Gepland (${lijst.length})`));
+    for (const w of lijst) wrap.appendChild(wedstrijdRij(w, w === open, ganaar));
+  }
 
   if (S.archief.length) {
     wrap.appendChild(h('div', { class: 'tussenkop' }, 'Laatst gespeeld'));
@@ -3618,7 +3877,73 @@ function geenWedstrijd(ganaar) {
   return wrap;
 }
 
-return { schermOpzet, gastSheet };
+function wedstrijdRij(w, open, ganaar) {
+  const status = w.status === 'bezig' ? h('span', { class: 'vlag live' }, 'LIVE')
+    : w.blokken ? h('span', { class: 'vlag' }, 'SCHEMA KLAAR') : null;
+  const details = [datumTekst(w.datum), w.aanvang, w.thuis ? 'thuis' : 'uit', w.door ? `door ${w.door}` : null].filter(Boolean);
+  return h('button', { class: 'kaart wedstrijdrij', 'aria-current': open ? 'true' : null,
+    onclick: () => {
+      wijzig((s) => { s.ui.wedstrijdId = w.id; s.ui.lijst = false; });
+      ganaar(w.status === 'bezig' ? 'live' : 'opzet');
+    } },
+    h('div', { class: 'naam' }, w.tegenstander || 'Tegenstander nog onbekend', h('small', {}, details.join(' · '))),
+    status, h('span', { class: 'pijl', 'aria-hidden': 'true' }, '›'));
+}
+
+/**
+ * Een wedstrijd toevoegen: tegenstander, datum, aanvang, thuis of uit. Pas
+ * bij Opslaan bestaat hij, en dan staat hij ook bij je medetrainers. De rest
+ * (wie er is, de opstelling) zet je daarna klaar.
+ */
+function nieuweWedstrijdSheet(ganaar) {
+  toonSheet('Nieuwe wedstrijd', (c, sluit) => {
+    let thuis = true;
+    const tegen = h('input', { type: 'text', placeholder: 'SV Voorbeeld', autocomplete: 'off' });
+    const datum = h('input', { type: 'date', value: new Date().toISOString().slice(0, 10), required: true });
+    const aanvang = h('input', { type: 'time' });
+    const segment = h('div', { class: 'segment' });
+    const tekenSegment = () => segment.replaceChildren(...[[true, 'Thuis'], [false, 'Uit']].map(([v, l]) =>
+      h('button', { type: 'button', 'aria-pressed': String(thuis === v), onclick: () => { thuis = v; tekenSegment(); } }, l)));
+    tekenSegment();
+    const fout = h('p', { class: 'fout', role: 'alert' });
+    const knop = h('button', { class: 'knop primair', type: 'submit', style: { flex: '2' } }, 'Opslaan');
+
+    c.appendChild(h('form', { onsubmit: async (e) => {
+      e.preventDefault();
+      if (!datum.value) { fout.textContent = 'Kies een datum.'; datum.focus(); return; }
+      knop.disabled = true;
+      knop.textContent = 'Opslaan…';
+      // Instellingen als speelvorm en speeltijd van de vorige wedstrijd.
+      const vorige = S.archief[0] || S.wedstrijden[S.wedstrijden.length - 1] || null;
+      wijzig((s) => {
+        const w = nieuweWedstrijd(vorige ? { ...vorige } : null);
+        Object.assign(w, { tegenstander: tegen.value.trim(), datum: datum.value, aanvang: aanvang.value, thuis });
+        if (account.modus === 'team' && account.gebruiker?.naam) w.door = account.gebruiker.naam.split(/\s+/)[0];
+        w.selectie = s.team.spelers.map((p) => p.id);
+        s.wedstrijd = w;
+        s.ui.lijst = false;
+        s.ui.scherm = 'opzet';
+      });
+      const waar = await wachtOpOpslaan();
+      sluit();
+      ganaar('opzet');
+      melding(waar === 'server' ? '✓ Opgeslagen. Je medetrainers zien hem nu ook.'
+        : waar === 'later' ? 'Opgeslagen op je telefoon. Hij gaat naar de server zodra er bereik is.'
+        : '✓ Wedstrijd opgeslagen');
+    } },
+      h('label', { class: 'veld' }, h('span', {}, 'Tegenstander'), tegen),
+      h('div', { class: 'rij2' },
+        h('label', { class: 'veld' }, h('span', {}, 'Datum'), datum),
+        h('label', { class: 'veld' }, h('span', {}, 'Aanvang'), aanvang)),
+      segment,
+      fout,
+      h('div', { class: 'knoprij', style: { marginTop: '16px' } },
+        h('button', { class: 'knop', type: 'button', onclick: sluit }, 'Annuleren'),
+        knop)));
+  });
+}
+
+return { schermOpzet, gastSheet, schermWedstrijden, nieuweWedstrijdSheet };
 };
 __defs["app/veld.js"] = function () {
 // Het speelveld als SVG. Staand formaat, eigen doel onderaan - zoals je er
@@ -3663,7 +3988,7 @@ const ROLKLEUR = { K: 'var(--rol-K)', V: 'var(--rol-V)', M: 'var(--rol-M)', A: '
  * @param {object} blok        blok met `opstelling`
  * @param {Array}  spelers     alle spelers (voor naam en rugnummer)
  * @param {string} formationId
- * @param {object} opties      { markeer:Set<id>, opTik(spelerId, slotId), toonNamen }
+ * @param {object} opties      { markeer:Set<id>, opTik(spelerId, slotId), toonNamen, sleep: te slepen (zie slepen.js) }
  */
 function tekenVeld(blok, spelers, formationId, opties = {}) {
   const formatie = getFormation(formationId);
@@ -3683,6 +4008,7 @@ function tekenVeld(blok, spelers, formationId, opties = {}) {
       onclick: opties.opTik ? () => opties.opTik(speler.id, slot.id) : null,
       role: opties.opTik ? 'button' : null,
       'aria-label': `${speler.naam}, ${slot.label}`,
+      'data-speler': opties.sleep ? speler.id : null,
     },
       uitgelicht ? svgEl('circle', { cx, cy, r: 11.5, fill: 'none', stroke: '#fff', 'stroke-width': 1.6, opacity: .9 }) : null,
       svgEl('circle', { class: 'pion', cx, cy, r: 8.2, fill: ROLKLEUR[slot.role] || '#555' }),
@@ -3715,23 +4041,27 @@ __defs["app/scherm-schema.js"] = function () {
 // speelt, plus per blok de opstelling en de wisselinstructie.
 
 const { h, icoon, toonSheet, melding, minutenTekst, mmss, kopieer, bevestig, voornaam } = __mod("app/ui.js");
-const { S, wijzig, wedstrijdSpelers, spelerMetId, plan, genereer, deelLink, klokStart } = __mod("app/store.js");
+const { S, wijzig, wedstrijdSpelers, spelerMetId, plan, genereer, deelLink, klokStart, zonderWissels } = __mod("app/store.js");
 const { getFormation, slotsForCount } = __mod("lib/formations.js");
+const { maakSleepbaar } = __mod("app/slepen.js");
 const { tekenVeld } = __mod("app/veld.js");
 
 let gekozenBlok = 0;
 
 function blokLabel(blok, w) {
   const p = `K${blok.periode + 1}`;
-  return w.blokkenPerPeriode > 1 ? `${p}${'abcd'[blok.deel] || blok.deel + 1}` : p;
+  return w.blokkenPerPeriode > 1 && !zonderWissels(w) ? `${p}${'abcd'[blok.deel] || blok.deel + 1}` : p;
 }
 
 function schermSchema(ganaar) {
   const w = S.wedstrijd;
   if (!w || !w.blokken) {
     return h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
-      h('p', {}, 'Er is nog geen schema.'),
-      h('button', { class: 'knop primair', onclick: () => ganaar('opzet') }, 'Wedstrijd klaarzetten')));
+      h('p', {}, !w ? 'Er is nog geen wedstrijd gepland.' : 'Er is nog geen schema.'),
+      h('button', { class: 'knop primair', onclick: () => {
+        wijzig((s) => { s.ui.lijst = !w; });
+        ganaar('opzet');
+      } }, w ? 'Wedstrijd klaarzetten' : 'Naar de wedstrijden')));
   }
 
   const p = plan();
@@ -3853,6 +4183,7 @@ function blokDetail(w, p, spelers, formatie, i) {
 
   kaart.appendChild(tekenVeld(blok, wedstrijdSpelers(), w.formationId, {
     opTik: blok.vast ? null : (spelerId) => ruilSheet(w, p, i, spelerId),
+    sleep: !blok.vast,
   }));
 
   const opVeld = new Set(Object.values(blok.opstelling));
@@ -3863,10 +4194,26 @@ function blokDetail(w, p, spelers, formatie, i) {
       ...bank.map((q) => {
         const uit = !kanSpelen(w, q.id, blok);
         return h('button', { class: 'chip', disabled: blok.vast || uit,
+          'data-speler': blok.vast || uit ? null : q.id,
           style: uit ? { opacity: '.45' } : {},
           onclick: () => ruilSheet(w, p, i, q.id) },
           h('i', { class: 'dot' }), q.naam, uit ? h('span', { class: 'mini' }, '· niet inzetbaar') : null);
       })));
+  }
+  if (!blok.vast) {
+    kaart.appendChild(h('p', { class: 'uitleg', style: { marginTop: '10px', marginBottom: 0 } },
+      bank.length ? 'Sleep een speler naar een ander om ze te ruilen, ook van en naar de bank. Of tik erop.'
+        : 'Sleep een speler naar een ander om van plek te ruilen. Of tik erop.'));
+    maakSleepbaar(kaart, {
+      // Twee bankzitters ruilen verandert niets; wie er niet is, kan niet in het veld.
+      mag: (a, b) => kanSpelen(w, a, blok) && kanSpelen(w, b, blok)
+        && (Object.values(blok.opstelling).includes(a) || Object.values(blok.opstelling).includes(b)),
+      opRuil: (a, b) => {
+        ruil(w, blok, a, b);
+        melding(`${voornaam(spelerMetId(a)?.naam)} en ${voornaam(spelerMetId(b)?.naam)} geruild`);
+      },
+      label: (id) => voornaam(spelerMetId(id)?.naam),
+    });
   }
   return kaart;
 }
@@ -3989,14 +4336,93 @@ function tekstSheet() {
 
 return { blokLabel, schermSchema, ruilSheet };
 };
+__defs["app/slepen.js"] = function () {
+// Slepen om te ruilen: pak een speler in het veld of op de bank en laat hem
+// los op een ander. Werkt met vinger en muis (pointer events); de
+// drag-and-drop van de browser zelf doet niets op een telefoon.
+//
+// Alles met een `data-speler` in de houder is te slepen en is een plek om op
+// los te laten. Wie alleen tikt, krijgt gewoon de klik: het ruilscherm blijft
+// werken voor wie niet wil slepen.
+
+const { h } = __mod("app/ui.js");
+
+const DREMPEL = 8; // pixels voordat een tik een sleep wordt
+
+/**
+ * @param {Element} houder
+ * @param {object}  opties { mag(a, b): mag a met b ruilen?, opRuil(a, b), label(id): tekst op het balletje }
+ */
+function maakSleepbaar(houder, { mag, opRuil, label }) {
+  houder.classList.add('sleepbaar');
+  houder.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    const bron = e.target.closest('[data-speler]');
+    if (!bron || !houder.contains(bron)) return;
+    const id = bron.getAttribute('data-speler');
+    const start = { x: e.clientX, y: e.clientY };
+    let bal = null;
+    let doel = null;
+
+    const zetDoel = (el) => {
+      if (el === doel) return;
+      doel?.classList.remove('sleepdoel');
+      doel = el;
+      doel?.classList.add('sleepdoel');
+    };
+
+    const beweeg = (ev) => {
+      if (ev.pointerId !== e.pointerId) return;
+      if (!bal) {
+        if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < DREMPEL) return;
+        bal = h('div', { class: 'sleepbal', 'aria-hidden': 'true' }, label(id));
+        document.body.appendChild(bal);
+        bron.classList.add('gesleept');
+        houder.classList.add('bezig-met-slepen');
+      }
+      ev.preventDefault();
+      bal.style.transform = `translate(${ev.clientX}px, ${ev.clientY}px)`;
+      const onder = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('[data-speler]');
+      const ander = onder && houder.contains(onder) ? onder.getAttribute('data-speler') : null;
+      zetDoel(ander && ander !== id && mag(id, ander) ? onder : null);
+    };
+
+    const klaar = (ev) => {
+      if (ev.pointerId !== e.pointerId) return;
+      window.removeEventListener('pointermove', beweeg);
+      window.removeEventListener('pointerup', klaar);
+      window.removeEventListener('pointercancel', klaar);
+      if (!bal) return; // een gewone tik: de klik doet de rest
+      bal.remove();
+      bron.classList.remove('gesleept');
+      houder.classList.remove('bezig-met-slepen');
+      // De klik die na het loslaten nog komt, hoort bij het slepen.
+      const slik = (c) => { c.stopPropagation(); c.preventDefault(); };
+      houder.addEventListener('click', slik, { capture: true, once: true });
+      setTimeout(() => houder.removeEventListener('click', slik, { capture: true }), 0);
+      const naar = doel?.getAttribute('data-speler');
+      zetDoel(null);
+      if (ev.type === 'pointerup' && naar) opRuil(id, naar);
+    };
+
+    window.addEventListener('pointermove', beweeg, { passive: false });
+    window.addEventListener('pointerup', klaar);
+    window.addEventListener('pointercancel', klaar);
+  });
+  return houder;
+}
+
+return { maakSleepbaar };
+};
 __defs["app/scherm-live.js"] = function () {
 // Scherm: de wedstrijd zelf. Klok, huidige opstelling, en de twee knoppen
 // waar het langs de lijn om draait: "wissel gedaan" en "speler eruit".
 
 const { h, icoon, toonSheet, bevestig, melding, mmss, minutenTekst, piep, tril, voornaam } = __mod("app/ui.js");
-const { S, wijzig, wedstrijdSpelers, spelerMetId, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal } = __mod("app/store.js");
+const { S, wijzig, wedstrijdSpelers, spelerMetId, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal, echteWissel, ruilLive } = __mod("app/store.js");
 const { getFormation } = __mod("lib/formations.js");
 const { totaleSpeeltijd } = __mod("lib/schedule.js");
+const { maakSleepbaar } = __mod("app/slepen.js");
 const { tekenVeld } = __mod("app/veld.js");
 const { blokLabel } = __mod("app/scherm-schema.js");
 const { gastSheet } = __mod("app/scherm-opzet.js");
@@ -4018,8 +4444,11 @@ function schermLive(ganaar, herteken) {
   const w = S.wedstrijd;
   if (!w || !w.blokken) {
     return h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
-      h('p', {}, 'Nog geen wedstrijd om te spelen.'),
-      h('button', { class: 'knop primair', onclick: () => ganaar('opzet') }, 'Wedstrijd klaarzetten')));
+      h('p', {}, !w ? 'Er is nog geen wedstrijd gepland.' : 'Nog geen wedstrijd om te spelen.'),
+      h('button', { class: 'knop primair', onclick: () => {
+        wijzig((s) => { s.ui.lijst = !w; });
+        ganaar('opzet');
+      } }, w ? 'Wedstrijd klaarzetten' : 'Naar de wedstrijden')));
   }
 
   const p = plan();
@@ -4027,6 +4456,18 @@ function schermLive(ganaar, herteken) {
   const idx = actiefBlokIndex(p.blokken);
   const blok = p.blokken[idx];
   const komendeWissel = p.wissels[idx] || null;
+  // Het eerstvolgende moment waarop er echt iets verandert. Wisselmomenten
+  // zonder wissel (niemand op de bank) slaan we over: daar hoef je niets.
+  const volgendeIdx = p.wissels.findIndex((x, j) => j >= idx && echteWissel(x));
+  const volgendeSec = volgendeIdx >= 0 ? p.blokken[volgendeIdx].totSec : null;
+  let afgevinkt = false;
+  // Wie er bij die wissel in en uit gaat, om alvast te kunnen roepen.
+  const volgende = volgendeIdx >= 0 ? p.wissels[volgendeIdx] : null;
+  const wie = !volgende ? [] : [
+    ...volgende.erin.map((x) => ({ soort: 'erin', tekst: `↑ ${voornaam(x.naam)}` })),
+    ...volgende.eruit.map((x) => ({ soort: 'uit', tekst: `↓ ${voornaam(x.naam)}` })),
+  ];
+  const plekken = !volgende ? '' : volgende.verplaatst.map((x) => `${voornaam(x.naam)} → ${x.naar}`).join(' · ');
   const wrap = h('div', {});
 
   // ------------------------------------------------------------- klokkaart
@@ -4056,20 +4497,37 @@ function schermLive(ganaar, herteken) {
   veldKaart.appendChild(h('div', { class: 'kaart-kop' },
     h('h2', {}, `Nu op het veld`),
     h('span', { class: 'mini' }, `${blokLabel(blok, w)} · tot ${Math.round(blok.totSec / 60)} min`)));
-  veldKaart.appendChild(tekenVeld(blok, wedstrijdSpelers(), w.formationId));
+  veldKaart.appendChild(tekenVeld(blok, wedstrijdSpelers(), w.formationId, { sleep: true }));
 
   const opVeld = new Set(Object.values(blok.opstelling));
+  // `tot` is null na een rondje door JSON (Infinity bestaat daar niet): dan speelt hij gewoon mee.
+  const isEruit = (id) => ((((w.beschikbaar || {})[id] || {}).tot) ?? Infinity) < totaal;
   const bank = w.selectie.map((id) => spelerMetId(id))
     .filter((q) => q && !opVeld.has(q.id));
   if (bank.length) {
     veldKaart.appendChild(h('div', { class: 'tussenkop' }, 'Bank'));
     veldKaart.appendChild(h('div', { class: 'chiprij' }, ...bank.map((q) => {
-      // `tot` is null na een rondje door JSON (Infinity bestaat daar niet): dan speelt hij gewoon mee.
-      const uit = ((((w.beschikbaar || {})[q.id] || {}).tot) ?? Infinity) < totaal;
-      return h('span', { class: 'chip', style: uit ? { opacity: '.5' } : {} },
+      const uit = isEruit(q.id);
+      return h('span', { class: 'chip', style: uit ? { opacity: '.5' } : {}, 'data-speler': uit ? null : q.id },
         h('i', { class: 'dot' }), q.naam, uit ? h('span', { class: 'mini' }, '· eruit') : null);
     })));
   }
+  veldKaart.appendChild(h('p', { class: 'mini', style: { margin: '10px 0 0' } },
+    bank.some((q) => !isEruit(q.id))
+      ? 'Wil je nu wisselen of iemand van plek laten ruilen? Sleep de ene speler naar de andere. De rest van het schema past zich aan.'
+      : 'Wil je iemand nu van plek laten ruilen? Sleep de ene speler naar de andere.'));
+  maakSleepbaar(veldKaart, {
+    // Wie eruit is, komt niet terug via slepen; twee bankzitters ruilen doet niets.
+    mag: (a, b) => !isEruit(a) && !isEruit(b) && (opVeld.has(a) || opVeld.has(b)),
+    opRuil: (a, b) => {
+      const naam = (id) => voornaam(spelerMetId(id)?.naam);
+      const [erin, eruit] = opVeld.has(a) ? [b, a] : [a, b];
+      ruilLive(a, b);
+      tril(60);
+      melding(opVeld.has(a) && opVeld.has(b) ? `${naam(a)} en ${naam(b)} ruilen van plek` : `${naam(erin)} erin, ${naam(eruit)} eruit`);
+    },
+    label: (id) => voornaam(spelerMetId(id)?.naam),
+  });
   wrap.appendChild(veldKaart);
 
   // ------------------------------------------------------------- knoppen
@@ -4111,24 +4569,46 @@ function schermLive(ganaar, herteken) {
   function ververs() {
     const t = klokStand();
     const loopt = w.klok.loopt;
-    klokEl.textContent = mmss(t);
+    const periode = Math.min(w.periodes - 1, Math.floor(t / (w.periodeMin * 60)));
+    // De klok telt af: hoeveel er nog over is van deze periode. Naar boven
+    // afgerond, zodat hij bij de aftrap op 15:00 staat en niet op 14:59.
+    const overInPeriode = t >= totaal ? 0 : Math.ceil((periode + 1) * w.periodeMin * 60 - t);
+    klokEl.textContent = mmss(overInPeriode);
+    klokEl.setAttribute('aria-label', `Nog ${mmss(overInPeriode)} in periode ${periode + 1}`);
     klokEl.classList.toggle('pauze', !loopt);
 
-    const periode = Math.min(w.periodes - 1, Math.floor(t / (w.periodeMin * 60)));
     kwartEl.textContent = w.klok.pauzeReden === 'rust'
       ? `rust na periode ${periode + (t >= (periode + 1) * w.periodeMin * 60 ? 1 : 0)}`
       : w.klok.pauzeReden === 'einde' ? 'einde wedstrijd'
       : `periode ${periode + 1} van ${w.periodes}${loopt ? '' : ' · gepauzeerd'}`;
 
-    const rest = blok.totSec - t;
-    const deel = Math.max(0, Math.min(1, (t - blok.vanSec) / Math.max(1, blok.totSec - blok.vanSec)));
+    // Aftellen naar de volgende echte wissel. Zijn die er niet meer, dan
+    // naar het eind van de periode.
+    const periodeEind = Math.min(totaal, (Math.floor(Math.min(t, totaal - 1) / (w.periodeMin * 60)) + 1) * w.periodeMin * 60);
+    const doel = volgendeSec ?? periodeEind;
+    const rest = doel - t;
+    const vanaf = volgendeSec === null ? periodeEind - w.periodeMin * 60 : blok.vanSec;
+    const deel = Math.max(0, Math.min(1, (t - vanaf) / Math.max(1, doel - vanaf)));
     balk.firstChild.style.width = `${deel * 100}%`;
-    balk.classList.toggle('bijna', rest <= 120 && rest > 0);
+    balk.classList.toggle('bijna', volgendeSec !== null && rest <= 120 && rest > 0);
     balk.classList.toggle('nu', rest <= 0);
 
-    restEl.replaceChildren(rest > 0
-      ? h('span', {}, 'nog ', h('b', {}, mmss(rest)), ' tot de wissel')
-      : h('span', {}, komendeWissel ? 'wisselen!' : 'einde wedstrijd'));
+    if (volgendeSec !== null) {
+      // Groot in beeld: over hoeveel tijd, en wie erin en eruit gaat.
+      // Valt de wissel op de rust, dan zegt de klok erboven het al.
+      const bijRust = volgendeSec === periodeEind && rest > 0;
+      restEl.className = `tot-wissel groot${rest <= 0 ? ' nu' : rest <= 120 && !bijRust ? ' bijna' : ''}`;
+      restEl.replaceChildren(
+        h('div', { class: 'label' }, rest <= 0 ? 'Nu wisselen' : bijRust ? (doel >= totaal ? 'Wissel aan het eind' : 'Wissel bij de rust') : 'Volgende wissel over'),
+        rest > 0 && !bijRust ? h('div', { class: 'tijd' }, mmss(Math.ceil(rest))) : null,
+        wie.length ? h('div', { class: 'wie' }, ...wie.map((x) => h('span', { class: x.soort }, x.tekst))) : null,
+        plekken ? h('div', { class: 'plekken' }, plekken) : null);
+    } else {
+      restEl.className = 'tot-wissel';
+      restEl.replaceChildren(rest > 0
+        ? h('span', {}, 'nog ', h('b', {}, mmss(Math.ceil(rest))), doel >= totaal ? ' tot het einde' : ' tot de rust')
+        : h('span', {}, doel >= totaal ? 'einde wedstrijd' : 'rust'));
+    }
 
     startKnop.replaceChildren(loopt ? '⏸ Pauze' : t === 0 ? '▶ Aftrap' : '▶ Verder');
     startKnop.onclick = () => (loopt ? klokPauze('hand') : klokStart());
@@ -4141,10 +4621,18 @@ function schermLive(ganaar, herteken) {
       sein();
     }
 
+    // Een wisselmoment waarop niets verandert: stil afvinken, geen alarm.
+    // Eén keer: tot het scherm opnieuw getekend is, tikt deze klok nog door.
+    if (t >= blok.totSec && komendeWissel && !echteWissel(komendeWissel)) {
+      if (!afgevinkt) { afgevinkt = true; bevestigWissel(idx, blok.totSec, { vanzelf: true }); }
+      return;
+    }
+
     // Wisselmelding
+    const wisselNu = t >= blok.totSec;
     const sleutel = `${w.id}:${blok.id}`;
-    if (rest <= 0 && !gemeld.has(sleutel)) { gemeld.add(sleutel); sein(); }
-    toonAlarm(rest <= 0);
+    if (wisselNu && komendeWissel && !gemeld.has(sleutel)) { gemeld.add(sleutel); sein(); }
+    toonAlarm(wisselNu);
   }
 
   function sein() {
@@ -4190,10 +4678,11 @@ function schermLive(ganaar, herteken) {
 
   function klokSheet() {
     toonSheet('Klok bijstellen', (c, sluit) => {
-      c.appendChild(h('p', { class: 'uitleg' }, 'De scheidsrechter houdt de echte tijd bij. Loopt jouw klok uit de pas, zet hem dan gelijk.'));
+      c.appendChild(h('p', { class: 'uitleg' }, 'De scheidsrechter houdt de echte tijd bij. Loopt jouw klok uit de pas, zet hem dan gelijk. De klok telt af: +1 min is een minuut meer op de klok.'));
+      // Wat erbij komt op de klok die aftelt, gaat af van de gespeelde tijd.
       c.appendChild(h('div', { class: 'rij2' },
         ...[[-60, '−1 min'], [-10, '−10 sec'], [10, '+10 sec'], [60, '+1 min']].map(([d, l]) =>
-          h('button', { class: 'knop', onclick: () => { klokZet(klokStand() + d); sluit(); } }, l))));
+          h('button', { class: 'knop', onclick: () => { klokZet(Math.min(totaal, klokStand() - d)); sluit(); } }, l))));
       c.appendChild(h('div', { class: 'tussenkop' }, 'Naar het begin van'));
       c.appendChild(h('div', { class: 'knoprij' },
         ...Array.from({ length: w.periodes }, (_, i) => h('button', { class: 'knop klein',
@@ -4495,10 +4984,10 @@ function instellingenKaart() {
     } }, 'Back-up downloaden'),
     h('button', { class: 'knop klein stil gevaar', onclick: () => bevestig(gedeeld ? 'Teamgegevens wissen?' : 'Alles wissen?',
       gedeeld
-        ? `Spelers, wedstrijd en archief van ${S.team.naam} worden gewist, voor alle trainers van dit team. Dit kun je niet ongedaan maken.`
-        : 'Team, wedstrijd en archief worden verwijderd. Dit kun je niet ongedaan maken.',
+        ? `Spelers, wedstrijden en archief van ${S.team.naam} worden gewist, voor alle trainers van dit team. Dit kun je niet ongedaan maken.`
+        : 'Team, wedstrijden en archief worden verwijderd. Dit kun je niet ongedaan maken.',
       () => {
-        wijzig(() => { neemOver({ team: { naam: gedeeld ? S.team.naam : 'Mijn team', spelers: [] }, wedstrijd: null, archief: [] }); });
+        wijzig(() => { neemOver({ team: { naam: gedeeld ? S.team.naam : 'Mijn team', spelers: [] }, wedstrijden: [], archief: [] }); });
         melding(gedeeld ? 'Teamgegevens gewist' : 'Alles gewist');
       },
       { knop: gedeeld ? 'Wissen' : 'Alles wissen', gevaar: true }) }, gedeeld ? 'Teamgegevens wissen' : 'Alles wissen')));

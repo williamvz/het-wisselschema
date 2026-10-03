@@ -111,12 +111,12 @@ test('twee telefoons: wie op een oude versie schrijft, krijgt terug wat er veran
 
   const begin = await api(s.basis, `${pad}?na=0`, { token: w.token });
   assert.equal(begin.versie, 1);
-  assert.deepEqual(Object.keys(begin.delen).sort(), ['archief', 'team', 'wedstrijd']);
+  assert.deepEqual(Object.keys(begin.delen).sort(), ['archief', 'team', 'wedstrijden']);
   const { tijdperk } = begin;
   assert.ok(tijdperk, 'de server zegt uit welk tijdperk deze versie is');
 
-  const wedstrijd = { id: 'w1', doelpunten: [{ id: 'g1', wie: 'wij', sec: 60, opVeld: [] }] };
-  const een = await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { basisVersie: 1, tijdperk, delen: { wedstrijd } } });
+  const wedstrijden = [{ id: 'w1', doelpunten: [{ id: 'g1', wie: 'wij', sec: 60, opVeld: [] }] }];
+  const een = await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { basisVersie: 1, tijdperk, delen: { wedstrijden } } });
   assert.equal(een.status, 200);
   assert.equal(een.versie, 2);
 
@@ -125,8 +125,8 @@ test('twee telefoons: wie op een oude versie schrijft, krijgt terug wat er veran
     data: { basisVersie: 1, tijdperk, delen: { team: { naam: 'JO9-1', spelers: [{ id: 's1', naam: 'Daan' }] } } } });
   assert.equal(botsing.status, 409);
   assert.equal(botsing.versie, 2);
-  assert.deepEqual(Object.keys(botsing.delen), ['wedstrijd'], 'alleen wat sinds versie 1 veranderde');
-  assert.deepEqual(botsing.delen.wedstrijd, wedstrijd);
+  assert.deepEqual(Object.keys(botsing.delen), ['wedstrijden'], 'alleen wat sinds versie 1 veranderde');
+  assert.deepEqual(botsing.delen.wedstrijden, wedstrijden);
 
   // Alleen de veranderde delen komen mee; wie bij is, krijgt niets.
   const sinds = await api(s.basis, `${pad}?na=2`, { token: w.token });
@@ -152,6 +152,11 @@ test('twee telefoons: wie op een oude versie schrijft, krijgt terug wat er veran
   assert.equal((await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { basisVersie: 3, tijdperk, delen: { team: 'x' } } })).status, 400);
   assert.equal((await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { basisVersie: 3, tijdperk, delen: { geheim: 1 } } })).status, 400);
   assert.equal((await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { delen: {} } })).status, 400);
+  assert.equal((await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { basisVersie: 3, tijdperk, delen: { wedstrijden: [{ tegenstander: 'zonder id' }] } } })).status, 400);
+  // Een telefoon met de app van voor de lijst wedstrijden hoort dat hij moet herladen.
+  const oudeApp = await api(s.basis, pad, { methode: 'PUT', token: w.token, data: { basisVersie: 3, tijdperk, delen: { wedstrijd: { id: 'w1' } } } });
+  assert.equal(oudeApp.status, 400);
+  assert.match(oudeApp.fout, /Herlaad/);
 });
 
 test('een wachtend verzoek komt terug zodra een ander iets bewaart, en ziet wie er meekijkt', async (t) => {
@@ -169,13 +174,13 @@ test('een wachtend verzoek komt terug zodra een ander iets bewaart, en ziet wie 
   const wachten = api(s.basis, `${pad}?na=1&wacht=20`, { token: dennis.token });
   await new Promise((r) => setTimeout(r, 300));
   const bewaard = await api(s.basis, pad, { methode: 'PUT', token: w.token,
-    data: { basisVersie: 1, tijdperk, delen: { wedstrijd: { id: 'w1', doelpunten: [] } } } });
+    data: { basisVersie: 1, tijdperk, delen: { wedstrijden: [{ id: 'w1', doelpunten: [] }] } } });
   assert.deepEqual(bewaard.aanwezig.map((a) => a.naam), ['Dennis'], 'William ziet dat Dennis meekijkt');
 
   const antwoord = await wachten;
   assert.ok(Date.now() - start < 3000, 'kwam meteen terug, niet pas na 20 seconden');
   assert.equal(antwoord.versie, 2);
-  assert.deepEqual(antwoord.delen.wedstrijd, { id: 'w1', doelpunten: [] });
+  assert.deepEqual(antwoord.delen.wedstrijden, [{ id: 'w1', doelpunten: [] }]);
   assert.deepEqual(antwoord.aanwezig.map((a) => a.naam), ['William van Zweeden']);
 
   // Zonder wijziging wacht hij tot de tijd om is, en zegt dan: niets nieuws.
@@ -372,7 +377,7 @@ test('elke wijziging krijgt haar eigen versie terug, ook als het schrijven traag
     const echt = club.schrijf.bind(club);
     club.schrijf = async (pad, inhoud) => { await new Promise((r) => setTimeout(r, 150)); return echt(pad, inhoud); };
 
-    const a = club.bewaarDelen(t.id, 1, { wedstrijd: { id: 'w1' } }, gebruiker, club.tijdperk);
+    const a = club.bewaarDelen(t.id, 1, { wedstrijden: [{ id: 'w1' }] }, gebruiker, club.tijdperk);
     await new Promise((r) => setTimeout(r, 30));
     const b = club.bewaarDelen(t.id, 2, { archief: [{ id: 'x' }] }, gebruiker, club.tijdperk);
     assert.deepEqual([(await a).versie, (await b).versie], [2, 3], 'niet allebei 3');
@@ -394,4 +399,42 @@ test('de herstelcode werkt ook met verzoeken tegelijk maar één keer', async (t
     data: { code: 'HERS-TEL3', gebruikersnaam, wachtwoord: 'overgenomen-1' } });
   const [a, b] = await Promise.all([herstel('william'), herstel('dennis')]);
   assert.deepEqual([a.status, b.status].sort(), [200, 403]);
+});
+
+test('een team van voor de lijst wedstrijden: de ene wedstrijd wordt een lijst, met dezelfde versie', async () => {
+  const { Club } = await import('../deploy/homeassistant/addon/club.mjs');
+  const { rm: weg, mkdir: maak, writeFile: schrijfBestand } = await import('node:fs/promises');
+  const map = '.tmptest-omzetten';
+  await weg(map, { recursive: true, force: true });
+  await maak(map, { recursive: true });
+  try {
+    const club = await new Club(map, { inrichtcode: 'TEST-CODE' }).laad();
+    const { gebruiker } = await club.richtIn({ code: 'TEST-CODE', naam: 'W', gebruikersnaam: 'william', wachtwoord: 'geheim-123' });
+    const t = await club.maakTeam({ naam: 'JO9-1', leden: [gebruiker.id] });
+    // Zo stond het er voorheen op schijf.
+    const oud = {
+      versie: 7, gewijzigdOp: 1,
+      delen: {
+        team: { versie: 1, data: { naam: 'JO9-1', spelers: [] } },
+        wedstrijd: { versie: 6, data: { id: 'w1', tegenstander: 'VV Oud', doelpunten: [] } },
+        archief: { versie: 7, data: [] },
+      },
+    };
+    await schrijfBestand(`${map}/teams/${t.id}.json`, JSON.stringify(oud));
+    club.docs.delete(t.id);
+
+    const doc = await club.doc(t.id);
+    assert.equal(doc.versie, 7, 'de telefoons hoeven niets opnieuw op te halen');
+    assert.deepEqual(doc.delen.wedstrijden, { versie: 6, data: [{ id: 'w1', tegenstander: 'VV Oud', doelpunten: [] }] });
+    assert.equal(doc.delen.wedstrijd, undefined);
+    assert.deepEqual(Object.keys(club.delenSinds(doc, 5).delen).sort(), ['archief', 'wedstrijden']);
+
+    // Zonder wedstrijd: een lege lijst.
+    oud.delen.wedstrijd = { versie: 2, data: null };
+    await schrijfBestand(`${map}/teams/${t.id}.json`, JSON.stringify(oud));
+    club.docs.delete(t.id);
+    assert.deepEqual((await club.doc(t.id)).delen.wedstrijden.data, []);
+  } finally {
+    await weg(map, { recursive: true, force: true });
+  }
 });

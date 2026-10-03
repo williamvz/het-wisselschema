@@ -1,7 +1,7 @@
 // De romp: kopbalk, schermkeuze, navigatie en het opstarten.
 
 import { h, icoon, leegmaken, toonSheet, sluitSheet, melding, houdSchermAan, minutenTekst, voornaam } from './ui.js';
-import { S, wijzig, abonneer, laadLokaal, plan, klokStand, leesDeelLink, nieuweSpeler, nieuweWedstrijd, bewaarNu } from './store.js';
+import { S, wijzig, abonneer, laadLokaal, plan, klokStand, leesDeelLink, nieuweSpeler, nieuweWedstrijd, bewaarNu, echteWissel } from './store.js';
 import { getFormation } from '../lib/formations.js';
 import { account, herstelAccount, verbind, wek, duwBijAfsluiten } from './samenwerken.js';
 import { kopbalk } from './kop.js';
@@ -16,7 +16,7 @@ import { schermBeheer, vergeetBeheer } from './scherm-beheer.js';
 // Wat je als trainer doet: je team en de wedstrijden.
 const SCHERMEN = [
   { id: 'team', naam: 'Team', ico: 'team' },
-  { id: 'opzet', naam: 'Wedstrijd', ico: 'opzet' },
+  { id: 'opzet', naam: 'Wedstrijden', ico: 'opzet' },
   { id: 'schema', naam: 'Schema', ico: 'schema' },
   { id: 'live', naam: 'Live', ico: 'live' },
   { id: 'archief', naam: 'Archief', ico: 'archief' },
@@ -32,7 +32,12 @@ const binnen = () => !account.sessieVerlopen && !['verbinden', 'inloggen', 'inri
 
 export function ganaar(scherm) {
   if (scherm === 'beheer') vergeetBeheer(); // altijd vers ophalen
-  wijzig((s) => { s.ui.scherm = scherm; });
+  wijzig((s) => {
+    // Nog geen wedstrijd: dan zie je de lijst, en dat blijft zo als een
+    // collega er intussen een toevoegt.
+    if (scherm === 'opzet' && !s.wedstrijd) s.ui.lijst = true;
+    s.ui.scherm = scherm;
+  });
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -41,7 +46,7 @@ function wisselStaatOpen() {
   if (!w || !w.blokken || w.status !== 'bezig') return false;
   const p = plan();
   const i = actiefBlokIndex(p.blokken);
-  return klokStand() >= p.blokken[i].totSec;
+  return klokStand() >= p.blokken[i].totSec && echteWissel(p.wissels[i]);
 }
 
 export function render() {
@@ -96,7 +101,11 @@ export function render() {
     nav.appendChild(h('button', {
       class: s === BEHEER ? 'beheertab' : null,
       'aria-current': scherm === s.id ? 'page' : null,
-      onclick: () => ganaar(s.id),
+      onclick: () => {
+        // Nog een keer op Wedstrijden tikken brengt je terug bij de lijst.
+        if (s.id === 'opzet' && scherm === 'opzet') wijzig((st) => { st.ui.lijst = true; });
+        ganaar(s.id);
+      },
     }, icoon(s.ico), s.id === 'live' && open ? h('span', { class: 'punt' }) : null, s.naam));
   }
   nav.id = 'nav';
@@ -145,7 +154,7 @@ async function verwerkDeelLink() {
     // of het team dat open staat.
     const kanOvernemen = account.modus === 'lokaal' || (binnen() && account.modus === 'team' && !!account.teamId);
     if (kanOvernemen && account.modus === 'team') {
-      c.appendChild(h('p', { class: 'mini', style: { marginTop: '10px' } }, `Overnemen zet dit schema klaar bij ${S.team.naam}.`));
+      c.appendChild(h('p', { class: 'mini', style: { marginTop: '10px' } }, `Overnemen zet dit schema als nieuwe wedstrijd klaar bij ${S.team.naam}.`));
     }
     c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '16px' } },
       h('button', { class: 'knop', onclick: sluit }, kanOvernemen ? 'Alleen bekijken' : 'Sluiten'),
@@ -167,7 +176,8 @@ async function verwerkDeelLink() {
             })),
           });
           w.pins = Object.fromEntries(w.blokken.map((b) => [b.id, b.opstelling]));
-          s.wedstrijd = w;
+          s.wedstrijd = w; // een nieuwe wedstrijd in de lijst, naast wat er al gepland stond
+          s.ui.lijst = false;
           s.ui.scherm = 'schema';
         }, { terugdraaibaar: true });
         sluit();

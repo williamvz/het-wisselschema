@@ -2,9 +2,10 @@
 // waar het langs de lijn om draait: "wissel gedaan" en "speler eruit".
 
 import { h, icoon, toonSheet, bevestig, melding, mmss, minutenTekst, piep, tril, voornaam } from './ui.js';
-import { S, wijzig, wedstrijdSpelers, spelerMetId, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal } from './store.js';
+import { S, wijzig, wedstrijdSpelers, spelerMetId, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal, echteWissel, ruilLive } from './store.js';
 import { getFormation } from '../lib/formations.js';
 import { totaleSpeeltijd } from '../lib/schedule.js';
+import { maakSleepbaar } from './slepen.js';
 import { tekenVeld } from './veld.js';
 import { blokLabel } from './scherm-schema.js';
 import { gastSheet } from './scherm-opzet.js';
@@ -26,8 +27,11 @@ export function schermLive(ganaar, herteken) {
   const w = S.wedstrijd;
   if (!w || !w.blokken) {
     return h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
-      h('p', {}, 'Nog geen wedstrijd om te spelen.'),
-      h('button', { class: 'knop primair', onclick: () => ganaar('opzet') }, 'Wedstrijd klaarzetten')));
+      h('p', {}, !w ? 'Er is nog geen wedstrijd gepland.' : 'Nog geen wedstrijd om te spelen.'),
+      h('button', { class: 'knop primair', onclick: () => {
+        wijzig((s) => { s.ui.lijst = !w; });
+        ganaar('opzet');
+      } }, w ? 'Wedstrijd klaarzetten' : 'Naar de wedstrijden')));
   }
 
   const p = plan();
@@ -35,6 +39,18 @@ export function schermLive(ganaar, herteken) {
   const idx = actiefBlokIndex(p.blokken);
   const blok = p.blokken[idx];
   const komendeWissel = p.wissels[idx] || null;
+  // Het eerstvolgende moment waarop er echt iets verandert. Wisselmomenten
+  // zonder wissel (niemand op de bank) slaan we over: daar hoef je niets.
+  const volgendeIdx = p.wissels.findIndex((x, j) => j >= idx && echteWissel(x));
+  const volgendeSec = volgendeIdx >= 0 ? p.blokken[volgendeIdx].totSec : null;
+  let afgevinkt = false;
+  // Wie er bij die wissel in en uit gaat, om alvast te kunnen roepen.
+  const volgende = volgendeIdx >= 0 ? p.wissels[volgendeIdx] : null;
+  const wie = !volgende ? [] : [
+    ...volgende.erin.map((x) => ({ soort: 'erin', tekst: `↑ ${voornaam(x.naam)}` })),
+    ...volgende.eruit.map((x) => ({ soort: 'uit', tekst: `↓ ${voornaam(x.naam)}` })),
+  ];
+  const plekken = !volgende ? '' : volgende.verplaatst.map((x) => `${voornaam(x.naam)} → ${x.naar}`).join(' · ');
   const wrap = h('div', {});
 
   // ------------------------------------------------------------- klokkaart
@@ -64,20 +80,37 @@ export function schermLive(ganaar, herteken) {
   veldKaart.appendChild(h('div', { class: 'kaart-kop' },
     h('h2', {}, `Nu op het veld`),
     h('span', { class: 'mini' }, `${blokLabel(blok, w)} · tot ${Math.round(blok.totSec / 60)} min`)));
-  veldKaart.appendChild(tekenVeld(blok, wedstrijdSpelers(), w.formationId));
+  veldKaart.appendChild(tekenVeld(blok, wedstrijdSpelers(), w.formationId, { sleep: true }));
 
   const opVeld = new Set(Object.values(blok.opstelling));
+  // `tot` is null na een rondje door JSON (Infinity bestaat daar niet): dan speelt hij gewoon mee.
+  const isEruit = (id) => ((((w.beschikbaar || {})[id] || {}).tot) ?? Infinity) < totaal;
   const bank = w.selectie.map((id) => spelerMetId(id))
     .filter((q) => q && !opVeld.has(q.id));
   if (bank.length) {
     veldKaart.appendChild(h('div', { class: 'tussenkop' }, 'Bank'));
     veldKaart.appendChild(h('div', { class: 'chiprij' }, ...bank.map((q) => {
-      // `tot` is null na een rondje door JSON (Infinity bestaat daar niet): dan speelt hij gewoon mee.
-      const uit = ((((w.beschikbaar || {})[q.id] || {}).tot) ?? Infinity) < totaal;
-      return h('span', { class: 'chip', style: uit ? { opacity: '.5' } : {} },
+      const uit = isEruit(q.id);
+      return h('span', { class: 'chip', style: uit ? { opacity: '.5' } : {}, 'data-speler': uit ? null : q.id },
         h('i', { class: 'dot' }), q.naam, uit ? h('span', { class: 'mini' }, '· eruit') : null);
     })));
   }
+  veldKaart.appendChild(h('p', { class: 'mini', style: { margin: '10px 0 0' } },
+    bank.some((q) => !isEruit(q.id))
+      ? 'Wil je nu wisselen of iemand van plek laten ruilen? Sleep de ene speler naar de andere. De rest van het schema past zich aan.'
+      : 'Wil je iemand nu van plek laten ruilen? Sleep de ene speler naar de andere.'));
+  maakSleepbaar(veldKaart, {
+    // Wie eruit is, komt niet terug via slepen; twee bankzitters ruilen doet niets.
+    mag: (a, b) => !isEruit(a) && !isEruit(b) && (opVeld.has(a) || opVeld.has(b)),
+    opRuil: (a, b) => {
+      const naam = (id) => voornaam(spelerMetId(id)?.naam);
+      const [erin, eruit] = opVeld.has(a) ? [b, a] : [a, b];
+      ruilLive(a, b);
+      tril(60);
+      melding(opVeld.has(a) && opVeld.has(b) ? `${naam(a)} en ${naam(b)} ruilen van plek` : `${naam(erin)} erin, ${naam(eruit)} eruit`);
+    },
+    label: (id) => voornaam(spelerMetId(id)?.naam),
+  });
   wrap.appendChild(veldKaart);
 
   // ------------------------------------------------------------- knoppen
@@ -119,24 +152,46 @@ export function schermLive(ganaar, herteken) {
   function ververs() {
     const t = klokStand();
     const loopt = w.klok.loopt;
-    klokEl.textContent = mmss(t);
+    const periode = Math.min(w.periodes - 1, Math.floor(t / (w.periodeMin * 60)));
+    // De klok telt af: hoeveel er nog over is van deze periode. Naar boven
+    // afgerond, zodat hij bij de aftrap op 15:00 staat en niet op 14:59.
+    const overInPeriode = t >= totaal ? 0 : Math.ceil((periode + 1) * w.periodeMin * 60 - t);
+    klokEl.textContent = mmss(overInPeriode);
+    klokEl.setAttribute('aria-label', `Nog ${mmss(overInPeriode)} in periode ${periode + 1}`);
     klokEl.classList.toggle('pauze', !loopt);
 
-    const periode = Math.min(w.periodes - 1, Math.floor(t / (w.periodeMin * 60)));
     kwartEl.textContent = w.klok.pauzeReden === 'rust'
       ? `rust na periode ${periode + (t >= (periode + 1) * w.periodeMin * 60 ? 1 : 0)}`
       : w.klok.pauzeReden === 'einde' ? 'einde wedstrijd'
       : `periode ${periode + 1} van ${w.periodes}${loopt ? '' : ' · gepauzeerd'}`;
 
-    const rest = blok.totSec - t;
-    const deel = Math.max(0, Math.min(1, (t - blok.vanSec) / Math.max(1, blok.totSec - blok.vanSec)));
+    // Aftellen naar de volgende echte wissel. Zijn die er niet meer, dan
+    // naar het eind van de periode.
+    const periodeEind = Math.min(totaal, (Math.floor(Math.min(t, totaal - 1) / (w.periodeMin * 60)) + 1) * w.periodeMin * 60);
+    const doel = volgendeSec ?? periodeEind;
+    const rest = doel - t;
+    const vanaf = volgendeSec === null ? periodeEind - w.periodeMin * 60 : blok.vanSec;
+    const deel = Math.max(0, Math.min(1, (t - vanaf) / Math.max(1, doel - vanaf)));
     balk.firstChild.style.width = `${deel * 100}%`;
-    balk.classList.toggle('bijna', rest <= 120 && rest > 0);
+    balk.classList.toggle('bijna', volgendeSec !== null && rest <= 120 && rest > 0);
     balk.classList.toggle('nu', rest <= 0);
 
-    restEl.replaceChildren(rest > 0
-      ? h('span', {}, 'nog ', h('b', {}, mmss(rest)), ' tot de wissel')
-      : h('span', {}, komendeWissel ? 'wisselen!' : 'einde wedstrijd'));
+    if (volgendeSec !== null) {
+      // Groot in beeld: over hoeveel tijd, en wie erin en eruit gaat.
+      // Valt de wissel op de rust, dan zegt de klok erboven het al.
+      const bijRust = volgendeSec === periodeEind && rest > 0;
+      restEl.className = `tot-wissel groot${rest <= 0 ? ' nu' : rest <= 120 && !bijRust ? ' bijna' : ''}`;
+      restEl.replaceChildren(
+        h('div', { class: 'label' }, rest <= 0 ? 'Nu wisselen' : bijRust ? (doel >= totaal ? 'Wissel aan het eind' : 'Wissel bij de rust') : 'Volgende wissel over'),
+        rest > 0 && !bijRust ? h('div', { class: 'tijd' }, mmss(Math.ceil(rest))) : null,
+        wie.length ? h('div', { class: 'wie' }, ...wie.map((x) => h('span', { class: x.soort }, x.tekst))) : null,
+        plekken ? h('div', { class: 'plekken' }, plekken) : null);
+    } else {
+      restEl.className = 'tot-wissel';
+      restEl.replaceChildren(rest > 0
+        ? h('span', {}, 'nog ', h('b', {}, mmss(Math.ceil(rest))), doel >= totaal ? ' tot het einde' : ' tot de rust')
+        : h('span', {}, doel >= totaal ? 'einde wedstrijd' : 'rust'));
+    }
 
     startKnop.replaceChildren(loopt ? '⏸ Pauze' : t === 0 ? '▶ Aftrap' : '▶ Verder');
     startKnop.onclick = () => (loopt ? klokPauze('hand') : klokStart());
@@ -149,10 +204,18 @@ export function schermLive(ganaar, herteken) {
       sein();
     }
 
+    // Een wisselmoment waarop niets verandert: stil afvinken, geen alarm.
+    // Eén keer: tot het scherm opnieuw getekend is, tikt deze klok nog door.
+    if (t >= blok.totSec && komendeWissel && !echteWissel(komendeWissel)) {
+      if (!afgevinkt) { afgevinkt = true; bevestigWissel(idx, blok.totSec, { vanzelf: true }); }
+      return;
+    }
+
     // Wisselmelding
+    const wisselNu = t >= blok.totSec;
     const sleutel = `${w.id}:${blok.id}`;
-    if (rest <= 0 && !gemeld.has(sleutel)) { gemeld.add(sleutel); sein(); }
-    toonAlarm(rest <= 0);
+    if (wisselNu && komendeWissel && !gemeld.has(sleutel)) { gemeld.add(sleutel); sein(); }
+    toonAlarm(wisselNu);
   }
 
   function sein() {
@@ -198,10 +261,11 @@ export function schermLive(ganaar, herteken) {
 
   function klokSheet() {
     toonSheet('Klok bijstellen', (c, sluit) => {
-      c.appendChild(h('p', { class: 'uitleg' }, 'De scheidsrechter houdt de echte tijd bij. Loopt jouw klok uit de pas, zet hem dan gelijk.'));
+      c.appendChild(h('p', { class: 'uitleg' }, 'De scheidsrechter houdt de echte tijd bij. Loopt jouw klok uit de pas, zet hem dan gelijk. De klok telt af: +1 min is een minuut meer op de klok.'));
+      // Wat erbij komt op de klok die aftelt, gaat af van de gespeelde tijd.
       c.appendChild(h('div', { class: 'rij2' },
         ...[[-60, '−1 min'], [-10, '−10 sec'], [10, '+10 sec'], [60, '+1 min']].map(([d, l]) =>
-          h('button', { class: 'knop', onclick: () => { klokZet(klokStand() + d); sluit(); } }, l))));
+          h('button', { class: 'knop', onclick: () => { klokZet(Math.min(totaal, klokStand() - d)); sluit(); } }, l))));
       c.appendChild(h('div', { class: 'tussenkop' }, 'Naar het begin van'));
       c.appendChild(h('div', { class: 'knoprij' },
         ...Array.from({ length: w.periodes }, (_, i) => h('button', { class: 'knop klein',

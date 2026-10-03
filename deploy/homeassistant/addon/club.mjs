@@ -21,10 +21,11 @@ const scrypt = promisify(scryptMetTerugroep);
 
 /**
  * De gegevens van een team, in drie delen die los van elkaar veranderen.
- * Tijdens een wedstrijd verandert alleen `wedstrijd`; dan hoeft het archief
+ * `wedstrijden` is de lijst wedstrijden die gepland staan of bezig zijn.
+ * Tijdens een wedstrijd verandert alleen dat deel; dan hoeft het archief
  * van een heel seizoen niet bij elke goal opnieuw over de lijn.
  */
-export const DELEN = ['team', 'wedstrijd', 'archief'];
+export const DELEN = ['team', 'wedstrijden', 'archief'];
 
 const MINUUT = 60 * 1000;
 const DAG = 24 * 60 * MINUUT;
@@ -120,12 +121,17 @@ export const publiek = (g) => ({ id: g.id, naam: g.naam, gebruikersnaam: g.gebru
 export function controleerDelen(delen) {
   if (!delen || typeof delen !== 'object' || Array.isArray(delen)) throw new Fout(400, 'Er zijn geen teamgegevens meegestuurd.');
   for (const [deel, waarde] of Object.entries(delen)) {
+    // Een telefoon met de app van voor de lijst wedstrijden.
+    if (deel === 'wedstrijd') throw new Fout(400, 'Er is een nieuwe versie van de app. Herlaad de pagina.');
     if (!DELEN.includes(deel)) throw new Fout(400, `Onbekend deel van de teamgegevens: ${deel}`);
     const object = waarde !== null && typeof waarde === 'object' && !Array.isArray(waarde);
     if (deel === 'team' && !(object && typeof waarde.naam === 'string' && Array.isArray(waarde.spelers))) {
       throw new Fout(400, 'Het team moet een naam en een lijst spelers hebben.');
     }
-    if (deel === 'wedstrijd' && !(waarde === null || object)) throw new Fout(400, 'De wedstrijd is geen geldig object.');
+    if (deel === 'wedstrijden' && !(Array.isArray(waarde)
+      && waarde.every((w) => w !== null && typeof w === 'object' && !Array.isArray(w) && typeof w.id === 'string' && w.id))) {
+      throw new Fout(400, 'De wedstrijden moeten een lijst zijn, elk met een id.');
+    }
     if (deel === 'archief' && !Array.isArray(waarde)) throw new Fout(400, 'Het archief moet een lijst zijn.');
   }
 }
@@ -136,11 +142,25 @@ function leegDoc(naam, inhoud = {}) {
     versie: 1,
     delen: {
       team: { versie: 1, data: { ...team, naam } },
-      wedstrijd: { versie: 1, data: inhoud.wedstrijd ?? null },
+      wedstrijden: { versie: 1, data: Array.isArray(inhoud.wedstrijden) ? inhoud.wedstrijden : inhoud.wedstrijd ? [inhoud.wedstrijd] : [] },
       archief: { versie: 1, data: Array.isArray(inhoud.archief) ? inhoud.archief : [] },
     },
     gewijzigdOp: Date.now(),
   };
+}
+
+/**
+ * Teamgegevens van voor de lijst wedstrijden hadden één vak `wedstrijd`.
+ * Dat wordt een lijst met die ene wedstrijd erin, met dezelfde versie: voor
+ * de telefoons is er niets veranderd, die zetten hun kopie net zo om. Het
+ * bestand volgt bij de eerstvolgende wijziging.
+ */
+export function naarWedstrijden(doc) {
+  if (!doc.delen.wedstrijd || doc.delen.wedstrijden) return doc;
+  const { versie, data } = doc.delen.wedstrijd;
+  doc.delen.wedstrijden = { versie, data: data && typeof data === 'object' ? [data] : [] };
+  delete doc.delen.wedstrijd;
+  return doc;
 }
 
 // ----------------------------------------------------------------- de club
@@ -538,6 +558,7 @@ export class Club {
       this.log(`teamgegevens van ${id} niet te lezen: ${e.message}`);
       throw new Fout(503, 'De gegevens van dit team zijn nu niet te lezen. Je kunt doorwerken; kijk in het logboek van de server.');
     }
+    naarWedstrijden(doc);
     // Twee verzoeken kunnen tegelijk hebben zitten lezen; de eerste wint.
     if (!this.docs.has(id)) this.docs.set(id, doc);
     return this.docs.get(id);

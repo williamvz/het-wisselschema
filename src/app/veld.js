@@ -40,7 +40,7 @@ const ROLKLEUR = { K: 'var(--rol-K)', V: 'var(--rol-V)', M: 'var(--rol-M)', A: '
  * @param {object} blok        blok met `opstelling`
  * @param {Array}  spelers     alle spelers (voor naam en rugnummer)
  * @param {string} formationId
- * @param {object} opties      { markeer:Set<id>, opTik(spelerId, slotId), toonNamen }
+ * @param {object} opties      { markeer:Set<id>, opTik(spelerId, slotId), toonNamen, sleep: te slepen (zie slepen.js) }
  */
 export function tekenVeld(blok, spelers, formationId, opties = {}) {
   const formatie = getFormation(formationId);
@@ -60,6 +60,7 @@ export function tekenVeld(blok, spelers, formationId, opties = {}) {
       onclick: opties.opTik ? () => opties.opTik(speler.id, slot.id) : null,
       role: opties.opTik ? 'button' : null,
       'aria-label': `${speler.naam}, ${slot.label}`,
+      'data-speler': opties.sleep ? speler.id : null,
     },
       uitgelicht ? svgEl('circle', { cx, cy, r: 11.5, fill: 'none', stroke: '#fff', 'stroke-width': 1.6, opacity: .9 }) : null,
       svgEl('circle', { class: 'pion', cx, cy, r: 8.2, fill: ROLKLEUR[slot.role] || '#555' }),

@@ -8,8 +8,9 @@
 // beide kanten iets aan veranderden, wordt dieper gekeken:
 //
 //   objecten              per sleutel
-//   lijsten met een id    per id: spelers, doelpunten, het archief. Twee
-//                         nieuwe goals komen er dus allebei in.
+//   lijsten met een id    per id: spelers, wedstrijden, doelpunten, het
+//                         archief. Twee nieuwe goals komen er dus allebei
+//                         in, en twee nieuwe wedstrijden ook.
 //   lijsten met waarden   als verzameling: de selectie van een wedstrijd
 //
 // Wat dan nog botst, is een echt conflict: beide kanten gaven hetzelfde
@@ -41,6 +42,11 @@ export function gelijk(a, b) {
   return false;
 }
 
+// Een wedstrijd staat in de lijst `wedstrijden` (of, in oudere gegevens, in
+// het vak `wedstrijd`). Daar gelden de regels voor klok en schema.
+const isWedstrijd = (pad) => pad === 'wedstrijd' || pad === 'wedstrijden[]';
+const isKlok = (pad) => pad === 'wedstrijd.klok' || pad === 'wedstrijden[].klok';
+
 // Het schema (blokken en de vastgezette opstellingen) hoort bij elkaar en
 // wordt nooit half van de een en half van de ander. De wedstrijd onthoudt
 // in `planMs` wanneer het schema voor het laatst veranderde.
@@ -65,7 +71,7 @@ export function voegSamen(basis, mijn, hun, pad = '') {
     // archief staat.
     if (m !== h) return m === b ? hun : mijn;
   }
-  if (pad === 'wedstrijd.klok') {
+  if (isKlok(pad)) {
     return (hun?.bijgewerkt || 0) > (mijn?.bijgewerkt || 0) ? hun : mijn;
   }
   if (isObject(mijn) && isObject(hun)) return voegObjectSamen(isObject(basis) ? basis : {}, mijn, hun, pad);
@@ -79,11 +85,11 @@ export function voegSamen(basis, mijn, hun, pad = '') {
 
 function voegObjectSamen(basis, mijn, hun, pad) {
   // Bij de wedstrijd: wiens schema is het nieuwst?
-  const schemaVanHun = pad === 'wedstrijd' && (hun.planMs || 0) > (mijn.planMs || 0);
+  const schemaVanHun = isWedstrijd(pad) && (hun.planMs || 0) > (mijn.planMs || 0);
   const uit = {};
   for (const k of new Set([...Object.keys(mijn), ...Object.keys(hun)])) {
     let v;
-    if (pad === 'wedstrijd' && SCHEMA.has(k) && !gelijk(basis[k], mijn[k]) && !gelijk(basis[k], hun[k])) {
+    if (isWedstrijd(pad) && SCHEMA.has(k) && !gelijk(basis[k], mijn[k]) && !gelijk(basis[k], hun[k])) {
       v = schemaVanHun ? hun[k] : mijn[k];
     } else {
       v = voegSamen(basis[k], mijn[k], hun[k], pad ? `${pad}.${k}` : k);
@@ -111,14 +117,20 @@ function voegLijstSamen(basis, mijn, hun, pad) {
     volgorde.splice(j < 0 ? 0 : volgorde.indexOf(mijn[j].id) + 1, 0, x.id);
   });
 
+  // Bij wedstrijden is het andersom: een afgeronde of weggegooide wedstrijd
+  // blijft weg. Je voegt geen goal meer toe aan een wedstrijd die al in het
+  // archief staat.
+  const weghalenWint = pad === 'wedstrijden';
+  const blijft = (id, kant) => !B.has(id) || (!weghalenWint && !gelijk(B.get(id), kant.get(id)));
+
   const uit = [];
   for (const id of volgorde) {
-    const [inB, inM, inH] = [B.has(id), M.has(id), H.has(id)];
+    const [inM, inH] = [M.has(id), H.has(id)];
     if (inM && inH) uit.push(voegSamen(B.get(id), M.get(id), H.get(id), `${pad}[]`));
     // Aan één kant weg: dan blijft hij alleen als hij nieuw is, of als de
     // andere kant hem intussen veranderde (bijwerken wint van weggooien).
-    else if (inM) { if (!inB || !gelijk(B.get(id), M.get(id))) uit.push(M.get(id)); }
-    else if (inH) { if (!inB || !gelijk(B.get(id), H.get(id))) uit.push(H.get(id)); }
+    else if (inM) { if (blijft(id, M)) uit.push(M.get(id)); }
+    else if (inH) { if (blijft(id, H)) uit.push(H.get(id)); }
   }
   return uit;
 }

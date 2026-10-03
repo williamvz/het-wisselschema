@@ -30,14 +30,22 @@ je hem met de hele club.
 - **Gastspeler** — valt er iemand van een ander team in, dan zet je die met
   één tik alleen in deze wedstrijd. Hij speelt mee in het schema, maar komt
   niet in je team en krijgt geen seizoenssaldo.
-- **Wedstrijd klaarzetten** — wie is er vandaag, welke speelvorm (4-, 6-, 7-,
+- **Wedstrijden plannen** — een lijst van wat er gepland staat. Een nieuwe
+  wedstrijd is tegenstander, datum, aanvang, thuis of uit, en **Opslaan**.
+  Met een account staat hij dan ook bij je medetrainers.
+- **Wedstrijd klaarzetten** — wie is er, welke speelvorm (4-, 6-, 7-,
   8- of 11-tal), hoeveel perioden van hoeveel minuten, en welke opstelling.
 - **Schema maken** — zo eerlijk mogelijk verdeeld, met een echte keeper in elk
   blok, keepersbeurten verdeeld, en niemand twee blokken achter elkaar op de bank.
-- **Zelf bijsturen** — tik op een vakje om twee spelers te ruilen. Dat blok
+- **Zelf bijsturen** — sleep een speler naar een ander om ze te ruilen, ook
+  van en naar de bank, of tik op een vakje. Dat blok
   ligt dan vast en de rest wordt eromheen opnieuw verdeeld.
-- **Live meelopen** — klok per periode, aftelling tot de volgende wissel,
+- **Live meelopen** — een klok die per periode aftelt, aftelling tot de volgende wissel
+  (of tot de rust, als er niets te wisselen valt),
   geluid en trilsignaal, en het scherm blijft aan.
+- **Wisselen wanneer jij wilt** — sleep in het live-scherm een bankspeler
+  op een veldspeler, en hij staat er vanaf nu in. De gespeelde tijd blijft
+  kloppen en de rest van de wedstrijd wordt eromheen verdeeld.
 - **Onverwachte wissel** — één knop, kies de speler, en je krijgt meteen te
   horen wie erin komt en wie doorschuift. De rest van de wedstrijd wordt
   opnieuw verdeeld over wie er nog staat.
@@ -51,7 +59,8 @@ je hem met de hele club.
 - **Delen** — het hele schema past in een link. De ontvanger heeft geen app en
   geen server nodig. Of kopieer het als platte tekst voor de groepsapp.
 - **Samenwerken** — log in op de server van je club en werk met twee (of meer)
-  telefoons aan hetzelfde team. Een goal, een wissel of de klok staat binnen
+  telefoons aan hetzelfde team. Een wedstrijd die de een opslaat, staat bij
+  de ander in de lijst. Een goal, een wissel of de klok staat binnen
   een tel bij iedereen. Rechtsboven zie je wie er meekijkt, en een stip die
   zegt of alles verstuurd is. Geen bereik? Gewoon doorwerken: zodra er weer
   verbinding is, wordt alles samengevoegd.
@@ -136,8 +145,12 @@ samen en stuur je opnieuw.
 
 Dat samenvoegen is een [driewegsamenvoeging](src/lib/samenvoegen.js): de
 laatste stand die beide telefoons kenden, en wat ieder daarna deed. Twee
-goals van twee trainers komen er allebei in, want doelpunten, spelers en het
-archief worden per id samengevoegd. Zet de een een speler uit de wedstrijd en
+goals van twee trainers komen er allebei in, want doelpunten, spelers,
+wedstrijden en het archief worden per id samengevoegd. Elke wedstrijd is een
+los ding in een lijst: voegen twee trainers er tegelijk een toe, dan staan
+ze er allebei, en wie in de ene wedstrijd werkt, raakt de andere niet. Een
+afgeronde of weggegooide wedstrijd blijft weg, ook als een collega er net
+nog een goal in zette. Zet de een een speler uit de wedstrijd en
 de ander een tweede, dan zijn ze er allebei uit. Alleen waar beide telefoons
 hetzelfde veld veranderden, moet er één winnen. Bij de klok en het schema is
 dat de laatste wijziging, en niet de telefoon die het eerst weer bereik had:
@@ -167,7 +180,7 @@ lange verzoeken toch af, dan wacht de app voortaan korter.
 ```bash
 npm install        # alleen nodig voor de tests
 npm run build      # src/ -> index.html (één bestand, geen bundler-afhankelijkheid)
-npm test           # 82 tests: motor, samenvoegen, server, en de app in een browser
+npm test           # 96 tests: motor, samenvoegen, server, en de app in een browser
 npm run check      # laadt alle modules, vangt import- en syntaxfouten
 npm run serve      # draait de server lokaal op poort 8099 (inrichtcode in de uitvoer)
 ```

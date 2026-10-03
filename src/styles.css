@@ -146,7 +146,7 @@ input, select, textarea { font: inherit; color: inherit; }
 label.veld { display: block; margin-bottom: 12px; }
 label.veld > span { display: block; font-size: .8rem; font-weight: 600; color: var(--zacht); margin-bottom: 5px; }
 input[readonly] { color: var(--zacht); }
-input[type=text], input[type=password], input[type=date], input[type=number], select, textarea {
+input[type=text], input[type=password], input[type=date], input[type=time], input[type=number], select, textarea {
   width: 100%; min-height: 46px; padding: 10px 12px;
   background: var(--vlak-2); border: 1px solid var(--rand); border-radius: 11px;
 }
@@ -353,3 +353,46 @@ table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; col
   .kaart { border: 1px solid #bbb; box-shadow: none; break-inside: avoid; margin-bottom: 8px; }
   .cel { color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ---- de lijst wedstrijden */
+.wedstrijdrij { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px;
+  text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.wedstrijdrij .naam { flex: 1; min-width: 0; font-weight: 600; }
+.wedstrijdrij .naam small { display: block; font-weight: 500; font-size: .76rem; color: var(--zacht); margin-top: 2px; }
+.wedstrijdrij[aria-current="true"] { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.wedstrijdrij .pijl { color: var(--zacht); font-size: 1.3rem; line-height: 1; }
+.vlag.live { background: var(--alarm); color: #fff; border-color: transparent; }
+.terugrij { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px 0 10px; }
+.terugrij .knop { padding-left: 4px; }
+.opslag { font-size: .8rem; font-weight: 600; color: var(--zacht); }
+.opslag.ok { color: var(--accent); }
+.opslag.bezig { color: var(--waarschuwing); }
+.opslag.uit { color: var(--alarm); }
+
+/* ---- slepen om te ruilen (slepen.js) */
+.sleepbaar [data-speler] { touch-action: none; -webkit-user-select: none; user-select: none; }
+.sleepbaar .veld [data-speler] { cursor: grab; }
+.sleepbal { position: fixed; left: 0; top: 0; z-index: 90; pointer-events: none;
+  margin: -46px 0 0 -30px; min-width: 60px; padding: 8px 12px; border-radius: 999px; text-align: center;
+  background: var(--accent); color: #fff; font-weight: 700; font-size: .9rem; box-shadow: var(--schaduw); }
+.bezig-met-slepen .gesleept { opacity: .35; }
+.chip.sleepdoel { outline: 3px solid var(--accent); outline-offset: 2px; }
+.veld .sleepdoel .pion { stroke: #fff; stroke-width: 2.4; }
+.veld .sleepdoel { filter: drop-shadow(0 0 3px rgba(255,255,255,.9)); }
+
+/* ---- de volgende wissel, groot onder de klok */
+.tot-wissel.groot { margin-top: 4px; padding: 10px 12px 12px; border-radius: 14px;
+  background: var(--accent-zacht); color: var(--accent); }
+.tot-wissel.groot .label { font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.tot-wissel.groot .tijd { font-size: 2.4rem; font-weight: 800; line-height: 1.1; color: inherit;
+  font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+.tot-wissel.groot .wie { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px;
+  margin-top: 4px; font-size: .92rem; font-weight: 700; color: var(--tekst); }
+.tot-wissel.groot .wie .erin { color: var(--accent); }
+.tot-wissel.groot .wie .uit { color: var(--alarm); }
+.tot-wissel.groot.bijna { background: color-mix(in srgb, var(--waarschuwing) 16%, transparent); color: var(--waarschuwing); }
+.tot-wissel.groot.nu { background: var(--alarm); color: #fff; }
+.tot-wissel.groot.nu .label { font-size: 1.2rem; }
+.tot-wissel.groot.nu .wie, .tot-wissel.groot.nu .wie span { color: #fff; }
+.tot-wissel.groot .plekken { margin-top: 4px; font-size: .8rem; font-weight: 600; color: var(--zacht); }
+.tot-wissel.groot.nu .plekken { color: #fff; }

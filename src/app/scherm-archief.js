@@ -103,10 +103,10 @@ function instellingenKaart() {
     } }, 'Back-up downloaden'),
     h('button', { class: 'knop klein stil gevaar', onclick: () => bevestig(gedeeld ? 'Teamgegevens wissen?' : 'Alles wissen?',
       gedeeld
-        ? `Spelers, wedstrijd en archief van ${S.team.naam} worden gewist, voor alle trainers van dit team. Dit kun je niet ongedaan maken.`
-        : 'Team, wedstrijd en archief worden verwijderd. Dit kun je niet ongedaan maken.',
+        ? `Spelers, wedstrijden en archief van ${S.team.naam} worden gewist, voor alle trainers van dit team. Dit kun je niet ongedaan maken.`
+        : 'Team, wedstrijden en archief worden verwijderd. Dit kun je niet ongedaan maken.',
       () => {
-        wijzig(() => { neemOver({ team: { naam: gedeeld ? S.team.naam : 'Mijn team', spelers: [] }, wedstrijd: null, archief: [] }); });
+        wijzig(() => { neemOver({ team: { naam: gedeeld ? S.team.naam : 'Mijn team', spelers: [] }, wedstrijden: [], archief: [] }); });
         melding(gedeeld ? 'Teamgegevens gewist' : 'Alles gewist');
       },
       { knop: gedeeld ? 'Wissen' : 'Alles wissen', gevaar: true }) }, gedeeld ? 'Teamgegevens wissen' : 'Alles wissen')));
