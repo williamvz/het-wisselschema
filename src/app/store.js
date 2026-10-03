@@ -42,7 +42,7 @@ export const spelerMetId = (id, w = S.wedstrijd) => wedstrijdSpelers(w).find((p)
 
 export function nieuweWedstrijd(vorige = null) {
   return {
-    id: uid('w'), datum: vandaag(), tegenstander: '', thuis: true,
+    id: uid('w'), datum: vandaag(), aanvang: '', tegenstander: '', thuis: true,
     formationId: vorige?.formationId ?? '6-1-2-2-1',
     // Speelvorm volgt uit de opstelling, anders lopen ze uiteen als je een
     // wedstrijd overneemt uit het archief (dat bewaart alleen de opstelling).
@@ -62,14 +62,69 @@ export function nieuweWedstrijd(vorige = null) {
 const leeg = () => ({
   versie: VERSIE,
   team: { naam: 'Mijn team', spelers: [] },
-  wedstrijd: null,
+  wedstrijden: [],
   archief: [],
   instellingen: { thema: 'auto', geluid: true, trillen: true, schermAan: true, syncUrl: '' },
-  ui: { scherm: 'team' },
+  // wedstrijdId: welke wedstrijd er op dit apparaat open staat.
+  // lijst: op de tab Wedstrijden het overzicht tonen, niet de open wedstrijd.
+  ui: { scherm: 'team', wedstrijdId: null, lijst: false },
   gewijzigdOp: 0,
 });
 
 export const S = leeg();
+
+// Een team heeft een lijst wedstrijden: wat er gepland staat, en wat er nu
+// gespeeld wordt. Elke wedstrijd is een los ding met een eigen id, zodat twee
+// trainers er elk een kunnen toevoegen zonder dat de een de ander wegdrukt.
+//
+// `S.wedstrijd` is de wedstrijd die op dit apparaat open staat. Wie hem
+// leest, krijgt het object uit de lijst; wie hem een nieuwe waarde geeft,
+// vervangt hem in de lijst (zelfde id), voegt hem toe (nieuw id) of haalt
+// hem eruit (null). Zo werken de schermen gewoon met "de wedstrijd".
+Object.defineProperty(S, 'wedstrijd', {
+  enumerable: false,
+  get() { return openWedstrijd(S.wedstrijden, S.ui.wedstrijdId); },
+  set(w) {
+    const huidig = openWedstrijd(S.wedstrijden, S.ui.wedstrijdId);
+    if (!w) {
+      if (huidig) S.wedstrijden = S.wedstrijden.filter((x) => x.id !== huidig.id);
+      S.ui.wedstrijdId = null;
+      return;
+    }
+    const i = S.wedstrijden.findIndex((x) => x.id === w.id);
+    if (i >= 0) S.wedstrijden = S.wedstrijden.map((x, j) => (j === i ? w : x));
+    else S.wedstrijden = [...S.wedstrijden, w];
+    S.ui.wedstrijdId = w.id;
+  },
+});
+
+/** Datum en aanvang als sorteerbare tekst. */
+export const wanneer = (w) => `${w.datum || ''} ${w.aanvang || ''}`;
+
+/**
+ * Welke wedstrijd er open staat. Zelf gekozen, en anders vanzelf: die bezig
+ * is, of de eerstvolgende. Zo staat op wedstrijddag bij beide trainers
+ * dezelfde wedstrijd klaar, zonder dat iemand iets hoeft te kiezen.
+ */
+export function openWedstrijd(lijst, id) {
+  if (!lijst.length) return null;
+  const gekozen = id && lijst.find((w) => w.id === id);
+  if (gekozen) return gekozen;
+  const bezig = lijst.find((w) => w.status === 'bezig');
+  if (bezig) return bezig;
+  const opVolgorde = [...lijst].sort((a, b) => wanneer(a).localeCompare(wanneer(b)));
+  return opVolgorde.find((w) => (w.datum || '') >= vandaag()) || opVolgorde[opVolgorde.length - 1];
+}
+
+/**
+ * Teamgegevens van voor de lijst wedstrijden (één vak `wedstrijd`) omzetten.
+ * Voor een back-up, de opslag op dit apparaat, en wat de server stuurt.
+ */
+export function metWedstrijden(doc) {
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc.wedstrijden) || !('wedstrijd' in doc)) return doc;
+  const { wedstrijd, ...rest } = doc;
+  return { ...rest, wedstrijden: wedstrijd ? [wedstrijd] : [] };
+}
 let teller = 0;
 const luisteraars = new Set();
 
@@ -170,17 +225,17 @@ function tijdstempels(voor, { vanzelf = false } = {}) {
 // ------------------------------------------------------------- teamgegevens
 // Het deel van de toestand dat bij een team hoort en met een server wordt
 // gedeeld. Instellingen en het scherm waar je staat zijn van dit apparaat.
-const teamJson = () => JSON.stringify({ team: S.team, wedstrijd: S.wedstrijd ?? null, archief: S.archief });
+const teamJson = () => JSON.stringify({ team: S.team, wedstrijden: S.wedstrijden, archief: S.archief });
 export function teamDeel() { return JSON.parse(teamJson()); }
 
 function zetTeam(bron) {
   // Altijd een eigen kopie: wat er binnenkomt, is ook de basis waarmee de
   // samenwerkmodule vergelijkt. Deelden ze een object, dan veranderde de
   // basis stilletjes mee en werd een nieuwe goal nooit verstuurd.
-  const doc = JSON.parse(JSON.stringify(bron));
+  const doc = metWedstrijden(JSON.parse(JSON.stringify(bron)));
   const team = doc.team && typeof doc.team === 'object' ? doc.team : {};
   S.team = { ...team, naam: team.naam || 'Mijn team', spelers: Array.isArray(team.spelers) ? team.spelers : [] };
-  S.wedstrijd = doc.wedstrijd ?? null;
+  S.wedstrijden = Array.isArray(doc.wedstrijden) ? doc.wedstrijden.filter((w) => w && w.id) : [];
   S.archief = Array.isArray(doc.archief) ? doc.archief : [];
 }
 
@@ -259,10 +314,11 @@ export function bewaarNu() {
   if (teamOpslag) teamOpslag.bewaar();
 }
 export function exporteer() {
-  return { versie: VERSIE, team: S.team, wedstrijd: S.wedstrijd, archief: S.archief, instellingen: S.instellingen, gewijzigdOp: S.gewijzigdOp };
+  return { versie: VERSIE, team: S.team, wedstrijden: S.wedstrijden, archief: S.archief, instellingen: S.instellingen, gewijzigdOp: S.gewijzigdOp };
 }
-export function neemOver(data) {
-  if (!data || typeof data !== 'object') return false;
+export function neemOver(invoer) {
+  if (!invoer || typeof invoer !== 'object') return false;
+  const data = metWedstrijden(invoer);
   if (data.team) {
     S.team = {
       // Een back-up terugzetten in een clubteam hernoemt dat team niet.
@@ -270,7 +326,7 @@ export function neemOver(data) {
       spelers: (data.team.spelers || []).map((p) => ({ ...nieuweSpeler(), ...p })),
     };
   }
-  if ('wedstrijd' in data) S.wedstrijd = data.wedstrijd;
+  if (Array.isArray(data.wedstrijden)) S.wedstrijden = data.wedstrijden.filter((w) => w && w.id);
   if (data.archief) S.archief = data.archief;
   if (data.instellingen) S.instellingen = { ...S.instellingen, ...data.instellingen };
   S.gewijzigdOp = data.gewijzigdOp || Date.now();

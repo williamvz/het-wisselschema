@@ -62,6 +62,7 @@ test('twee trainers houden samen een wedstrijd bij, ook als er even geen bereik 
   // --- William maakt het schema en start de wedstrijd
   await W.locator('nav').getByRole('button', { name: 'Wedstrijd' }).click();
   await W.getByRole('button', { name: 'Nieuwe wedstrijd' }).click();
+  await W.locator('.sheet').getByRole('button', { name: 'Opslaan' }).click();
   await W.getByRole('button', { name: 'Maak het wisselschema' }).click();
   await W.waitForSelector('table.schema');
   await W.getByRole('button', { name: 'Wedstrijd starten' }).click();
@@ -137,6 +138,7 @@ test('ongedaan maken draait alleen je eigen stap terug', async (t) => {
   await W.getByRole('button', { name: 'Voorbeeldteam' }).click();
   await W.locator('nav').getByRole('button', { name: 'Wedstrijd' }).click();
   await W.getByRole('button', { name: 'Nieuwe wedstrijd' }).click();
+  await W.locator('.sheet').getByRole('button', { name: 'Opslaan' }).click();
   await W.getByRole('button', { name: 'Maak het wisselschema' }).click();
   await W.getByRole('button', { name: 'Wedstrijd starten' }).click();
   await W.getByRole('button', { name: '▶ Aftrap' }).click();
@@ -240,4 +242,70 @@ test('een proxy die even een fout geeft, kost geen wijzigingen en geen team', as
   assert.ok((await W.locator('.kop .teamknop').textContent()).includes('JO9-1'), 'het team staat nog open');
   await W.waitForSelector('.accountknop .stip.ok');
   assert.deepEqual(fouten.filter((f) => !/status of (403|502)/.test(f)), []);
+});
+
+test('een wedstrijd toevoegen en opslaan: de medetrainer ziet hem, en twee nieuwe wedstrijden staan er allebei', async (t) => {
+  const s = await startServer({ poort: POORT, map: MAP });
+  const browser = await chromium.launch({ executablePath: EXE });
+  t.after(async () => { await browser.close(); await s.stop(); });
+  const fouten = [];
+
+  const w = await richtIn(s.basis);
+  const { team } = await api(s.basis, '/api/teams', { methode: 'POST', token: w.token, data: { naam: 'JO9-1', leden: [w.gebruiker.id] } });
+  await api(s.basis, '/api/gebruikers', { methode: 'POST', token: w.token,
+    data: { naam: 'Dennis', gebruikersnaam: 'dennis', wachtwoord: 'bal-doel-1234', teams: [team.id] } });
+  const { p: W } = await telefoon(browser, s.basis, 'william', 'geheim-123', fouten);
+  const { p: D } = await telefoon(browser, s.basis, 'dennis', 'bal-doel-1234', fouten);
+  await W.getByRole('button', { name: 'Voorbeeldteam' }).click();
+  await D.waitForFunction(() => document.querySelectorAll('.spelerrij').length === 7, null, { timeout: 6000 });
+
+  const naarWedstrijden = (p) => p.locator('nav').getByRole('button', { name: 'Wedstrijden' }).click();
+  await naarWedstrijden(W);
+  await naarWedstrijden(D);
+  await D.waitForSelector('text=Nog geen wedstrijden gepland');
+
+  // --- William voegt een wedstrijd toe en slaat hem op
+  await W.getByRole('button', { name: 'Nieuwe wedstrijd' }).click();
+  await W.locator('.sheet').getByLabel('Tegenstander').fill('VV Zaterdag');
+  await W.locator('.sheet').getByLabel('Aanvang').fill('09:30');
+  await W.locator('.sheet').getByRole('button', { name: 'Uit' }).click();
+  await W.locator('.sheet').getByRole('button', { name: 'Opslaan' }).click();
+  await W.waitForFunction(() => /Opgeslagen\. Je medetrainers zien hem nu ook/.test(document.getElementById('toast')?.textContent || ''),
+    null, { timeout: 6000 });
+  await W.waitForSelector('text=Wie speelt er vandaag?');
+  await W.waitForSelector('.terugrij .opslag.ok');
+
+  // --- Dennis ziet hem in de lijst, met wie hem toevoegde, en blijft in de lijst
+  const rij = D.locator('.wedstrijdrij', { hasText: 'VV Zaterdag' });
+  await rij.waitFor({ timeout: 6000 });
+  assert.match(await rij.textContent(), /09:30 · uit · door William/);
+  assert.match(await D.locator('#toast').textContent(), /William heeft een wedstrijd toegevoegd: VV Zaterdag/);
+  assert.equal(await D.getByRole('button', { name: 'Nieuwe wedstrijd' }).count(), 1, 'Dennis staat nog in de lijst');
+
+  // --- tegelijk voegen ze er elk nog een toe: allebei blijven ze staan
+  for (const [p, naam] of [[W, 'FC Woensdag'], [D, 'SC Zondag']]) {
+    if (p === W) await W.locator('.terugrij').getByRole('button', { name: 'Alle wedstrijden' }).click();
+    await p.getByRole('button', { name: 'Nieuwe wedstrijd' }).click();
+    await p.locator('.sheet').getByLabel('Tegenstander').fill(naam);
+  }
+  await Promise.all([W, D].map((p) => p.locator('.sheet').getByRole('button', { name: 'Opslaan' }).click()));
+  for (const p of [W, D]) await p.locator('.sheet').waitFor({ state: 'detached', timeout: 8000 });
+  for (const p of [W, D]) {
+    await naarWedstrijden(p); // tweede tik op de tab: terug naar de lijst
+    await p.waitForFunction(() => document.querySelectorAll('.wedstrijdrij').length === 3, null, { timeout: 8000 });
+  }
+  const opServer = await api(s.basis, `/api/teams/${team.id}?na=0`, { token: w.token });
+  assert.deepEqual(opServer.delen.wedstrijden.map((x) => x.tegenstander).sort(), ['FC Woensdag', 'SC Zondag', 'VV Zaterdag']);
+
+  // --- en wie een wedstrijd opent, werkt daarin; de ander merkt daar niets van
+  await W.locator('.wedstrijdrij', { hasText: 'FC Woensdag' }).click();
+  await D.locator('.wedstrijdrij', { hasText: 'VV Zaterdag' }).click();
+  assert.equal(await W.getByLabel('Tegenstander').inputValue(), 'FC Woensdag');
+  assert.equal(await D.getByLabel('Tegenstander').inputValue(), 'VV Zaterdag');
+  await W.getByRole('button', { name: 'Maak het wisselschema' }).click();
+  await W.waitForSelector('table.schema');
+  await naarWedstrijden(D);
+  await naarWedstrijden(D);
+  await D.locator('.wedstrijdrij', { hasText: 'FC Woensdag' }).getByText('SCHEMA KLAAR').waitFor({ timeout: 6000 });
+  assert.deepEqual(fouten, []);
 });

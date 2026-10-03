@@ -38,7 +38,7 @@ test('trainer en beheerder, wachtwoord wijzigen, en een sessie die niet meer gel
   // --- de beheerder heeft een eigen tab voor de club; de trainer niet
   const william = await telefoon(browser, s.basis, 'william', 'geheim-123', fouten);
   const W = william.p;
-  assert.deepEqual(await tabs(W), ['Team', 'Wedstrijd', 'Schema', 'Live', 'Archief', 'Club']);
+  assert.deepEqual(await tabs(W), ['Team', 'Wedstrijden', 'Schema', 'Live', 'Archief', 'Club']);
   await W.locator('nav').getByRole('button', { name: 'Club' }).click();
   await W.waitForSelector('text=Trainers · 2');
   assert.equal(await W.locator('.kop .titel strong').textContent(), 'Clubbeheer', 'de kop zegt dat je in het clubbeheer zit');
@@ -54,7 +54,7 @@ test('trainer en beheerder, wachtwoord wijzigen, en een sessie die niet meer gel
   await W.locator('.overlay').click({ position: { x: 5, y: 5 } });
 
   const D = (await telefoon(browser, s.basis, 'dennis', 'bal-doel-1234', fouten)).p;
-  assert.deepEqual(await tabs(D), ['Team', 'Wedstrijd', 'Schema', 'Live', 'Archief'], 'een trainer ziet geen Club-tab');
+  assert.deepEqual(await tabs(D), ['Team', 'Wedstrijden', 'Schema', 'Live', 'Archief'], 'een trainer ziet geen Club-tab');
 
   // --- eigen wachtwoord wijzigen: fouten in het formulier, en een duidelijke bevestiging
   await W.locator('.accountknop').click();

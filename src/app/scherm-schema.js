@@ -17,8 +17,11 @@ export function schermSchema(ganaar) {
   const w = S.wedstrijd;
   if (!w || !w.blokken) {
     return h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
-      h('p', {}, 'Er is nog geen schema.'),
-      h('button', { class: 'knop primair', onclick: () => ganaar('opzet') }, 'Wedstrijd klaarzetten')));
+      h('p', {}, !w ? 'Er is nog geen wedstrijd gepland.' : 'Er is nog geen schema.'),
+      h('button', { class: 'knop primair', onclick: () => {
+        wijzig((s) => { s.ui.lijst = !w; });
+        ganaar('opzet');
+      } }, w ? 'Wedstrijd klaarzetten' : 'Naar de wedstrijden')));
   }
 
   const p = plan();

@@ -13,13 +13,14 @@
 // seconden met "niets nieuws". Dat werkt door elke proxy heen, ook door de
 // ingress van Home Assistant en door een Cloudflare-tunnel.
 
-import { S, wijzig, herteken, gebruikTeamOpslag, laadTeamDeel, teamDeel, zetKlokVerschil, klokVerschil } from './store.js';
+import { S, wijzig, herteken, gebruikTeamOpslag, laadTeamDeel, teamDeel, zetKlokVerschil, klokVerschil, metWedstrijden } from './store.js';
 import { vraag, vraagBijAfsluiten, zetServer, zetToken, paginaServer, normaliseerAdres, vergeetKlok, ApiFout } from './api.js';
 import { voegSamen, gelijk } from '../lib/samenvoegen.js';
+import { melding } from './ui.js';
 
 const ACCOUNT = 'wisselschema.account';
 const CACHE = 'wisselschema.team.';
-const DELEN = ['team', 'wedstrijd', 'archief'];
+const DELEN = ['team', 'wedstrijden', 'archief'];
 const WACHT = 25; // seconden dat een verzoek op een wijziging mag wachten
 
 /** Alles wat de schermen over het account en de verbinding moeten weten. */
@@ -88,7 +89,10 @@ function wisCaches() {
 function leesCache(teamId) {
   try {
     const c = JSON.parse(localStorage.getItem(CACHE + teamId));
-    if (c && c.gebruikerId === account.gebruiker?.id) return c;
+    if (c && c.gebruikerId === account.gebruiker?.id) {
+      // Bewaard door een versie van voor de lijst wedstrijden.
+      return { ...c, staat: metWedstrijden(c.staat), basis: c.basis === 'zelfde' ? c.basis : metWedstrijden(c.basis) };
+    }
   } catch (e) { /* onleesbaar: opnieuw ophalen */ }
   return null;
 }
@@ -126,7 +130,7 @@ export function herstelAccount() {
   }
   // Er is misschien een server. Staat hier al een team, laat dat dan zien
   // terwijl we kijken; anders een leeg scherm met "verbinden".
-  if (eigenAdres()) account.modus = S.team.spelers.length || S.archief.length || S.wedstrijd ? 'lokaal' : 'verbinden';
+  if (eigenAdres()) account.modus = S.team.spelers.length || S.archief.length || S.wedstrijden.length ? 'lokaal' : 'verbinden';
 }
 
 /** Op de achtergrond: de server zoeken, of het account bijwerken. */
@@ -264,7 +268,7 @@ function kiesStartTeam(voorkeur) {
 }
 
 const teamNaam = (id) => (account.teams.find((t) => t.id === id) || {}).naam || 'Team';
-const leegTeam = (naam) => ({ team: { naam, spelers: [] }, wedstrijd: null, archief: [] });
+const leegTeam = (naam) => ({ team: { naam, spelers: [] }, wedstrijden: [], archief: [] });
 
 export function kiesTeam(id) {
   if (id === account.teamId) return;
@@ -377,8 +381,10 @@ function verwerk(r) {
   } else if (zelfdeTijdperk && r.versie === ts.versie) return;
 
   const remote = r.volledig ? leegTeam(teamNaam(ts.teamId)) : { ...ts.basis };
-  for (const d of DELEN) if (d in r.delen) remote[d] = r.delen[d];
+  const delen = metWedstrijden(r.delen);
+  for (const d of DELEN) if (d in delen) remote[d] = delen[d];
   const mijn = teamDeel();
+  if (ts.basis) meldNieuweWedstrijden(ts.basis, mijn, remote);
   // Samenvoegen met de laatste stand die we kenden. Nog nooit verbonden:
   // dan met een leeg team, zodat wat hier al werd ingevoerd blijft staan.
   // Na een herstart of een teruggezette back-up (ander tijdperk) werkt het
@@ -393,6 +399,17 @@ function verwerk(r) {
   bewaarCache();
   if (!gelijk(samen, remote)) planDuw(0);
   else zetOnverstuurd(false);
+}
+
+/** Een collega zette een wedstrijd erbij: even laten weten, hij staat nu in de lijst. */
+function meldNieuweWedstrijden(basis, mijn, remote) {
+  const bekend = new Set([...(basis.wedstrijden || []), ...(mijn.wedstrijden || [])].map((w) => w.id));
+  const nieuw = (remote.wedstrijden || []).filter((w) => !bekend.has(w.id));
+  if (!nieuw.length) return;
+  const w = nieuw[0];
+  const wie = w.door ? `${w.door} heeft` : 'Er is';
+  melding(nieuw.length > 1 ? `${wie} ${nieuw.length} wedstrijden toegevoegd`
+    : `${wie} een wedstrijd toegevoegd${w.tegenstander ? `: ${w.tegenstander}` : ''}`);
 }
 
 // Houdt steeds één verzoek open dat terugkomt zodra er iets verandert.
@@ -523,6 +540,24 @@ async function duw() {
       if (nogIets && opnieuw !== null) planDuw(opnieuw);
     }
   }
+}
+
+/**
+ * Na "Opslaan": wacht tot de server alles heeft wat hier is ingevoerd.
+ * Geeft 'server' (de medetrainers zien het nu ook), 'lokaal' (er is geen
+ * server; het staat op dit apparaat) of 'later' (nog geen bereik; het gaat
+ * mee zodra dat er is).
+ */
+export async function wachtOpOpslaan(ms = 5000) {
+  if (account.modus !== 'team' || !ts.teamId) return 'lokaal';
+  const eind = Date.now() + ms;
+  planDuw(0);
+  while (Date.now() < eind) {
+    if (account.sessieVerlopen) return 'later';
+    if (ts.basis && !ts.bezig && !wijzigingen()) return 'server';
+    await new Promise((klaar) => setTimeout(klaar, 100));
+  }
+  return 'later';
 }
 
 /** De app gaat dicht: nog één poging, zonder op antwoord te wachten. */

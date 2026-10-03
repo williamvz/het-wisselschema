@@ -33,6 +33,7 @@ test('de app start, bouwt een schema en overleeft een uitval', async (t) => {
   // --- wedstrijd klaarzetten
   await pagina.locator('nav').getByRole('button', { name: 'Wedstrijd' }).click();
   await pagina.getByRole('button', { name: 'Nieuwe wedstrijd' }).click();
+  await pagina.locator('.sheet').getByRole('button', { name: 'Opslaan' }).click();
   await pagina.waitForSelector('text=Wie speelt er vandaag?');
   const gekozen = await pagina.locator('.chip[aria-pressed="true"]').count();
   assert.equal(gekozen, 7, 'iedereen staat standaard aan');
@@ -121,6 +122,7 @@ test('een tik op de knop werkt direct, ook vlak na het typen in een veld', async
   await pagina.getByRole('button', { name: 'Voorbeeldteam' }).click();
   await pagina.locator('nav').getByRole('button', { name: 'Wedstrijd' }).click();
   await pagina.getByRole('button', { name: 'Nieuwe wedstrijd' }).click();
+  await pagina.locator('.sheet').getByRole('button', { name: 'Opslaan' }).click();
   await pagina.waitForSelector('text=Wie speelt er vandaag?');
 
   await pagina.locator('#app input[type=text]').first().fill('SV Voorbeeld');
@@ -156,6 +158,7 @@ test('het schema is te delen via een link die zichzelf uitpakt', async (t) => {
   await pagina.getByRole('button', { name: 'Voorbeeldteam' }).click();
   await pagina.locator('nav').getByRole('button', { name: 'Wedstrijd' }).click();
   await pagina.getByRole('button', { name: 'Nieuwe wedstrijd' }).click();
+  await pagina.locator('.sheet').getByRole('button', { name: 'Opslaan' }).click();
   await pagina.getByRole('button', { name: 'Maak het wisselschema' }).click();
   await pagina.waitForSelector('table.schema');
   await pagina.locator('#app').getByRole('button', { name: 'Delen' }).click();
@@ -184,6 +187,7 @@ test('een lopende wedstrijd wordt niet per ongeluk gewist vanuit het opzetscherm
   await pagina.getByRole('button', { name: 'Voorbeeldteam' }).click();
   await pagina.locator('nav').getByRole('button', { name: 'Wedstrijd' }).click();
   await pagina.getByRole('button', { name: 'Nieuwe wedstrijd' }).click();
+  await pagina.locator('.sheet').getByRole('button', { name: 'Opslaan' }).click();
   await pagina.getByRole('button', { name: 'Maak het wisselschema' }).click();
   await pagina.waitForSelector('table.schema');
   await pagina.getByRole('button', { name: 'Wedstrijd starten' }).click();
@@ -216,6 +220,7 @@ test('een gastspeler doet één wedstrijd mee en verdwijnt daarna weer', async (
   await pagina.getByRole('button', { name: 'Voorbeeldteam' }).click();
   await pagina.locator('nav').getByRole('button', { name: 'Wedstrijd' }).click();
   await pagina.getByRole('button', { name: 'Nieuwe wedstrijd' }).click();
+  await pagina.locator('.sheet').getByRole('button', { name: 'Opslaan' }).click();
   await pagina.getByRole('button', { name: 'Gastspeler' }).click();
   await pagina.getByLabel('Naam').fill('Kees');
   await pagina.getByLabel('Naam').press('Enter');

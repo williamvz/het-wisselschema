@@ -1,22 +1,28 @@
-// Scherm: wedstrijd klaarzetten. Wie is er vandaag, hoe spelen we, hoe lang.
+// Scherm: de wedstrijden. Een lijst van wat er gepland staat, en per
+// wedstrijd het klaarzetten: wie is er, hoe spelen we, hoe lang.
 
 import { h, icoon, melding, datumTekst, bevestig, toonSheet } from './ui.js';
-import { S, wijzig, nieuweWedstrijd, nieuweGast, genereer } from './store.js';
+import { S, wijzig, nieuweWedstrijd, nieuweGast, genereer, wanneer } from './store.js';
 import { FORMATIONS, SPEELVORMEN, formationsForSize, getFormation } from '../lib/formations.js';
 import { tekenMiniVeld } from './veld.js';
+import { account, wachtOpOpslaan } from './samenwerken.js';
+import { verbindingsStaat } from './kop.js';
 
 const PRESET_MIN = [10, 12.5, 15, 20, 25];
 
 export function schermOpzet(ganaar) {
   const w = S.wedstrijd;
-  if (!w) return geenWedstrijd(ganaar);
-  if (!S.team.spelers.length) {
-    return h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
-      h('p', {}, 'Voeg eerst spelers toe aan je team.'),
-      h('button', { class: 'knop primair', onclick: () => ganaar('team') }, 'Naar het team')));
-  }
+  if (!w || S.ui.lijst) return schermWedstrijden(ganaar);
 
   const wrap = h('div', {});
+  wrap.appendChild(terugRij());
+  if (!S.team.spelers.length) {
+    wrap.appendChild(h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
+      h('p', {}, 'Voeg eerst spelers toe aan je team.'),
+      h('button', { class: 'knop primair', onclick: () => ganaar('team') }, 'Naar het team'))));
+    return wrap;
+  }
+
   const bezig = w.status === 'bezig';
 
   // Elke wijziging hier gooit het schema weg en laat het opnieuw berekenen.
@@ -41,13 +47,16 @@ export function schermOpzet(ganaar) {
 
   // ---- tegenstander en datum
   wrap.appendChild(h('div', { class: 'kaart' },
+    h('label', { class: 'veld' }, h('span', {}, 'Tegenstander'),
+      h('input', { type: 'text', value: w.tegenstander, placeholder: 'SV Voorbeeld',
+        onchange: (e) => wijzig((s) => { s.wedstrijd.tegenstander = e.target.value.trim(); }) })),
     h('div', { class: 'rij2' },
-      h('label', { class: 'veld' }, h('span', {}, 'Tegenstander'),
-        h('input', { type: 'text', value: w.tegenstander, placeholder: 'SV Voorbeeld',
-          onchange: (e) => wijzig((s) => { s.wedstrijd.tegenstander = e.target.value; }) })),
       h('label', { class: 'veld' }, h('span', {}, 'Datum'),
         h('input', { type: 'date', value: w.datum,
-          onchange: (e) => wijzig((s) => { s.wedstrijd.datum = e.target.value; }) }))),
+          onchange: (e) => wijzig((s) => { s.wedstrijd.datum = e.target.value; }) })),
+      h('label', { class: 'veld' }, h('span', {}, 'Aanvang'),
+        h('input', { type: 'time', value: w.aanvang || '',
+          onchange: (e) => wijzig((s) => { s.wedstrijd.aanvang = e.target.value; }) }))),
     h('div', { class: 'segment' },
       ...[[true, 'Thuis'], [false, 'Uit']].map(([v, l]) =>
         h('button', { 'aria-pressed': String(w.thuis === v), onclick: () => wijzig((s) => { s.wedstrijd.thuis = v; }) }, l)))));
@@ -166,10 +175,40 @@ export function schermOpzet(ganaar) {
     'Selecteer minstens twee spelers.'));
 
   wrap.appendChild(h('button', { class: 'knop stil breed', style: { marginTop: '14px' },
-    onclick: () => bevestig('Wedstrijd weggooien?', 'De opzet en het schema van deze wedstrijd verdwijnen.',
-      () => { wijzig((s) => { s.wedstrijd = null; }, { terugdraaibaar: true }); }, { knop: 'Weggooien', gevaar: true }) },
+    onclick: () => bevestig('Wedstrijd weggooien?',
+      account.modus === 'team'
+        ? 'De wedstrijd verdwijnt uit de lijst, ook bij je medetrainers. De opzet en het schema zijn dan weg.'
+        : 'De opzet en het schema van deze wedstrijd verdwijnen.',
+      () => { wijzig((s) => { s.wedstrijd = null; s.ui.lijst = true; }, { terugdraaibaar: true }); melding('Wedstrijd weggegooid'); },
+      { knop: 'Weggooien', gevaar: true }) },
     'Deze wedstrijd weggooien'));
   return wrap;
+}
+
+/** Bovenaan een wedstrijd: terug naar de lijst, en of alles is opgeslagen. */
+function terugRij() {
+  const rij = h('div', { class: 'terugrij' },
+    h('button', { class: 'knop klein stil', onclick: () => naarLijst() }, '‹ Alle wedstrijden'));
+  const staat = opslagStaat();
+  if (staat) rij.appendChild(h('span', { class: `opslag ${staat.klasse}`, role: 'status', title: staat.uitleg }, staat.tekst));
+  return rij;
+}
+
+function naarLijst() {
+  wijzig((s) => { s.ui.lijst = true; });
+  window.scrollTo({ top: 0 });
+}
+
+/**
+ * Wat je in een wedstrijd verandert, wordt meteen opgeslagen. Hier zie je
+ * dat het ook bij de server is - en dus bij je medetrainers.
+ */
+function opslagStaat() {
+  if (account.modus !== 'team') return null;
+  const v = verbindingsStaat();
+  if (v.klasse === 'ok') return { klasse: 'ok', tekst: '✓ Opgeslagen', uitleg: 'Je medetrainers zien dit ook.' };
+  if (v.klasse === 'bezig') return { klasse: 'bezig', tekst: 'Opslaan…', uitleg: v.tekst };
+  return { klasse: 'uit', tekst: account.onverstuurd ? 'Nog niet opgeslagen' : 'Geen verbinding', uitleg: v.tekst };
 }
 
 /**
@@ -202,15 +241,25 @@ export function gastSheet(opToevoegen, { uitleg = 'Doet er vandaag iemand van ee
 
 const accentTekst = (v) => (v < 0.05 ? 'volledig gelijk' : v < 0.35 ? 'licht accent' : v < 0.7 ? 'duidelijk accent' : 'sterk accent');
 
-function geenWedstrijd(ganaar) {
+// ------------------------------------------------------------- de lijst
+/** Alle wedstrijden van het team die nog gespeeld worden, en de laatst gespeelde. */
+export function schermWedstrijden(ganaar) {
   const wrap = h('div', {});
-  wrap.appendChild(h('div', { class: 'kaart' }, h('div', { class: 'leeg' },
-    h('h2', { style: { marginBottom: '6px' } }, 'Geen wedstrijd klaargezet'),
-    h('p', {}, 'Zet een wedstrijd klaar en laat de app het wisselschema maken.'),
-    h('button', { class: 'knop primair groot', style: { marginTop: '8px' }, onclick: () => {
-      const vorige = S.archief[0];
-      wijzig((s) => { s.wedstrijd = nieuweWedstrijd(vorige ? { ...vorige } : null); s.wedstrijd.selectie = s.team.spelers.map((p) => p.id); });
-    } }, icoon('plus', 20), 'Nieuwe wedstrijd'))));
+  wrap.appendChild(h('button', { class: 'knop primair breed groot', onclick: () => nieuweWedstrijdSheet(ganaar) },
+    icoon('plus', 20), 'Nieuwe wedstrijd'));
+
+  const open = S.wedstrijd;
+  const lijst = [...S.wedstrijden].sort((a, b) => wanneer(a).localeCompare(wanneer(b)));
+  if (!lijst.length) {
+    wrap.appendChild(h('div', { class: 'kaart', style: { marginTop: '14px' } }, h('div', { class: 'leeg' },
+      h('h2', { style: { marginBottom: '6px' } }, 'Nog geen wedstrijden gepland'),
+      h('p', {}, account.modus === 'team'
+        ? 'Voeg een wedstrijd toe. Je medetrainers zien hem dan ook, en kunnen meehelpen met klaarzetten.'
+        : 'Voeg een wedstrijd toe en laat de app het wisselschema maken.'))));
+  } else {
+    wrap.appendChild(h('div', { class: 'tussenkop' }, `Gepland (${lijst.length})`));
+    for (const w of lijst) wrap.appendChild(wedstrijdRij(w, w === open, ganaar));
+  }
 
   if (S.archief.length) {
     wrap.appendChild(h('div', { class: 'tussenkop' }, 'Laatst gespeeld'));
@@ -225,4 +274,70 @@ function geenWedstrijd(ganaar) {
     }
   }
   return wrap;
+}
+
+function wedstrijdRij(w, open, ganaar) {
+  const status = w.status === 'bezig' ? h('span', { class: 'vlag live' }, 'LIVE')
+    : w.blokken ? h('span', { class: 'vlag' }, 'SCHEMA KLAAR') : null;
+  const details = [datumTekst(w.datum), w.aanvang, w.thuis ? 'thuis' : 'uit', w.door ? `door ${w.door}` : null].filter(Boolean);
+  return h('button', { class: 'kaart wedstrijdrij', 'aria-current': open ? 'true' : null,
+    onclick: () => {
+      wijzig((s) => { s.ui.wedstrijdId = w.id; s.ui.lijst = false; });
+      ganaar(w.status === 'bezig' ? 'live' : 'opzet');
+    } },
+    h('div', { class: 'naam' }, w.tegenstander || 'Tegenstander nog onbekend', h('small', {}, details.join(' · '))),
+    status, h('span', { class: 'pijl', 'aria-hidden': 'true' }, '›'));
+}
+
+/**
+ * Een wedstrijd toevoegen: tegenstander, datum, aanvang, thuis of uit. Pas
+ * bij Opslaan bestaat hij, en dan staat hij ook bij je medetrainers. De rest
+ * (wie er is, de opstelling) zet je daarna klaar.
+ */
+export function nieuweWedstrijdSheet(ganaar) {
+  toonSheet('Nieuwe wedstrijd', (c, sluit) => {
+    let thuis = true;
+    const tegen = h('input', { type: 'text', placeholder: 'SV Voorbeeld', autocomplete: 'off' });
+    const datum = h('input', { type: 'date', value: new Date().toISOString().slice(0, 10), required: true });
+    const aanvang = h('input', { type: 'time' });
+    const segment = h('div', { class: 'segment' });
+    const tekenSegment = () => segment.replaceChildren(...[[true, 'Thuis'], [false, 'Uit']].map(([v, l]) =>
+      h('button', { type: 'button', 'aria-pressed': String(thuis === v), onclick: () => { thuis = v; tekenSegment(); } }, l)));
+    tekenSegment();
+    const fout = h('p', { class: 'fout', role: 'alert' });
+    const knop = h('button', { class: 'knop primair', type: 'submit', style: { flex: '2' } }, 'Opslaan');
+
+    c.appendChild(h('form', { onsubmit: async (e) => {
+      e.preventDefault();
+      if (!datum.value) { fout.textContent = 'Kies een datum.'; datum.focus(); return; }
+      knop.disabled = true;
+      knop.textContent = 'Opslaan…';
+      // Instellingen als speelvorm en speeltijd van de vorige wedstrijd.
+      const vorige = S.archief[0] || S.wedstrijden[S.wedstrijden.length - 1] || null;
+      wijzig((s) => {
+        const w = nieuweWedstrijd(vorige ? { ...vorige } : null);
+        Object.assign(w, { tegenstander: tegen.value.trim(), datum: datum.value, aanvang: aanvang.value, thuis });
+        if (account.modus === 'team' && account.gebruiker?.naam) w.door = account.gebruiker.naam.split(/\s+/)[0];
+        w.selectie = s.team.spelers.map((p) => p.id);
+        s.wedstrijd = w;
+        s.ui.lijst = false;
+        s.ui.scherm = 'opzet';
+      });
+      const waar = await wachtOpOpslaan();
+      sluit();
+      ganaar('opzet');
+      melding(waar === 'server' ? '✓ Opgeslagen. Je medetrainers zien hem nu ook.'
+        : waar === 'later' ? 'Opgeslagen op je telefoon. Hij gaat naar de server zodra er bereik is.'
+        : '✓ Wedstrijd opgeslagen');
+    } },
+      h('label', { class: 'veld' }, h('span', {}, 'Tegenstander'), tegen),
+      h('div', { class: 'rij2' },
+        h('label', { class: 'veld' }, h('span', {}, 'Datum'), datum),
+        h('label', { class: 'veld' }, h('span', {}, 'Aanvang'), aanvang)),
+      segment,
+      fout,
+      h('div', { class: 'knoprij', style: { marginTop: '16px' } },
+        h('button', { class: 'knop', type: 'button', onclick: sluit }, 'Annuleren'),
+        knop)));
+  });
 }

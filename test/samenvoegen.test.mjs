@@ -180,3 +180,55 @@ test('samenvoegen is herhaalbaar: dezelfde wijziging nog een keer ontvangen doet
   assert.deepEqual(voegSamen(c, een, c), een);
   assert.deepEqual(voegSamen(a, een, een), een);
 });
+
+// ---- de lijst wedstrijden
+function metLijst() {
+  const { wedstrijd, ...rest } = basisTeam();
+  return { ...rest, wedstrijden: [wedstrijd] };
+}
+
+test('twee trainers voegen elk een wedstrijd toe: ze staan er allebei', () => {
+  const b = metLijst();
+  const william = kloon(b); william.wedstrijden.push({ id: 'w2', tegenstander: 'VV Zaterdag', doelpunten: [] });
+  const dennis = kloon(b); dennis.wedstrijden.push({ id: 'w3', tegenstander: 'FC Woensdag', doelpunten: [] });
+  for (const uit of [voegSamen(b, william, dennis), voegSamen(b, dennis, william)]) {
+    assert.deepEqual(uit.wedstrijden.map((w) => w.id).sort(), ['w1', 'w2', 'w3']);
+  }
+});
+
+test('in verschillende wedstrijden tegelijk werken raakt elkaar niet', () => {
+  const b = metLijst();
+  b.wedstrijden.push({ id: 'w2', tegenstander: 'VV Zaterdag', selectie: ['s1'], doelpunten: [] });
+  const william = kloon(b); william.wedstrijden[0].doelpunten.push({ id: 'g1', wie: 'wij', sec: 60, opVeld: [] });
+  const dennis = kloon(b); dennis.wedstrijden[1].selectie = ['s1', 's2'];
+  const uit = voegSamen(b, william, dennis);
+  assert.equal(uit.wedstrijden[0].doelpunten.length, 1);
+  assert.deepEqual(uit.wedstrijden[1].selectie, ['s1', 's2']);
+});
+
+test('in de lijst gelden de regels voor klok en schema net zo', () => {
+  const b = metLijst();
+  const dennis = kloon(b); dennis.wedstrijden[0].klok = { loopt: false, verstreken: 120, sindsMs: null, bijgewerkt: 125000 };
+  const william = kloon(b); william.wedstrijden[0].klok = { loopt: true, verstreken: 600, sindsMs: 900000, bijgewerkt: 900000 };
+  assert.equal(voegSamen(b, dennis, william).wedstrijden[0].klok.bijgewerkt, 900000);
+  assert.equal(voegSamen(b, william, dennis).wedstrijden[0].klok.bijgewerkt, 900000);
+
+  const oud = kloon(b); oud.wedstrijden[0].blokken = [{ id: 'bx', vanSec: 0, totSec: 900, vast: false, opstelling: { k: 's2' } }];
+  oud.wedstrijden[0].planMs = 2000;
+  const nieuw = kloon(b); nieuw.wedstrijden[0].blokken = [{ id: 'by', vanSec: 0, totSec: 900, vast: false, opstelling: { k: 's3' } }];
+  nieuw.wedstrijden[0].planMs = 3000;
+  assert.equal(voegSamen(b, oud, nieuw).wedstrijden[0].blokken[0].id, 'by');
+  assert.equal(voegSamen(b, nieuw, oud).wedstrijden[0].blokken[0].id, 'by');
+});
+
+test('een afgeronde of weggegooide wedstrijd blijft weg, ook als de ander er nog iets in deed', () => {
+  const b = metLijst();
+  const afgerond = kloon(b);
+  afgerond.archief.unshift({ id: 'w1', tegenstander: 'SV Test' });
+  afgerond.wedstrijden = [];
+  const goal = kloon(b); goal.wedstrijden[0].doelpunten.push({ id: 'g1', wie: 'wij', sec: 60, opVeld: [] });
+  for (const uit of [voegSamen(b, afgerond, goal), voegSamen(b, goal, afgerond)]) {
+    assert.deepEqual(uit.wedstrijden, []);
+    assert.equal(uit.archief[0].id, 'w1');
+  }
+});

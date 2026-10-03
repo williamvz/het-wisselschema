@@ -146,7 +146,7 @@ input, select, textarea { font: inherit; color: inherit; }
 label.veld { display: block; margin-bottom: 12px; }
 label.veld > span { display: block; font-size: .8rem; font-weight: 600; color: var(--zacht); margin-bottom: 5px; }
 input[readonly] { color: var(--zacht); }
-input[type=text], input[type=password], input[type=date], input[type=number], select, textarea {
+input[type=text], input[type=password], input[type=date], input[type=time], input[type=number], select, textarea {
   width: 100%; min-height: 46px; padding: 10px 12px;
   background: var(--vlak-2); border: 1px solid var(--rand); border-radius: 11px;
 }
@@ -353,3 +353,18 @@ table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; col
   .kaart { border: 1px solid #bbb; box-shadow: none; break-inside: avoid; margin-bottom: 8px; }
   .cel { color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ---- de lijst wedstrijden */
+.wedstrijdrij { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px;
+  text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.wedstrijdrij .naam { flex: 1; min-width: 0; font-weight: 600; }
+.wedstrijdrij .naam small { display: block; font-weight: 500; font-size: .76rem; color: var(--zacht); margin-top: 2px; }
+.wedstrijdrij[aria-current="true"] { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.wedstrijdrij .pijl { color: var(--zacht); font-size: 1.3rem; line-height: 1; }
+.vlag.live { background: var(--alarm); color: #fff; border-color: transparent; }
+.terugrij { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px 0 10px; }
+.terugrij .knop { padding-left: 4px; }
+.opslag { font-size: .8rem; font-weight: 600; color: var(--zacht); }
+.opslag.ok { color: var(--accent); }
+.opslag.bezig { color: var(--waarschuwing); }
+.opslag.uit { color: var(--alarm); }

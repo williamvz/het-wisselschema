@@ -19,6 +19,7 @@ await p.waitForTimeout(300); await shot('1-team');
 
 await p.locator('nav').getByRole('button', { name: 'Wedstrijd' }).click();
 await p.getByRole('button', { name: 'Nieuwe wedstrijd' }).click();
+await p.locator('.sheet').getByRole('button', { name: 'Opslaan' }).click();
 await p.locator('#app input[type=text]').first().fill('SV Voorbeeld');
 await p.waitForTimeout(200); await shot('2-opzet');
 
@@ -54,6 +55,7 @@ await p2.waitForSelector('#app .kaart');
 await p2.getByRole('button', { name: 'Voorbeeldteam' }).click();
 await p2.locator('nav').getByRole('button', { name: 'Wedstrijd' }).click();
 await p2.getByRole('button', { name: 'Nieuwe wedstrijd' }).click();
+await p2.locator('.sheet').getByRole('button', { name: 'Opslaan' }).click();
 await p2.getByRole('button', { name: 'Maak het wisselschema' }).click();
 await p2.waitForSelector('table.schema');
 await p2.waitForTimeout(350);
@@ -96,6 +98,7 @@ try {
   await W.getByRole('button', { name: 'Voorbeeldteam' }).click();
   await W.locator('nav').getByRole('button', { name: 'Wedstrijd' }).click();
   await W.getByRole('button', { name: 'Nieuwe wedstrijd' }).click();
+  await W.locator('.sheet').getByRole('button', { name: 'Opslaan' }).click();
   await W.locator('#app input[type=text]').first().fill('SV Voorbeeld');
   await W.getByRole('button', { name: 'Maak het wisselschema' }).click();
   await W.getByRole('button', { name: 'Wedstrijd starten' }).click();
