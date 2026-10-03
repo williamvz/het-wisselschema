@@ -844,7 +844,7 @@ __defs["app/store.js"] = function () {
 // teamgegevens van de server; dan neemt samenwerken.js het bewaren van het
 // team over, en houdt deze module alleen bij wat er in het geheugen staat.
 
-const { planWedstrijd, herplan, wisselUitgevoerd, maakBlokken, totaleSpeeltijd } = __mod("lib/schedule.js");
+const { planWedstrijd, herplan, wisselUitgevoerd, maakBlokken, totaleSpeeltijd, ruilNu } = __mod("lib/schedule.js");
 const { FORMATIONS, getFormation, formationsForSize } = __mod("lib/formations.js");
 const { voegSamen } = __mod("lib/samenvoegen.js");
 
@@ -1215,6 +1215,14 @@ function herplanNu(opSec, wijzigingen = [], { gast = null } = {}) {
   }, { terugdraaibaar: true });
 }
 
+/** Tijdens de wedstrijd: twee spelers ruilen vanaf nu (slepen in het live-scherm). */
+function ruilLive(a, b) {
+  wijzig((s) => {
+    const res = ruilNu(s.wedstrijd, wedstrijdSpelers(s.wedstrijd), a, b, Math.round(klokStand(s.wedstrijd)));
+    s.wedstrijd = { ...s.wedstrijd, ...res.match };
+  }, { terugdraaibaar: true });
+}
+
 /** `vanzelf`: een wisselmoment waarop niets verandert, door de app zelf afgevinkt. */
 function bevestigWissel(blokIndex, opSec, { vanzelf = false } = {}) {
   wijzig((s) => {
@@ -1384,7 +1392,7 @@ function vanBase64Url(t) {
 
 
 
-return { uid, nieuweSpeler, nieuweGast, wedstrijdSpelers, nieuweWedstrijd, openWedstrijd, metWedstrijden, abonneer, stempel, zetKlokVerschil, klokVerschil, herteken, wijzig, teamDeel, laadTeamDeel, kanTerug, draaiTerug, gebruikTeamOpslag, lokaleGegevens, metServer, bewaarNu, exporteer, neemOver, laadLokaal, plan, leginSchema, genereer, herplanNu, bevestigWissel, zonderWissels, noteerGoal, schrapGoal, klokStand, klokStart, klokPauze, klokAutoPauze, klokZet, periodeGrens, rondAf, deelLink, leesDeelLink, SLEUTEL, VERSIE, spelerMetId, S, wanneer, nu, echteWissel, FORMATIONS, getFormation, formationsForSize, totaleSpeeltijd };
+return { uid, nieuweSpeler, nieuweGast, wedstrijdSpelers, nieuweWedstrijd, openWedstrijd, metWedstrijden, abonneer, stempel, zetKlokVerschil, klokVerschil, herteken, wijzig, teamDeel, laadTeamDeel, kanTerug, draaiTerug, gebruikTeamOpslag, lokaleGegevens, metServer, bewaarNu, exporteer, neemOver, laadLokaal, plan, leginSchema, genereer, herplanNu, ruilLive, bevestigWissel, zonderWissels, noteerGoal, schrapGoal, klokStand, klokStart, klokPauze, klokAutoPauze, klokZet, periodeGrens, rondAf, deelLink, leesDeelLink, SLEUTEL, VERSIE, spelerMetId, S, wanneer, nu, echteWissel, FORMATIONS, getFormation, formationsForSize, totaleSpeeltijd };
 };
 __defs["lib/schedule.js"] = function () {
 // De wisselschema-motor.
@@ -2012,6 +2020,31 @@ function herplan(match, alleSpelers, { opSec = 0, wijzigingen = [], opties = {} 
 }
 
 /**
+ * Twee spelers ruilen nu, tijdens de wedstrijd: van plek in het veld, of een
+ * bankspeler erin voor een veldspeler. Wat tot `opSec` gespeeld is, blijft
+ * staan (het blok wordt hier doorgeknipt). De nieuwe opstelling ligt vast
+ * tot het volgende wisselmoment; de rest van de wedstrijd wordt eromheen
+ * opnieuw verdeeld, zodat de speeltijd eerlijk blijft.
+ */
+function ruilNu(match, alleSpelers, a, b, opSec = 0) {
+  let blokken = match.blokken && match.blokken.length ? match.blokken : maakBlokken(match);
+  if (opSec > 0) blokken = vergrendelTot(splitsOp(blokken, opSec), opSec);
+  const i = blokken.findIndex((x) => !x.vast);
+  if (i < 0) return { match, ...planWedstrijd(match, alleSpelers) };
+
+  const opstelling = { ...blokken[i].opstelling };
+  const plekA = Object.keys(opstelling).find((sid) => opstelling[sid] === a);
+  const plekB = Object.keys(opstelling).find((sid) => opstelling[sid] === b);
+  if (plekA) opstelling[plekA] = b;
+  if (plekB) opstelling[plekB] = a;
+  blokken = blokken.map((x, j) => (j === i ? { ...x, opstelling } : x));
+
+  const bijgewerkt = { ...match, blokken, pins: { ...(match.pins || {}), [blokken[i].id]: opstelling } };
+  const resultaat = planWedstrijd(bijgewerkt, alleSpelers);
+  return { match: { ...bijgewerkt, blokken: resultaat.blokken }, ...resultaat };
+}
+
+/**
  * Registreert dat de wissel op de grens na `blokIndex` werkelijk op `tSec`
  * is uitgevoerd. Je wisselt nooit precies op de seconde; dit houdt de
  * speeltijdboekhouding eerlijk zonder de kwartgrenzen te verschuiven.
@@ -2032,7 +2065,7 @@ function blokOp(blokken, tSec) {
   return blokken.length - 1;
 }
 
-return { mulberry32, blokId, venster, beschikbaarIn, totaleSpeeltijd, maakBlokken, splitsOp, vergrendelTot, verlegGrens, planWedstrijd, statistieken, wisselLijst, herplan, wisselUitgevoerd, blokOp, STANDAARD_OPTIES };
+return { mulberry32, blokId, venster, beschikbaarIn, totaleSpeeltijd, maakBlokken, splitsOp, vergrendelTot, verlegGrens, planWedstrijd, statistieken, wisselLijst, herplan, ruilNu, wisselUitgevoerd, blokOp, STANDAARD_OPTIES };
 };
 __defs["lib/hungarian.js"] = function () {
 // Hongaars algoritme (Kuhn-Munkres, O(n^3) variant met potentialen).
@@ -4369,9 +4402,10 @@ __defs["app/scherm-live.js"] = function () {
 // waar het langs de lijn om draait: "wissel gedaan" en "speler eruit".
 
 const { h, icoon, toonSheet, bevestig, melding, mmss, minutenTekst, piep, tril, voornaam } = __mod("app/ui.js");
-const { S, wijzig, wedstrijdSpelers, spelerMetId, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal, echteWissel } = __mod("app/store.js");
+const { S, wijzig, wedstrijdSpelers, spelerMetId, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal, echteWissel, ruilLive } = __mod("app/store.js");
 const { getFormation } = __mod("lib/formations.js");
 const { totaleSpeeltijd } = __mod("lib/schedule.js");
+const { maakSleepbaar } = __mod("app/slepen.js");
 const { tekenVeld } = __mod("app/veld.js");
 const { blokLabel } = __mod("app/scherm-schema.js");
 const { gastSheet } = __mod("app/scherm-opzet.js");
@@ -4439,20 +4473,37 @@ function schermLive(ganaar, herteken) {
   veldKaart.appendChild(h('div', { class: 'kaart-kop' },
     h('h2', {}, `Nu op het veld`),
     h('span', { class: 'mini' }, `${blokLabel(blok, w)} · tot ${Math.round(blok.totSec / 60)} min`)));
-  veldKaart.appendChild(tekenVeld(blok, wedstrijdSpelers(), w.formationId));
+  veldKaart.appendChild(tekenVeld(blok, wedstrijdSpelers(), w.formationId, { sleep: true }));
 
   const opVeld = new Set(Object.values(blok.opstelling));
+  // `tot` is null na een rondje door JSON (Infinity bestaat daar niet): dan speelt hij gewoon mee.
+  const isEruit = (id) => ((((w.beschikbaar || {})[id] || {}).tot) ?? Infinity) < totaal;
   const bank = w.selectie.map((id) => spelerMetId(id))
     .filter((q) => q && !opVeld.has(q.id));
   if (bank.length) {
     veldKaart.appendChild(h('div', { class: 'tussenkop' }, 'Bank'));
     veldKaart.appendChild(h('div', { class: 'chiprij' }, ...bank.map((q) => {
-      // `tot` is null na een rondje door JSON (Infinity bestaat daar niet): dan speelt hij gewoon mee.
-      const uit = ((((w.beschikbaar || {})[q.id] || {}).tot) ?? Infinity) < totaal;
-      return h('span', { class: 'chip', style: uit ? { opacity: '.5' } : {} },
+      const uit = isEruit(q.id);
+      return h('span', { class: 'chip', style: uit ? { opacity: '.5' } : {}, 'data-speler': uit ? null : q.id },
         h('i', { class: 'dot' }), q.naam, uit ? h('span', { class: 'mini' }, '· eruit') : null);
     })));
   }
+  veldKaart.appendChild(h('p', { class: 'mini', style: { margin: '10px 0 0' } },
+    bank.some((q) => !isEruit(q.id))
+      ? 'Wil je nu wisselen of iemand van plek laten ruilen? Sleep de ene speler naar de andere. De rest van het schema past zich aan.'
+      : 'Wil je iemand nu van plek laten ruilen? Sleep de ene speler naar de andere.'));
+  maakSleepbaar(veldKaart, {
+    // Wie eruit is, komt niet terug via slepen; twee bankzitters ruilen doet niets.
+    mag: (a, b) => !isEruit(a) && !isEruit(b) && (opVeld.has(a) || opVeld.has(b)),
+    opRuil: (a, b) => {
+      const naam = (id) => voornaam(spelerMetId(id)?.naam);
+      const [erin, eruit] = opVeld.has(a) ? [b, a] : [a, b];
+      ruilLive(a, b);
+      tril(60);
+      melding(opVeld.has(a) && opVeld.has(b) ? `${naam(a)} en ${naam(b)} ruilen van plek` : `${naam(erin)} erin, ${naam(eruit)} eruit`);
+    },
+    label: (id) => voornaam(spelerMetId(id)?.naam),
+  });
   wrap.appendChild(veldKaart);
 
   // ------------------------------------------------------------- knoppen

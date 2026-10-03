@@ -623,6 +623,31 @@ export function herplan(match, alleSpelers, { opSec = 0, wijzigingen = [], optie
 }
 
 /**
+ * Twee spelers ruilen nu, tijdens de wedstrijd: van plek in het veld, of een
+ * bankspeler erin voor een veldspeler. Wat tot `opSec` gespeeld is, blijft
+ * staan (het blok wordt hier doorgeknipt). De nieuwe opstelling ligt vast
+ * tot het volgende wisselmoment; de rest van de wedstrijd wordt eromheen
+ * opnieuw verdeeld, zodat de speeltijd eerlijk blijft.
+ */
+export function ruilNu(match, alleSpelers, a, b, opSec = 0) {
+  let blokken = match.blokken && match.blokken.length ? match.blokken : maakBlokken(match);
+  if (opSec > 0) blokken = vergrendelTot(splitsOp(blokken, opSec), opSec);
+  const i = blokken.findIndex((x) => !x.vast);
+  if (i < 0) return { match, ...planWedstrijd(match, alleSpelers) };
+
+  const opstelling = { ...blokken[i].opstelling };
+  const plekA = Object.keys(opstelling).find((sid) => opstelling[sid] === a);
+  const plekB = Object.keys(opstelling).find((sid) => opstelling[sid] === b);
+  if (plekA) opstelling[plekA] = b;
+  if (plekB) opstelling[plekB] = a;
+  blokken = blokken.map((x, j) => (j === i ? { ...x, opstelling } : x));
+
+  const bijgewerkt = { ...match, blokken, pins: { ...(match.pins || {}), [blokken[i].id]: opstelling } };
+  const resultaat = planWedstrijd(bijgewerkt, alleSpelers);
+  return { match: { ...bijgewerkt, blokken: resultaat.blokken }, ...resultaat };
+}
+
+/**
  * Registreert dat de wissel op de grens na `blokIndex` werkelijk op `tSec`
  * is uitgevoerd. Je wisselt nooit precies op de seconde; dit houdt de
  * speeltijdboekhouding eerlijk zonder de kwartgrenzen te verschuiven.

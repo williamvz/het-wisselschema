@@ -339,3 +339,40 @@ test('zonder bank geen wissels: geen wisselmomenten, geen aftellen naar een wiss
   assert.equal(await pagina.locator('nav .punt').count(), 0, 'geen stip bij Live');
   assert.deepEqual(fouten, []);
 });
+
+test('tijdens de wedstrijd wisselen door te slepen: bankspeler erin, en terug te draaien', async (t) => {
+  const browser = await chromium.launch({ executablePath: EXE });
+  t.after(() => browser.close());
+  const { pagina, fouten } = await open(browser);
+  await klaarzetten(pagina);
+  await pagina.getByRole('button', { name: 'Maak het wisselschema' }).click();
+  await pagina.getByRole('button', { name: 'Wedstrijd starten' }).click();
+  await pagina.getByRole('button', { name: '▶ Aftrap' }).click();
+  // Een paar minuten verder.
+  await pagina.getByRole('button', { name: 'Bijstellen' }).click();
+  await pagina.locator('.sheet').getByRole('button', { name: '+1 min' }).click();
+  await pagina.getByRole('button', { name: 'Bijstellen' }).click();
+  await pagina.locator('.sheet').getByRole('button', { name: '+1 min' }).click();
+
+  const veld = pagina.locator('.kaart.sleepbaar svg.veld');
+  const bankChip = pagina.locator('.kaart.sleepbaar .chip[data-speler]').first();
+  const bankNaam = (await bankChip.textContent()).trim();
+  const pion = veld.locator('[data-speler]').nth(1);
+  const pionNaam = (await pion.getAttribute('aria-label')).split(',')[0];
+
+  await sleep(pagina, bankChip, pion);
+  await pagina.waitForFunction((n) => document.querySelector('.kaart.sleepbaar svg.veld').textContent.includes(n), bankNaam);
+  assert.match(await pagina.locator('#toast').textContent(), new RegExp(`${bankNaam} erin, ${pionNaam} eruit`));
+  assert.ok(await pagina.locator('.kaart.sleepbaar .chip', { hasText: pionNaam }).count(), `${pionNaam} zit nu op de bank`);
+
+  // In het schema: het eerste kwart is doorgeknipt, de eerste minuten staan vast.
+  await pagina.locator('nav').getByRole('button', { name: 'Schema' }).click();
+  await pagina.waitForSelector('table.schema');
+  assert.ok(await pagina.locator('table.schema thead th').count() > 4 + 2, 'een extra blok vanaf het moment van ruilen');
+
+  // Ongedaan maken zet alles terug.
+  await pagina.locator('nav').getByRole('button', { name: 'Live' }).click();
+  await pagina.getByRole('button', { name: 'Ongedaan' }).click();
+  await pagina.waitForFunction((n) => !document.querySelector('.kaart.sleepbaar svg.veld').textContent.includes(n), bankNaam);
+  assert.deepEqual(fouten, []);
+});

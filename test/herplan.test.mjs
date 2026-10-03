@@ -196,3 +196,33 @@ test('bij een uitval blijft de rest zoveel mogelijk staan', () => {
   const gemiddeld = totaalVerschoven / metingen;
   assert.ok(gemiddeld <= 1.5, `gemiddeld ${gemiddeld.toFixed(2)} positiewissels per uitval (mag hoogstens 1.5)`);
 });
+
+test('nu ruilen tijdens de wedstrijd: gespeelde tijd blijft staan, vanaf nu de nieuwe opstelling', async () => {
+  const { ruilNu, planWedstrijd: plan } = await import('../src/lib/schedule.js');
+  const spelers = maakTeam(['Daan', 'Sem', 'Luuk', 'Noud', 'Tijn', 'Bram', 'Finn', 'Mees'], { keepers: ['Daan', 'Sem'] });
+  const w = maakWedstrijd(spelers);
+  w.blokken = plan(w, spelers).blokken;
+  const voor = w.blokken[0];
+  const opVeld = Object.values(voor.opstelling);
+  const veld = opVeld.find((id) => keeperVan(voor, w.formationId) !== id);
+  const bank = spelers.map((p) => p.id).find((id) => !opVeld.includes(id));
+
+  // Op minuut 6 van het eerste kwart: de bankspeler erin.
+  const res = ruilNu(w, spelers, bank, veld, 360);
+  const [gespeeld, nu] = res.match.blokken;
+  assert.equal(gespeeld.vast, true);
+  assert.equal(gespeeld.totSec, 360);
+  assert.deepEqual(gespeeld.opstelling, voor.opstelling, 'de eerste zes minuten blijven zoals ze gespeeld zijn');
+  assert.equal(nu.vanSec, 360);
+  const plek = Object.keys(voor.opstelling).find((sid) => voor.opstelling[sid] === veld);
+  assert.equal(nu.opstelling[plek], bank, 'de bankspeler staat nu op die plek');
+  assert.ok(!Object.values(nu.opstelling).includes(veld), 'en de veldspeler zit op de bank');
+  assert.deepEqual(res.match.pins[nu.id], nu.opstelling, 'dat ligt vast');
+  assert.equal(res.match.blokken.reduce((s, b) => s + b.totSec - b.vanSec, 0), 3600, 'de wedstrijd duurt nog even lang');
+
+  // Twee veldspelers van plek: niemand gaat eruit.
+  const [x, y] = opVeld.filter((id) => id !== keeperVan(voor, w.formationId));
+  const plekken = ruilNu(w, spelers, x, y, 0).match.blokken[0].opstelling;
+  assert.equal(plekken[Object.keys(voor.opstelling).find((sid) => voor.opstelling[sid] === x)], y);
+  assert.equal(plekken[Object.keys(voor.opstelling).find((sid) => voor.opstelling[sid] === y)], x);
+});

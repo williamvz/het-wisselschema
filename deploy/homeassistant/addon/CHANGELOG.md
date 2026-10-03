@@ -17,6 +17,10 @@
 - Spelers ruilen door te slepen. Bij een blok in het schema sleep je een
   speler naar een ander: binnen het veld, of van en naar de bank. Tikken en
   kiezen met wie je ruilt kan nog steeds.
+- Ook tijdens de wedstrijd: sleep in het live-scherm een bankspeler op een
+  veldspeler om nu te wisselen, of twee veldspelers om ze van plek te laten
+  ruilen. Wat al gespeeld is blijft staan, de rest van het schema past zich
+  aan, en met Ongedaan draai je het terug.
 - Geen wissels, geen wisselopties. Zijn er niet meer spelers dan plekken in
   het veld, dan vraagt de app niet naar wisselmomenten. Tijdens de wedstrijd
   telt de klok dan af naar de rust in plaats van naar een wissel. Er komt ook

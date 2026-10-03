@@ -5,7 +5,7 @@
 // teamgegevens van de server; dan neemt samenwerken.js het bewaren van het
 // team over, en houdt deze module alleen bij wat er in het geheugen staat.
 
-import { planWedstrijd, herplan, wisselUitgevoerd, maakBlokken, totaleSpeeltijd } from '../lib/schedule.js';
+import { planWedstrijd, herplan, wisselUitgevoerd, maakBlokken, totaleSpeeltijd, ruilNu } from '../lib/schedule.js';
 import { FORMATIONS, getFormation, formationsForSize } from '../lib/formations.js';
 import { voegSamen } from '../lib/samenvoegen.js';
 
@@ -372,6 +372,14 @@ export function herplanNu(opSec, wijzigingen = [], { gast = null } = {}) {
   wijzig((s) => {
     if (gast) s.wedstrijd.gasten = [...(s.wedstrijd.gasten || []), gast];
     const res = herplan(s.wedstrijd, wedstrijdSpelers(s.wedstrijd), { opSec, wijzigingen });
+    s.wedstrijd = { ...s.wedstrijd, ...res.match };
+  }, { terugdraaibaar: true });
+}
+
+/** Tijdens de wedstrijd: twee spelers ruilen vanaf nu (slepen in het live-scherm). */
+export function ruilLive(a, b) {
+  wijzig((s) => {
+    const res = ruilNu(s.wedstrijd, wedstrijdSpelers(s.wedstrijd), a, b, Math.round(klokStand(s.wedstrijd)));
     s.wedstrijd = { ...s.wedstrijd, ...res.match };
   }, { terugdraaibaar: true });
 }

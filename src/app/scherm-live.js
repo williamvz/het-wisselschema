@@ -2,9 +2,10 @@
 // waar het langs de lijn om draait: "wissel gedaan" en "speler eruit".
 
 import { h, icoon, toonSheet, bevestig, melding, mmss, minutenTekst, piep, tril, voornaam } from './ui.js';
-import { S, wijzig, wedstrijdSpelers, spelerMetId, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal, echteWissel } from './store.js';
+import { S, wijzig, wedstrijdSpelers, spelerMetId, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal, echteWissel, ruilLive } from './store.js';
 import { getFormation } from '../lib/formations.js';
 import { totaleSpeeltijd } from '../lib/schedule.js';
+import { maakSleepbaar } from './slepen.js';
 import { tekenVeld } from './veld.js';
 import { blokLabel } from './scherm-schema.js';
 import { gastSheet } from './scherm-opzet.js';
@@ -72,20 +73,37 @@ export function schermLive(ganaar, herteken) {
   veldKaart.appendChild(h('div', { class: 'kaart-kop' },
     h('h2', {}, `Nu op het veld`),
     h('span', { class: 'mini' }, `${blokLabel(blok, w)} · tot ${Math.round(blok.totSec / 60)} min`)));
-  veldKaart.appendChild(tekenVeld(blok, wedstrijdSpelers(), w.formationId));
+  veldKaart.appendChild(tekenVeld(blok, wedstrijdSpelers(), w.formationId, { sleep: true }));
 
   const opVeld = new Set(Object.values(blok.opstelling));
+  // `tot` is null na een rondje door JSON (Infinity bestaat daar niet): dan speelt hij gewoon mee.
+  const isEruit = (id) => ((((w.beschikbaar || {})[id] || {}).tot) ?? Infinity) < totaal;
   const bank = w.selectie.map((id) => spelerMetId(id))
     .filter((q) => q && !opVeld.has(q.id));
   if (bank.length) {
     veldKaart.appendChild(h('div', { class: 'tussenkop' }, 'Bank'));
     veldKaart.appendChild(h('div', { class: 'chiprij' }, ...bank.map((q) => {
-      // `tot` is null na een rondje door JSON (Infinity bestaat daar niet): dan speelt hij gewoon mee.
-      const uit = ((((w.beschikbaar || {})[q.id] || {}).tot) ?? Infinity) < totaal;
-      return h('span', { class: 'chip', style: uit ? { opacity: '.5' } : {} },
+      const uit = isEruit(q.id);
+      return h('span', { class: 'chip', style: uit ? { opacity: '.5' } : {}, 'data-speler': uit ? null : q.id },
         h('i', { class: 'dot' }), q.naam, uit ? h('span', { class: 'mini' }, '· eruit') : null);
     })));
   }
+  veldKaart.appendChild(h('p', { class: 'mini', style: { margin: '10px 0 0' } },
+    bank.some((q) => !isEruit(q.id))
+      ? 'Wil je nu wisselen of iemand van plek laten ruilen? Sleep de ene speler naar de andere. De rest van het schema past zich aan.'
+      : 'Wil je iemand nu van plek laten ruilen? Sleep de ene speler naar de andere.'));
+  maakSleepbaar(veldKaart, {
+    // Wie eruit is, komt niet terug via slepen; twee bankzitters ruilen doet niets.
+    mag: (a, b) => !isEruit(a) && !isEruit(b) && (opVeld.has(a) || opVeld.has(b)),
+    opRuil: (a, b) => {
+      const naam = (id) => voornaam(spelerMetId(id)?.naam);
+      const [erin, eruit] = opVeld.has(a) ? [b, a] : [a, b];
+      ruilLive(a, b);
+      tril(60);
+      melding(opVeld.has(a) && opVeld.has(b) ? `${naam(a)} en ${naam(b)} ruilen van plek` : `${naam(erin)} erin, ${naam(eruit)} eruit`);
+    },
+    label: (id) => voornaam(spelerMetId(id)?.naam),
+  });
   wrap.appendChild(veldKaart);
 
   // ------------------------------------------------------------- knoppen

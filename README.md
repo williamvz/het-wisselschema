@@ -43,6 +43,9 @@ je hem met de hele club.
 - **Live meelopen** — klok per periode, aftelling tot de volgende wissel
   (of tot de rust, als er niets te wisselen valt),
   geluid en trilsignaal, en het scherm blijft aan.
+- **Wisselen wanneer jij wilt** — sleep in het live-scherm een bankspeler
+  op een veldspeler, en hij staat er vanaf nu in. De gespeelde tijd blijft
+  kloppen en de rest van de wedstrijd wordt eromheen verdeeld.
 - **Onverwachte wissel** — één knop, kies de speler, en je krijgt meteen te
   horen wie erin komt en wie doorschuift. De rest van de wedstrijd wordt
   opnieuw verdeeld over wie er nog staat.
@@ -177,7 +180,7 @@ lange verzoeken toch af, dan wacht de app voortaan korter.
 ```bash
 npm install        # alleen nodig voor de tests
 npm run build      # src/ -> index.html (één bestand, geen bundler-afhankelijkheid)
-npm test           # 94 tests: motor, samenvoegen, server, en de app in een browser
+npm test           # 96 tests: motor, samenvoegen, server, en de app in een browser
 npm run check      # laadt alle modules, vangt import- en syntaxfouten
 npm run serve      # draait de server lokaal op poort 8099 (inrichtcode in de uitvoer)
 ```
