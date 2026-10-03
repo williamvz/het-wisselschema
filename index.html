@@ -395,7 +395,24 @@ table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; col
 .bezig-met-slepen .gesleept { opacity: .35; }
 .chip.sleepdoel { outline: 3px solid var(--accent); outline-offset: 2px; }
 .veld .sleepdoel .pion { stroke: #fff; stroke-width: 2.4; }
-.veld .sleepdoel { filter: drop-shadow(0 0 3px rgba(255,255,255,.9)); }</style>
+.veld .sleepdoel { filter: drop-shadow(0 0 3px rgba(255,255,255,.9)); }
+
+/* ---- de volgende wissel, groot onder de klok */
+.tot-wissel.groot { margin-top: 4px; padding: 10px 12px 12px; border-radius: 14px;
+  background: var(--accent-zacht); color: var(--accent); }
+.tot-wissel.groot .label { font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.tot-wissel.groot .tijd { font-size: 2.4rem; font-weight: 800; line-height: 1.1; color: inherit;
+  font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+.tot-wissel.groot .wie { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px;
+  margin-top: 4px; font-size: .92rem; font-weight: 700; color: var(--tekst); }
+.tot-wissel.groot .wie .erin { color: var(--accent); }
+.tot-wissel.groot .wie .uit { color: var(--alarm); }
+.tot-wissel.groot.bijna { background: color-mix(in srgb, var(--waarschuwing) 16%, transparent); color: var(--waarschuwing); }
+.tot-wissel.groot.nu { background: var(--alarm); color: #fff; }
+.tot-wissel.groot.nu .label { font-size: 1.2rem; }
+.tot-wissel.groot.nu .wie, .tot-wissel.groot.nu .wie span { color: #fff; }
+.tot-wissel.groot .plekken { margin-top: 4px; font-size: .8rem; font-weight: 600; color: var(--zacht); }
+.tot-wissel.groot.nu .plekken { color: #fff; }</style>
 </head>
 <body>
 <div id="app"></div>
@@ -4444,6 +4461,13 @@ function schermLive(ganaar, herteken) {
   const volgendeIdx = p.wissels.findIndex((x, j) => j >= idx && echteWissel(x));
   const volgendeSec = volgendeIdx >= 0 ? p.blokken[volgendeIdx].totSec : null;
   let afgevinkt = false;
+  // Wie er bij die wissel in en uit gaat, om alvast te kunnen roepen.
+  const volgende = volgendeIdx >= 0 ? p.wissels[volgendeIdx] : null;
+  const wie = !volgende ? [] : [
+    ...volgende.erin.map((x) => ({ soort: 'erin', tekst: `↑ ${voornaam(x.naam)}` })),
+    ...volgende.eruit.map((x) => ({ soort: 'uit', tekst: `↓ ${voornaam(x.naam)}` })),
+  ];
+  const plekken = !volgende ? '' : volgende.verplaatst.map((x) => `${voornaam(x.naam)} → ${x.naar}`).join(' · ');
   const wrap = h('div', {});
 
   // ------------------------------------------------------------- klokkaart
@@ -4569,10 +4593,22 @@ function schermLive(ganaar, herteken) {
     balk.classList.toggle('bijna', volgendeSec !== null && rest <= 120 && rest > 0);
     balk.classList.toggle('nu', rest <= 0);
 
-    const waarheen = volgendeSec !== null ? ' tot de wissel' : doel >= totaal ? ' tot het einde' : ' tot de rust';
-    restEl.replaceChildren(rest > 0
-      ? h('span', {}, 'nog ', h('b', {}, mmss(rest)), waarheen)
-      : h('span', {}, volgendeSec !== null ? 'wisselen!' : doel >= totaal ? 'einde wedstrijd' : 'rust'));
+    if (volgendeSec !== null) {
+      // Groot in beeld: over hoeveel tijd, en wie erin en eruit gaat.
+      // Valt de wissel op de rust, dan zegt de klok erboven het al.
+      const bijRust = volgendeSec === periodeEind && rest > 0;
+      restEl.className = `tot-wissel groot${rest <= 0 ? ' nu' : rest <= 120 && !bijRust ? ' bijna' : ''}`;
+      restEl.replaceChildren(
+        h('div', { class: 'label' }, rest <= 0 ? 'Nu wisselen' : bijRust ? (doel >= totaal ? 'Wissel aan het eind' : 'Wissel bij de rust') : 'Volgende wissel over'),
+        rest > 0 && !bijRust ? h('div', { class: 'tijd' }, mmss(Math.ceil(rest))) : null,
+        wie.length ? h('div', { class: 'wie' }, ...wie.map((x) => h('span', { class: x.soort }, x.tekst))) : null,
+        plekken ? h('div', { class: 'plekken' }, plekken) : null);
+    } else {
+      restEl.className = 'tot-wissel';
+      restEl.replaceChildren(rest > 0
+        ? h('span', {}, 'nog ', h('b', {}, mmss(Math.ceil(rest))), doel >= totaal ? ' tot het einde' : ' tot de rust')
+        : h('span', {}, doel >= totaal ? 'einde wedstrijd' : 'rust'));
+    }
 
     startKnop.replaceChildren(loopt ? '⏸ Pauze' : t === 0 ? '▶ Aftrap' : '▶ Verder');
     startKnop.onclick = () => (loopt ? klokPauze('hand') : klokStart());

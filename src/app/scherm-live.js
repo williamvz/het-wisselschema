@@ -44,6 +44,13 @@ export function schermLive(ganaar, herteken) {
   const volgendeIdx = p.wissels.findIndex((x, j) => j >= idx && echteWissel(x));
   const volgendeSec = volgendeIdx >= 0 ? p.blokken[volgendeIdx].totSec : null;
   let afgevinkt = false;
+  // Wie er bij die wissel in en uit gaat, om alvast te kunnen roepen.
+  const volgende = volgendeIdx >= 0 ? p.wissels[volgendeIdx] : null;
+  const wie = !volgende ? [] : [
+    ...volgende.erin.map((x) => ({ soort: 'erin', tekst: `↑ ${voornaam(x.naam)}` })),
+    ...volgende.eruit.map((x) => ({ soort: 'uit', tekst: `↓ ${voornaam(x.naam)}` })),
+  ];
+  const plekken = !volgende ? '' : volgende.verplaatst.map((x) => `${voornaam(x.naam)} → ${x.naar}`).join(' · ');
   const wrap = h('div', {});
 
   // ------------------------------------------------------------- klokkaart
@@ -169,10 +176,22 @@ export function schermLive(ganaar, herteken) {
     balk.classList.toggle('bijna', volgendeSec !== null && rest <= 120 && rest > 0);
     balk.classList.toggle('nu', rest <= 0);
 
-    const waarheen = volgendeSec !== null ? ' tot de wissel' : doel >= totaal ? ' tot het einde' : ' tot de rust';
-    restEl.replaceChildren(rest > 0
-      ? h('span', {}, 'nog ', h('b', {}, mmss(rest)), waarheen)
-      : h('span', {}, volgendeSec !== null ? 'wisselen!' : doel >= totaal ? 'einde wedstrijd' : 'rust'));
+    if (volgendeSec !== null) {
+      // Groot in beeld: over hoeveel tijd, en wie erin en eruit gaat.
+      // Valt de wissel op de rust, dan zegt de klok erboven het al.
+      const bijRust = volgendeSec === periodeEind && rest > 0;
+      restEl.className = `tot-wissel groot${rest <= 0 ? ' nu' : rest <= 120 && !bijRust ? ' bijna' : ''}`;
+      restEl.replaceChildren(
+        h('div', { class: 'label' }, rest <= 0 ? 'Nu wisselen' : bijRust ? (doel >= totaal ? 'Wissel aan het eind' : 'Wissel bij de rust') : 'Volgende wissel over'),
+        rest > 0 && !bijRust ? h('div', { class: 'tijd' }, mmss(Math.ceil(rest))) : null,
+        wie.length ? h('div', { class: 'wie' }, ...wie.map((x) => h('span', { class: x.soort }, x.tekst))) : null,
+        plekken ? h('div', { class: 'plekken' }, plekken) : null);
+    } else {
+      restEl.className = 'tot-wissel';
+      restEl.replaceChildren(rest > 0
+        ? h('span', {}, 'nog ', h('b', {}, mmss(Math.ceil(rest))), doel >= totaal ? ' tot het einde' : ' tot de rust')
+        : h('span', {}, doel >= totaal ? 'einde wedstrijd' : 'rust'));
+    }
 
     startKnop.replaceChildren(loopt ? '⏸ Pauze' : t === 0 ? '▶ Aftrap' : '▶ Verder');
     startKnop.onclick = () => (loopt ? klokPauze('hand') : klokStart());

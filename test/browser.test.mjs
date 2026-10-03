@@ -64,6 +64,13 @@ test('de app start, bouwt een schema en overleeft een uitval', async (t) => {
   await pagina.getByRole('button', { name: '▶ Aftrap' }).click();
   // De klok telt af: van 15:00 naar 14:59 en verder.
   await pagina.waitForFunction(() => /^14:\d\d$/.test(document.querySelector('.klok').textContent), null, { timeout: 5000 });
+  // En groot daaronder: over hoeveel tijd de volgende wissel is, en wie erin en eruit gaat.
+  const wissel = pagina.locator('.tot-wissel.groot');
+  // Eén wissel per periode: die valt op de rust, en de klok erboven zegt al hoe lang nog.
+  assert.match(await wissel.locator('.label').textContent(), /Wissel bij de rust/);
+  assert.equal(await wissel.locator('.tijd').count(), 0, 'niet twee keer dezelfde tijd');
+  assert.ok(await wissel.locator('.wie .erin').count() >= 1, 'wie erin gaat');
+  assert.ok(await wissel.locator('.wie .uit').count() >= 1, 'wie eruit gaat');
 
   // --- score bijhouden
   const veldVoorGoal = (await pagina.locator('svg.veld .naam').allTextContents()).map((x) => x.trim());

@@ -29,6 +29,10 @@
 - De klok in het live-scherm telt af: hoeveel er nog over is van de periode,
   zoals op het scorebord. Bij **Bijstellen** is +1 min dus een minuut meer op
   de klok.
+- Onder de klok staat groot de volgende wissel: over hoeveel tijd, wie erin
+  (↑) en wie eruit (↓) gaat, en wie van plek wisselt. Twee minuten van
+  tevoren kleurt hij oranje, op het moment zelf rood. Valt de wissel op de
+  rust, dan staat er "Wissel bij de rust".
 - Na de update: herlaad de app op alle telefoons. Een oude versie kan niets
   meer aan de wedstrijden veranderen, en de server zet de wedstrijd die al
   klaarstond vanzelf in de nieuwe lijst.
