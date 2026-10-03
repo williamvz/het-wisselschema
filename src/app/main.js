@@ -1,7 +1,7 @@
 // De romp: kopbalk, schermkeuze, navigatie en het opstarten.
 
 import { h, icoon, leegmaken, toonSheet, sluitSheet, melding, houdSchermAan, minutenTekst, voornaam } from './ui.js';
-import { S, wijzig, abonneer, laadLokaal, plan, klokStand, leesDeelLink, nieuweSpeler, nieuweWedstrijd, bewaarNu } from './store.js';
+import { S, wijzig, abonneer, laadLokaal, plan, klokStand, leesDeelLink, nieuweSpeler, nieuweWedstrijd, bewaarNu, echteWissel } from './store.js';
 import { getFormation } from '../lib/formations.js';
 import { account, herstelAccount, verbind, wek, duwBijAfsluiten } from './samenwerken.js';
 import { kopbalk } from './kop.js';
@@ -46,7 +46,7 @@ function wisselStaatOpen() {
   if (!w || !w.blokken || w.status !== 'bezig') return false;
   const p = plan();
   const i = actiefBlokIndex(p.blokken);
-  return klokStand() >= p.blokken[i].totSec;
+  return klokStand() >= p.blokken[i].totSec && echteWissel(p.wissels[i]);
 }
 
 export function render() {

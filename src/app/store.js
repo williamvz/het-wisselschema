@@ -358,7 +358,8 @@ export function genereer({ nieuweSeed = false } = {}) {
   wijzig((s) => {
     if (!s.wedstrijd) return;
     if (nieuweSeed) s.wedstrijd.opties.seed = Math.floor(Math.random() * 1e6);
-    s.wedstrijd.blokken = maakBlokken(s.wedstrijd);
+    // Zonder wissels alleen blokken per periode: halverwege valt er niets te wisselen.
+    s.wedstrijd.blokken = maakBlokken(zonderWissels(s.wedstrijd) ? { ...s.wedstrijd, blokkenPerPeriode: 1 } : s.wedstrijd);
     s.wedstrijd.pins = {};
     planCache = null;
     const p = planWedstrijd(s.wedstrijd, wedstrijdSpelers(s.wedstrijd));
@@ -375,11 +376,25 @@ export function herplanNu(opSec, wijzigingen = [], { gast = null } = {}) {
   }, { terugdraaibaar: true });
 }
 
-export function bevestigWissel(blokIndex, opSec) {
+/** `vanzelf`: een wisselmoment waarop niets verandert, door de app zelf afgevinkt. */
+export function bevestigWissel(blokIndex, opSec, { vanzelf = false } = {}) {
   wijzig((s) => {
     const res = wisselUitgevoerd(s.wedstrijd, wedstrijdSpelers(s.wedstrijd), blokIndex, opSec);
     s.wedstrijd = { ...s.wedstrijd, ...res.match };
-  }, { terugdraaibaar: true });
+  }, { terugdraaibaar: !vanzelf });
+}
+
+/** Verandert er bij deze wissel echt iets: iemand eruit, erin of op een andere plek? */
+export const echteWissel = (wissel) => !!wissel
+  && !!(wissel.eruit?.length || wissel.erin?.length || wissel.verplaatst?.length);
+
+/**
+ * Zijn er geen wissels, omdat er niet meer spelers zijn dan plekken in het
+ * veld? Dan heeft het geen zin om wisselmomenten in te stellen.
+ */
+export function zonderWissels(w = S.wedstrijd) {
+  if (!w) return false;
+  return (w.selectie || []).length <= getFormation(w.formationId).speelvorm;
 }
 
 // -------------------------------------------------------------------- score

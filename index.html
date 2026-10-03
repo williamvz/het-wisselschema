@@ -384,7 +384,18 @@ table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; col
 .opslag { font-size: .8rem; font-weight: 600; color: var(--zacht); }
 .opslag.ok { color: var(--accent); }
 .opslag.bezig { color: var(--waarschuwing); }
-.opslag.uit { color: var(--alarm); }</style>
+.opslag.uit { color: var(--alarm); }
+
+/* ---- slepen om te ruilen (slepen.js) */
+.sleepbaar [data-speler] { touch-action: none; -webkit-user-select: none; user-select: none; }
+.sleepbaar .veld [data-speler] { cursor: grab; }
+.sleepbal { position: fixed; left: 0; top: 0; z-index: 90; pointer-events: none;
+  margin: -46px 0 0 -30px; min-width: 60px; padding: 8px 12px; border-radius: 999px; text-align: center;
+  background: var(--accent); color: #fff; font-weight: 700; font-size: .9rem; box-shadow: var(--schaduw); }
+.bezig-met-slepen .gesleept { opacity: .35; }
+.chip.sleepdoel { outline: 3px solid var(--accent); outline-offset: 2px; }
+.veld .sleepdoel .pion { stroke: #fff; stroke-width: 2.4; }
+.veld .sleepdoel { filter: drop-shadow(0 0 3px rgba(255,255,255,.9)); }</style>
 </head>
 <body>
 <div id="app"></div>
@@ -403,7 +414,7 @@ __defs["app/main.js"] = function () {
 // De romp: kopbalk, schermkeuze, navigatie en het opstarten.
 
 const { h, icoon, leegmaken, toonSheet, sluitSheet, melding, houdSchermAan, minutenTekst, voornaam } = __mod("app/ui.js");
-const { S, wijzig, abonneer, laadLokaal, plan, klokStand, leesDeelLink, nieuweSpeler, nieuweWedstrijd, bewaarNu } = __mod("app/store.js");
+const { S, wijzig, abonneer, laadLokaal, plan, klokStand, leesDeelLink, nieuweSpeler, nieuweWedstrijd, bewaarNu, echteWissel } = __mod("app/store.js");
 const { getFormation } = __mod("lib/formations.js");
 const { account, herstelAccount, verbind, wek, duwBijAfsluiten } = __mod("app/samenwerken.js");
 const { kopbalk } = __mod("app/kop.js");
@@ -448,7 +459,7 @@ function wisselStaatOpen() {
   if (!w || !w.blokken || w.status !== 'bezig') return false;
   const p = plan();
   const i = actiefBlokIndex(p.blokken);
-  return klokStand() >= p.blokken[i].totSec;
+  return klokStand() >= p.blokken[i].totSec && echteWissel(p.wissels[i]);
 }
 
 function render() {
@@ -1186,7 +1197,8 @@ function genereer({ nieuweSeed = false } = {}) {
   wijzig((s) => {
     if (!s.wedstrijd) return;
     if (nieuweSeed) s.wedstrijd.opties.seed = Math.floor(Math.random() * 1e6);
-    s.wedstrijd.blokken = maakBlokken(s.wedstrijd);
+    // Zonder wissels alleen blokken per periode: halverwege valt er niets te wisselen.
+    s.wedstrijd.blokken = maakBlokken(zonderWissels(s.wedstrijd) ? { ...s.wedstrijd, blokkenPerPeriode: 1 } : s.wedstrijd);
     s.wedstrijd.pins = {};
     planCache = null;
     const p = planWedstrijd(s.wedstrijd, wedstrijdSpelers(s.wedstrijd));
@@ -1203,11 +1215,25 @@ function herplanNu(opSec, wijzigingen = [], { gast = null } = {}) {
   }, { terugdraaibaar: true });
 }
 
-function bevestigWissel(blokIndex, opSec) {
+/** `vanzelf`: een wisselmoment waarop niets verandert, door de app zelf afgevinkt. */
+function bevestigWissel(blokIndex, opSec, { vanzelf = false } = {}) {
   wijzig((s) => {
     const res = wisselUitgevoerd(s.wedstrijd, wedstrijdSpelers(s.wedstrijd), blokIndex, opSec);
     s.wedstrijd = { ...s.wedstrijd, ...res.match };
-  }, { terugdraaibaar: true });
+  }, { terugdraaibaar: !vanzelf });
+}
+
+/** Verandert er bij deze wissel echt iets: iemand eruit, erin of op een andere plek? */
+const echteWissel = (wissel) => !!wissel
+  && !!(wissel.eruit?.length || wissel.erin?.length || wissel.verplaatst?.length);
+
+/**
+ * Zijn er geen wissels, omdat er niet meer spelers zijn dan plekken in het
+ * veld? Dan heeft het geen zin om wisselmomenten in te stellen.
+ */
+function zonderWissels(w = S.wedstrijd) {
+  if (!w) return false;
+  return (w.selectie || []).length <= getFormation(w.formationId).speelvorm;
 }
 
 // -------------------------------------------------------------------- score
@@ -1358,7 +1384,7 @@ function vanBase64Url(t) {
 
 
 
-return { uid, nieuweSpeler, nieuweGast, wedstrijdSpelers, nieuweWedstrijd, openWedstrijd, metWedstrijden, abonneer, stempel, zetKlokVerschil, klokVerschil, herteken, wijzig, teamDeel, laadTeamDeel, kanTerug, draaiTerug, gebruikTeamOpslag, lokaleGegevens, metServer, bewaarNu, exporteer, neemOver, laadLokaal, plan, leginSchema, genereer, herplanNu, bevestigWissel, noteerGoal, schrapGoal, klokStand, klokStart, klokPauze, klokAutoPauze, klokZet, periodeGrens, rondAf, deelLink, leesDeelLink, SLEUTEL, VERSIE, spelerMetId, S, wanneer, nu, FORMATIONS, getFormation, formationsForSize, totaleSpeeltijd };
+return { uid, nieuweSpeler, nieuweGast, wedstrijdSpelers, nieuweWedstrijd, openWedstrijd, metWedstrijden, abonneer, stempel, zetKlokVerschil, klokVerschil, herteken, wijzig, teamDeel, laadTeamDeel, kanTerug, draaiTerug, gebruikTeamOpslag, lokaleGegevens, metServer, bewaarNu, exporteer, neemOver, laadLokaal, plan, leginSchema, genereer, herplanNu, bevestigWissel, zonderWissels, noteerGoal, schrapGoal, klokStand, klokStart, klokPauze, klokAutoPauze, klokZet, periodeGrens, rondAf, deelLink, leesDeelLink, SLEUTEL, VERSIE, spelerMetId, S, wanneer, nu, echteWissel, FORMATIONS, getFormation, formationsForSize, totaleSpeeltijd };
 };
 __defs["lib/schedule.js"] = function () {
 // De wisselschema-motor.
@@ -3521,7 +3547,7 @@ __defs["app/scherm-opzet.js"] = function () {
 // wedstrijd het klaarzetten: wie is er, hoe spelen we, hoe lang.
 
 const { h, icoon, melding, datumTekst, bevestig, toonSheet } = __mod("app/ui.js");
-const { S, wijzig, nieuweWedstrijd, nieuweGast, genereer, wanneer } = __mod("app/store.js");
+const { S, wijzig, nieuweWedstrijd, nieuweGast, genereer, wanneer, zonderWissels } = __mod("app/store.js");
 const { FORMATIONS, SPEELVORMEN, formationsForSize, getFormation } = __mod("lib/formations.js");
 const { tekenMiniVeld } = __mod("app/veld.js");
 const { account, wachtOpOpslaan } = __mod("app/samenwerken.js");
@@ -3653,13 +3679,19 @@ function schermOpzet(ganaar) {
         ...PRESET_MIN.map((m2) => h('option', { value: String(m2), selected: w.periodeMin === m2 }, `${m2} min`)),
         PRESET_MIN.includes(w.periodeMin) ? null : h('option', { value: String(w.periodeMin), selected: true }, `${w.periodeMin} min`)))));
 
-  kaartTijd.appendChild(h('label', { class: 'veld' },
-    h('span', {}, 'Wisselmomenten per periode'),
-    h('div', { class: 'segment' },
-      ...[[1, 'Eén: bij de rust'], [2, 'Twee: ook halverwege']].map(([n, l]) =>
-        h('button', { 'aria-pressed': String(w.blokkenPerPeriode === n), onclick: () => zet((m) => { m.blokkenPerPeriode = n; }) }, l)))));
-  kaartTijd.appendChild(h('p', { class: 'uitleg' },
-    `Totaal ${w.periodes * w.periodeMin} minuten, verdeeld over ${w.periodes * w.blokkenPerPeriode} blokken van ${Math.round(w.periodeMin / w.blokkenPerPeriode * 10) / 10} minuten.`));
+  // Niemand op de bank: dan valt er niets te wisselen, en ook niets in te stellen.
+  if (zonderWissels(w)) {
+    kaartTijd.appendChild(h('p', { class: 'uitleg' },
+      `Totaal ${w.periodes * w.periodeMin} minuten. Er zijn niet meer spelers dan plekken, dus geen wissels: iedereen speelt de hele wedstrijd. Bij de rust kan wel iemand anders op doel gaan.`));
+  } else {
+    kaartTijd.appendChild(h('label', { class: 'veld' },
+      h('span', {}, 'Wisselmomenten per periode'),
+      h('div', { class: 'segment' },
+        ...[[1, 'Eén: bij de rust'], [2, 'Twee: ook halverwege']].map(([n, l]) =>
+          h('button', { 'aria-pressed': String(w.blokkenPerPeriode === n), onclick: () => zet((m) => { m.blokkenPerPeriode = n; }) }, l)))));
+    kaartTijd.appendChild(h('p', { class: 'uitleg' },
+      `Totaal ${w.periodes * w.periodeMin} minuten, verdeeld over ${w.periodes * w.blokkenPerPeriode} blokken van ${Math.round(w.periodeMin / w.blokkenPerPeriode * 10) / 10} minuten.`));
+  }
   wrap.appendChild(kaartTijd);
 
   // ---- verdeling
@@ -3906,7 +3938,7 @@ const ROLKLEUR = { K: 'var(--rol-K)', V: 'var(--rol-V)', M: 'var(--rol-M)', A: '
  * @param {object} blok        blok met `opstelling`
  * @param {Array}  spelers     alle spelers (voor naam en rugnummer)
  * @param {string} formationId
- * @param {object} opties      { markeer:Set<id>, opTik(spelerId, slotId), toonNamen }
+ * @param {object} opties      { markeer:Set<id>, opTik(spelerId, slotId), toonNamen, sleep: te slepen (zie slepen.js) }
  */
 function tekenVeld(blok, spelers, formationId, opties = {}) {
   const formatie = getFormation(formationId);
@@ -3926,6 +3958,7 @@ function tekenVeld(blok, spelers, formationId, opties = {}) {
       onclick: opties.opTik ? () => opties.opTik(speler.id, slot.id) : null,
       role: opties.opTik ? 'button' : null,
       'aria-label': `${speler.naam}, ${slot.label}`,
+      'data-speler': opties.sleep ? speler.id : null,
     },
       uitgelicht ? svgEl('circle', { cx, cy, r: 11.5, fill: 'none', stroke: '#fff', 'stroke-width': 1.6, opacity: .9 }) : null,
       svgEl('circle', { class: 'pion', cx, cy, r: 8.2, fill: ROLKLEUR[slot.role] || '#555' }),
@@ -3958,15 +3991,16 @@ __defs["app/scherm-schema.js"] = function () {
 // speelt, plus per blok de opstelling en de wisselinstructie.
 
 const { h, icoon, toonSheet, melding, minutenTekst, mmss, kopieer, bevestig, voornaam } = __mod("app/ui.js");
-const { S, wijzig, wedstrijdSpelers, spelerMetId, plan, genereer, deelLink, klokStart } = __mod("app/store.js");
+const { S, wijzig, wedstrijdSpelers, spelerMetId, plan, genereer, deelLink, klokStart, zonderWissels } = __mod("app/store.js");
 const { getFormation, slotsForCount } = __mod("lib/formations.js");
+const { maakSleepbaar } = __mod("app/slepen.js");
 const { tekenVeld } = __mod("app/veld.js");
 
 let gekozenBlok = 0;
 
 function blokLabel(blok, w) {
   const p = `K${blok.periode + 1}`;
-  return w.blokkenPerPeriode > 1 ? `${p}${'abcd'[blok.deel] || blok.deel + 1}` : p;
+  return w.blokkenPerPeriode > 1 && !zonderWissels(w) ? `${p}${'abcd'[blok.deel] || blok.deel + 1}` : p;
 }
 
 function schermSchema(ganaar) {
@@ -4099,6 +4133,7 @@ function blokDetail(w, p, spelers, formatie, i) {
 
   kaart.appendChild(tekenVeld(blok, wedstrijdSpelers(), w.formationId, {
     opTik: blok.vast ? null : (spelerId) => ruilSheet(w, p, i, spelerId),
+    sleep: !blok.vast,
   }));
 
   const opVeld = new Set(Object.values(blok.opstelling));
@@ -4109,10 +4144,26 @@ function blokDetail(w, p, spelers, formatie, i) {
       ...bank.map((q) => {
         const uit = !kanSpelen(w, q.id, blok);
         return h('button', { class: 'chip', disabled: blok.vast || uit,
+          'data-speler': blok.vast || uit ? null : q.id,
           style: uit ? { opacity: '.45' } : {},
           onclick: () => ruilSheet(w, p, i, q.id) },
           h('i', { class: 'dot' }), q.naam, uit ? h('span', { class: 'mini' }, '· niet inzetbaar') : null);
       })));
+  }
+  if (!blok.vast) {
+    kaart.appendChild(h('p', { class: 'uitleg', style: { marginTop: '10px', marginBottom: 0 } },
+      bank.length ? 'Sleep een speler naar een ander om ze te ruilen, ook van en naar de bank. Of tik erop.'
+        : 'Sleep een speler naar een ander om van plek te ruilen. Of tik erop.'));
+    maakSleepbaar(kaart, {
+      // Twee bankzitters ruilen verandert niets; wie er niet is, kan niet in het veld.
+      mag: (a, b) => kanSpelen(w, a, blok) && kanSpelen(w, b, blok)
+        && (Object.values(blok.opstelling).includes(a) || Object.values(blok.opstelling).includes(b)),
+      opRuil: (a, b) => {
+        ruil(w, blok, a, b);
+        melding(`${voornaam(spelerMetId(a)?.naam)} en ${voornaam(spelerMetId(b)?.naam)} geruild`);
+      },
+      label: (id) => voornaam(spelerMetId(id)?.naam),
+    });
   }
   return kaart;
 }
@@ -4235,12 +4286,90 @@ function tekstSheet() {
 
 return { blokLabel, schermSchema, ruilSheet };
 };
+__defs["app/slepen.js"] = function () {
+// Slepen om te ruilen: pak een speler in het veld of op de bank en laat hem
+// los op een ander. Werkt met vinger en muis (pointer events); de
+// drag-and-drop van de browser zelf doet niets op een telefoon.
+//
+// Alles met een `data-speler` in de houder is te slepen en is een plek om op
+// los te laten. Wie alleen tikt, krijgt gewoon de klik: het ruilscherm blijft
+// werken voor wie niet wil slepen.
+
+const { h } = __mod("app/ui.js");
+
+const DREMPEL = 8; // pixels voordat een tik een sleep wordt
+
+/**
+ * @param {Element} houder
+ * @param {object}  opties { mag(a, b): mag a met b ruilen?, opRuil(a, b), label(id): tekst op het balletje }
+ */
+function maakSleepbaar(houder, { mag, opRuil, label }) {
+  houder.classList.add('sleepbaar');
+  houder.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    const bron = e.target.closest('[data-speler]');
+    if (!bron || !houder.contains(bron)) return;
+    const id = bron.getAttribute('data-speler');
+    const start = { x: e.clientX, y: e.clientY };
+    let bal = null;
+    let doel = null;
+
+    const zetDoel = (el) => {
+      if (el === doel) return;
+      doel?.classList.remove('sleepdoel');
+      doel = el;
+      doel?.classList.add('sleepdoel');
+    };
+
+    const beweeg = (ev) => {
+      if (ev.pointerId !== e.pointerId) return;
+      if (!bal) {
+        if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < DREMPEL) return;
+        bal = h('div', { class: 'sleepbal', 'aria-hidden': 'true' }, label(id));
+        document.body.appendChild(bal);
+        bron.classList.add('gesleept');
+        houder.classList.add('bezig-met-slepen');
+      }
+      ev.preventDefault();
+      bal.style.transform = `translate(${ev.clientX}px, ${ev.clientY}px)`;
+      const onder = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('[data-speler]');
+      const ander = onder && houder.contains(onder) ? onder.getAttribute('data-speler') : null;
+      zetDoel(ander && ander !== id && mag(id, ander) ? onder : null);
+    };
+
+    const klaar = (ev) => {
+      if (ev.pointerId !== e.pointerId) return;
+      window.removeEventListener('pointermove', beweeg);
+      window.removeEventListener('pointerup', klaar);
+      window.removeEventListener('pointercancel', klaar);
+      if (!bal) return; // een gewone tik: de klik doet de rest
+      bal.remove();
+      bron.classList.remove('gesleept');
+      houder.classList.remove('bezig-met-slepen');
+      // De klik die na het loslaten nog komt, hoort bij het slepen.
+      const slik = (c) => { c.stopPropagation(); c.preventDefault(); };
+      houder.addEventListener('click', slik, { capture: true, once: true });
+      setTimeout(() => houder.removeEventListener('click', slik, { capture: true }), 0);
+      const naar = doel?.getAttribute('data-speler');
+      zetDoel(null);
+      if (ev.type === 'pointerup' && naar) opRuil(id, naar);
+    };
+
+    window.addEventListener('pointermove', beweeg, { passive: false });
+    window.addEventListener('pointerup', klaar);
+    window.addEventListener('pointercancel', klaar);
+  });
+  return houder;
+}
+
+return { maakSleepbaar };
+};
 __defs["app/scherm-live.js"] = function () {
 // Scherm: de wedstrijd zelf. Klok, huidige opstelling, en de twee knoppen
 // waar het langs de lijn om draait: "wissel gedaan" en "speler eruit".
 
 const { h, icoon, toonSheet, bevestig, melding, mmss, minutenTekst, piep, tril, voornaam } = __mod("app/ui.js");
-const { S, wijzig, wedstrijdSpelers, spelerMetId, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal } = __mod("app/store.js");
+const { S, wijzig, wedstrijdSpelers, spelerMetId, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal, echteWissel } = __mod("app/store.js");
 const { getFormation } = __mod("lib/formations.js");
 const { totaleSpeeltijd } = __mod("lib/schedule.js");
 const { tekenVeld } = __mod("app/veld.js");
@@ -4276,6 +4405,11 @@ function schermLive(ganaar, herteken) {
   const idx = actiefBlokIndex(p.blokken);
   const blok = p.blokken[idx];
   const komendeWissel = p.wissels[idx] || null;
+  // Het eerstvolgende moment waarop er echt iets verandert. Wisselmomenten
+  // zonder wissel (niemand op de bank) slaan we over: daar hoef je niets.
+  const volgendeIdx = p.wissels.findIndex((x, j) => j >= idx && echteWissel(x));
+  const volgendeSec = volgendeIdx >= 0 ? p.blokken[volgendeIdx].totSec : null;
+  let afgevinkt = false;
   const wrap = h('div', {});
 
   // ------------------------------------------------------------- klokkaart
@@ -4369,15 +4503,21 @@ function schermLive(ganaar, herteken) {
       : w.klok.pauzeReden === 'einde' ? 'einde wedstrijd'
       : `periode ${periode + 1} van ${w.periodes}${loopt ? '' : ' · gepauzeerd'}`;
 
-    const rest = blok.totSec - t;
-    const deel = Math.max(0, Math.min(1, (t - blok.vanSec) / Math.max(1, blok.totSec - blok.vanSec)));
+    // Aftellen naar de volgende echte wissel. Zijn die er niet meer, dan
+    // naar het eind van de periode.
+    const periodeEind = Math.min(totaal, (Math.floor(Math.min(t, totaal - 1) / (w.periodeMin * 60)) + 1) * w.periodeMin * 60);
+    const doel = volgendeSec ?? periodeEind;
+    const rest = doel - t;
+    const vanaf = volgendeSec === null ? periodeEind - w.periodeMin * 60 : blok.vanSec;
+    const deel = Math.max(0, Math.min(1, (t - vanaf) / Math.max(1, doel - vanaf)));
     balk.firstChild.style.width = `${deel * 100}%`;
-    balk.classList.toggle('bijna', rest <= 120 && rest > 0);
+    balk.classList.toggle('bijna', volgendeSec !== null && rest <= 120 && rest > 0);
     balk.classList.toggle('nu', rest <= 0);
 
+    const waarheen = volgendeSec !== null ? ' tot de wissel' : doel >= totaal ? ' tot het einde' : ' tot de rust';
     restEl.replaceChildren(rest > 0
-      ? h('span', {}, 'nog ', h('b', {}, mmss(rest)), ' tot de wissel')
-      : h('span', {}, komendeWissel ? 'wisselen!' : 'einde wedstrijd'));
+      ? h('span', {}, 'nog ', h('b', {}, mmss(rest)), waarheen)
+      : h('span', {}, volgendeSec !== null ? 'wisselen!' : doel >= totaal ? 'einde wedstrijd' : 'rust'));
 
     startKnop.replaceChildren(loopt ? '⏸ Pauze' : t === 0 ? '▶ Aftrap' : '▶ Verder');
     startKnop.onclick = () => (loopt ? klokPauze('hand') : klokStart());
@@ -4390,10 +4530,18 @@ function schermLive(ganaar, herteken) {
       sein();
     }
 
+    // Een wisselmoment waarop niets verandert: stil afvinken, geen alarm.
+    // Eén keer: tot het scherm opnieuw getekend is, tikt deze klok nog door.
+    if (t >= blok.totSec && komendeWissel && !echteWissel(komendeWissel)) {
+      if (!afgevinkt) { afgevinkt = true; bevestigWissel(idx, blok.totSec, { vanzelf: true }); }
+      return;
+    }
+
     // Wisselmelding
+    const wisselNu = t >= blok.totSec;
     const sleutel = `${w.id}:${blok.id}`;
-    if (rest <= 0 && !gemeld.has(sleutel)) { gemeld.add(sleutel); sein(); }
-    toonAlarm(rest <= 0);
+    if (wisselNu && komendeWissel && !gemeld.has(sleutel)) { gemeld.add(sleutel); sein(); }
+    toonAlarm(wisselNu);
   }
 
   function sein() {

@@ -2,7 +2,7 @@
 // waar het langs de lijn om draait: "wissel gedaan" en "speler eruit".
 
 import { h, icoon, toonSheet, bevestig, melding, mmss, minutenTekst, piep, tril, voornaam } from './ui.js';
-import { S, wijzig, wedstrijdSpelers, spelerMetId, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal } from './store.js';
+import { S, wijzig, wedstrijdSpelers, spelerMetId, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal, echteWissel } from './store.js';
 import { getFormation } from '../lib/formations.js';
 import { totaleSpeeltijd } from '../lib/schedule.js';
 import { tekenVeld } from './veld.js';
@@ -38,6 +38,11 @@ export function schermLive(ganaar, herteken) {
   const idx = actiefBlokIndex(p.blokken);
   const blok = p.blokken[idx];
   const komendeWissel = p.wissels[idx] || null;
+  // Het eerstvolgende moment waarop er echt iets verandert. Wisselmomenten
+  // zonder wissel (niemand op de bank) slaan we over: daar hoef je niets.
+  const volgendeIdx = p.wissels.findIndex((x, j) => j >= idx && echteWissel(x));
+  const volgendeSec = volgendeIdx >= 0 ? p.blokken[volgendeIdx].totSec : null;
+  let afgevinkt = false;
   const wrap = h('div', {});
 
   // ------------------------------------------------------------- klokkaart
@@ -131,15 +136,21 @@ export function schermLive(ganaar, herteken) {
       : w.klok.pauzeReden === 'einde' ? 'einde wedstrijd'
       : `periode ${periode + 1} van ${w.periodes}${loopt ? '' : ' · gepauzeerd'}`;
 
-    const rest = blok.totSec - t;
-    const deel = Math.max(0, Math.min(1, (t - blok.vanSec) / Math.max(1, blok.totSec - blok.vanSec)));
+    // Aftellen naar de volgende echte wissel. Zijn die er niet meer, dan
+    // naar het eind van de periode.
+    const periodeEind = Math.min(totaal, (Math.floor(Math.min(t, totaal - 1) / (w.periodeMin * 60)) + 1) * w.periodeMin * 60);
+    const doel = volgendeSec ?? periodeEind;
+    const rest = doel - t;
+    const vanaf = volgendeSec === null ? periodeEind - w.periodeMin * 60 : blok.vanSec;
+    const deel = Math.max(0, Math.min(1, (t - vanaf) / Math.max(1, doel - vanaf)));
     balk.firstChild.style.width = `${deel * 100}%`;
-    balk.classList.toggle('bijna', rest <= 120 && rest > 0);
+    balk.classList.toggle('bijna', volgendeSec !== null && rest <= 120 && rest > 0);
     balk.classList.toggle('nu', rest <= 0);
 
+    const waarheen = volgendeSec !== null ? ' tot de wissel' : doel >= totaal ? ' tot het einde' : ' tot de rust';
     restEl.replaceChildren(rest > 0
-      ? h('span', {}, 'nog ', h('b', {}, mmss(rest)), ' tot de wissel')
-      : h('span', {}, komendeWissel ? 'wisselen!' : 'einde wedstrijd'));
+      ? h('span', {}, 'nog ', h('b', {}, mmss(rest)), waarheen)
+      : h('span', {}, volgendeSec !== null ? 'wisselen!' : doel >= totaal ? 'einde wedstrijd' : 'rust'));
 
     startKnop.replaceChildren(loopt ? '⏸ Pauze' : t === 0 ? '▶ Aftrap' : '▶ Verder');
     startKnop.onclick = () => (loopt ? klokPauze('hand') : klokStart());
@@ -152,10 +163,18 @@ export function schermLive(ganaar, herteken) {
       sein();
     }
 
+    // Een wisselmoment waarop niets verandert: stil afvinken, geen alarm.
+    // Eén keer: tot het scherm opnieuw getekend is, tikt deze klok nog door.
+    if (t >= blok.totSec && komendeWissel && !echteWissel(komendeWissel)) {
+      if (!afgevinkt) { afgevinkt = true; bevestigWissel(idx, blok.totSec, { vanzelf: true }); }
+      return;
+    }
+
     // Wisselmelding
+    const wisselNu = t >= blok.totSec;
     const sleutel = `${w.id}:${blok.id}`;
-    if (rest <= 0 && !gemeld.has(sleutel)) { gemeld.add(sleutel); sein(); }
-    toonAlarm(rest <= 0);
+    if (wisselNu && komendeWissel && !gemeld.has(sleutel)) { gemeld.add(sleutel); sein(); }
+    toonAlarm(wisselNu);
   }
 
   function sein() {

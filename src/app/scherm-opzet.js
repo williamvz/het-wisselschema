@@ -2,7 +2,7 @@
 // wedstrijd het klaarzetten: wie is er, hoe spelen we, hoe lang.
 
 import { h, icoon, melding, datumTekst, bevestig, toonSheet } from './ui.js';
-import { S, wijzig, nieuweWedstrijd, nieuweGast, genereer, wanneer } from './store.js';
+import { S, wijzig, nieuweWedstrijd, nieuweGast, genereer, wanneer, zonderWissels } from './store.js';
 import { FORMATIONS, SPEELVORMEN, formationsForSize, getFormation } from '../lib/formations.js';
 import { tekenMiniVeld } from './veld.js';
 import { account, wachtOpOpslaan } from './samenwerken.js';
@@ -134,13 +134,19 @@ export function schermOpzet(ganaar) {
         ...PRESET_MIN.map((m2) => h('option', { value: String(m2), selected: w.periodeMin === m2 }, `${m2} min`)),
         PRESET_MIN.includes(w.periodeMin) ? null : h('option', { value: String(w.periodeMin), selected: true }, `${w.periodeMin} min`)))));
 
-  kaartTijd.appendChild(h('label', { class: 'veld' },
-    h('span', {}, 'Wisselmomenten per periode'),
-    h('div', { class: 'segment' },
-      ...[[1, 'Eén: bij de rust'], [2, 'Twee: ook halverwege']].map(([n, l]) =>
-        h('button', { 'aria-pressed': String(w.blokkenPerPeriode === n), onclick: () => zet((m) => { m.blokkenPerPeriode = n; }) }, l)))));
-  kaartTijd.appendChild(h('p', { class: 'uitleg' },
-    `Totaal ${w.periodes * w.periodeMin} minuten, verdeeld over ${w.periodes * w.blokkenPerPeriode} blokken van ${Math.round(w.periodeMin / w.blokkenPerPeriode * 10) / 10} minuten.`));
+  // Niemand op de bank: dan valt er niets te wisselen, en ook niets in te stellen.
+  if (zonderWissels(w)) {
+    kaartTijd.appendChild(h('p', { class: 'uitleg' },
+      `Totaal ${w.periodes * w.periodeMin} minuten. Er zijn niet meer spelers dan plekken, dus geen wissels: iedereen speelt de hele wedstrijd. Bij de rust kan wel iemand anders op doel gaan.`));
+  } else {
+    kaartTijd.appendChild(h('label', { class: 'veld' },
+      h('span', {}, 'Wisselmomenten per periode'),
+      h('div', { class: 'segment' },
+        ...[[1, 'Eén: bij de rust'], [2, 'Twee: ook halverwege']].map(([n, l]) =>
+          h('button', { 'aria-pressed': String(w.blokkenPerPeriode === n), onclick: () => zet((m) => { m.blokkenPerPeriode = n; }) }, l)))));
+    kaartTijd.appendChild(h('p', { class: 'uitleg' },
+      `Totaal ${w.periodes * w.periodeMin} minuten, verdeeld over ${w.periodes * w.blokkenPerPeriode} blokken van ${Math.round(w.periodeMin / w.blokkenPerPeriode * 10) / 10} minuten.`));
+  }
   wrap.appendChild(kaartTijd);
 
   // ---- verdeling

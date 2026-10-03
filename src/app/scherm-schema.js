@@ -2,15 +2,16 @@
 // speelt, plus per blok de opstelling en de wisselinstructie.
 
 import { h, icoon, toonSheet, melding, minutenTekst, mmss, kopieer, bevestig, voornaam } from './ui.js';
-import { S, wijzig, wedstrijdSpelers, spelerMetId, plan, genereer, deelLink, klokStart } from './store.js';
+import { S, wijzig, wedstrijdSpelers, spelerMetId, plan, genereer, deelLink, klokStart, zonderWissels } from './store.js';
 import { getFormation, slotsForCount } from '../lib/formations.js';
+import { maakSleepbaar } from './slepen.js';
 import { tekenVeld } from './veld.js';
 
 let gekozenBlok = 0;
 
 export function blokLabel(blok, w) {
   const p = `K${blok.periode + 1}`;
-  return w.blokkenPerPeriode > 1 ? `${p}${'abcd'[blok.deel] || blok.deel + 1}` : p;
+  return w.blokkenPerPeriode > 1 && !zonderWissels(w) ? `${p}${'abcd'[blok.deel] || blok.deel + 1}` : p;
 }
 
 export function schermSchema(ganaar) {
@@ -143,6 +144,7 @@ function blokDetail(w, p, spelers, formatie, i) {
 
   kaart.appendChild(tekenVeld(blok, wedstrijdSpelers(), w.formationId, {
     opTik: blok.vast ? null : (spelerId) => ruilSheet(w, p, i, spelerId),
+    sleep: !blok.vast,
   }));
 
   const opVeld = new Set(Object.values(blok.opstelling));
@@ -153,10 +155,26 @@ function blokDetail(w, p, spelers, formatie, i) {
       ...bank.map((q) => {
         const uit = !kanSpelen(w, q.id, blok);
         return h('button', { class: 'chip', disabled: blok.vast || uit,
+          'data-speler': blok.vast || uit ? null : q.id,
           style: uit ? { opacity: '.45' } : {},
           onclick: () => ruilSheet(w, p, i, q.id) },
           h('i', { class: 'dot' }), q.naam, uit ? h('span', { class: 'mini' }, '· niet inzetbaar') : null);
       })));
+  }
+  if (!blok.vast) {
+    kaart.appendChild(h('p', { class: 'uitleg', style: { marginTop: '10px', marginBottom: 0 } },
+      bank.length ? 'Sleep een speler naar een ander om ze te ruilen, ook van en naar de bank. Of tik erop.'
+        : 'Sleep een speler naar een ander om van plek te ruilen. Of tik erop.'));
+    maakSleepbaar(kaart, {
+      // Twee bankzitters ruilen verandert niets; wie er niet is, kan niet in het veld.
+      mag: (a, b) => kanSpelen(w, a, blok) && kanSpelen(w, b, blok)
+        && (Object.values(blok.opstelling).includes(a) || Object.values(blok.opstelling).includes(b)),
+      opRuil: (a, b) => {
+        ruil(w, blok, a, b);
+        melding(`${voornaam(spelerMetId(a)?.naam)} en ${voornaam(spelerMetId(b)?.naam)} geruild`);
+      },
+      label: (id) => voornaam(spelerMetId(id)?.naam),
+    });
   }
   return kaart;
 }

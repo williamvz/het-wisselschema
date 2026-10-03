@@ -368,3 +368,14 @@ table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; col
 .opslag.ok { color: var(--accent); }
 .opslag.bezig { color: var(--waarschuwing); }
 .opslag.uit { color: var(--alarm); }
+
+/* ---- slepen om te ruilen (slepen.js) */
+.sleepbaar [data-speler] { touch-action: none; -webkit-user-select: none; user-select: none; }
+.sleepbaar .veld [data-speler] { cursor: grab; }
+.sleepbal { position: fixed; left: 0; top: 0; z-index: 90; pointer-events: none;
+  margin: -46px 0 0 -30px; min-width: 60px; padding: 8px 12px; border-radius: 999px; text-align: center;
+  background: var(--accent); color: #fff; font-weight: 700; font-size: .9rem; box-shadow: var(--schaduw); }
+.bezig-met-slepen .gesleept { opacity: .35; }
+.chip.sleepdoel { outline: 3px solid var(--accent); outline-offset: 2px; }
+.veld .sleepdoel .pion { stroke: #fff; stroke-width: 2.4; }
+.veld .sleepdoel { filter: drop-shadow(0 0 3px rgba(255,255,255,.9)); }

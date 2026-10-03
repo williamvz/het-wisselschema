@@ -14,6 +14,14 @@
   aanpast, wordt vanzelf opgeslagen.
 - Werk je in de ene wedstrijd en je collega in de andere, dan merk je niets
   van elkaar. Tijdens de wedstrijd zelf werk je samen zoals voorheen.
+- Spelers ruilen door te slepen. Bij een blok in het schema sleep je een
+  speler naar een ander: binnen het veld, of van en naar de bank. Tikken en
+  kiezen met wie je ruilt kan nog steeds.
+- Geen wissels, geen wisselopties. Zijn er niet meer spelers dan plekken in
+  het veld, dan vraagt de app niet naar wisselmomenten. Tijdens de wedstrijd
+  telt de klok dan af naar de rust in plaats van naar een wissel. Er komt ook
+  geen wisselalarm voor een moment waarop niets verandert, en dat geldt ook
+  als er wel een bank is.
 - Na de update: herlaad de app op alle telefoons. Een oude versie kan niets
   meer aan de wedstrijden veranderen, en de server zet de wedstrijd die al
   klaarstond vanzelf in de nieuwe lijst.

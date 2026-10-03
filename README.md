@@ -37,9 +37,11 @@ je hem met de hele club.
   8- of 11-tal), hoeveel perioden van hoeveel minuten, en welke opstelling.
 - **Schema maken** — zo eerlijk mogelijk verdeeld, met een echte keeper in elk
   blok, keepersbeurten verdeeld, en niemand twee blokken achter elkaar op de bank.
-- **Zelf bijsturen** — tik op een vakje om twee spelers te ruilen. Dat blok
+- **Zelf bijsturen** — sleep een speler naar een ander om ze te ruilen, ook
+  van en naar de bank, of tik op een vakje. Dat blok
   ligt dan vast en de rest wordt eromheen opnieuw verdeeld.
-- **Live meelopen** — klok per periode, aftelling tot de volgende wissel,
+- **Live meelopen** — klok per periode, aftelling tot de volgende wissel
+  (of tot de rust, als er niets te wisselen valt),
   geluid en trilsignaal, en het scherm blijft aan.
 - **Onverwachte wissel** — één knop, kies de speler, en je krijgt meteen te
   horen wie erin komt en wie doorschuift. De rest van de wedstrijd wordt
@@ -175,7 +177,7 @@ lange verzoeken toch af, dan wacht de app voortaan korter.
 ```bash
 npm install        # alleen nodig voor de tests
 npm run build      # src/ -> index.html (één bestand, geen bundler-afhankelijkheid)
-npm test           # 92 tests: motor, samenvoegen, server, en de app in een browser
+npm test           # 94 tests: motor, samenvoegen, server, en de app in een browser
 npm run check      # laadt alle modules, vangt import- en syntaxfouten
 npm run serve      # draait de server lokaal op poort 8099 (inrichtcode in de uitvoer)
 ```
