@@ -145,10 +145,14 @@ export function schermLive(ganaar, herteken) {
   function ververs() {
     const t = klokStand();
     const loopt = w.klok.loopt;
-    klokEl.textContent = mmss(t);
+    const periode = Math.min(w.periodes - 1, Math.floor(t / (w.periodeMin * 60)));
+    // De klok telt af: hoeveel er nog over is van deze periode. Naar boven
+    // afgerond, zodat hij bij de aftrap op 15:00 staat en niet op 14:59.
+    const overInPeriode = t >= totaal ? 0 : Math.ceil((periode + 1) * w.periodeMin * 60 - t);
+    klokEl.textContent = mmss(overInPeriode);
+    klokEl.setAttribute('aria-label', `Nog ${mmss(overInPeriode)} in periode ${periode + 1}`);
     klokEl.classList.toggle('pauze', !loopt);
 
-    const periode = Math.min(w.periodes - 1, Math.floor(t / (w.periodeMin * 60)));
     kwartEl.textContent = w.klok.pauzeReden === 'rust'
       ? `rust na periode ${periode + (t >= (periode + 1) * w.periodeMin * 60 ? 1 : 0)}`
       : w.klok.pauzeReden === 'einde' ? 'einde wedstrijd'
@@ -238,10 +242,11 @@ export function schermLive(ganaar, herteken) {
 
   function klokSheet() {
     toonSheet('Klok bijstellen', (c, sluit) => {
-      c.appendChild(h('p', { class: 'uitleg' }, 'De scheidsrechter houdt de echte tijd bij. Loopt jouw klok uit de pas, zet hem dan gelijk.'));
+      c.appendChild(h('p', { class: 'uitleg' }, 'De scheidsrechter houdt de echte tijd bij. Loopt jouw klok uit de pas, zet hem dan gelijk. De klok telt af: +1 min is een minuut meer op de klok.'));
+      // Wat erbij komt op de klok die aftelt, gaat af van de gespeelde tijd.
       c.appendChild(h('div', { class: 'rij2' },
         ...[[-60, '−1 min'], [-10, '−10 sec'], [10, '+10 sec'], [60, '+1 min']].map(([d, l]) =>
-          h('button', { class: 'knop', onclick: () => { klokZet(klokStand() + d); sluit(); } }, l))));
+          h('button', { class: 'knop', onclick: () => { klokZet(Math.min(totaal, klokStand() - d)); sluit(); } }, l))));
       c.appendChild(h('div', { class: 'tussenkop' }, 'Naar het begin van'));
       c.appendChild(h('div', { class: 'knoprij' },
         ...Array.from({ length: w.periodes }, (_, i) => h('button', { class: 'knop klein',

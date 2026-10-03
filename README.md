@@ -40,7 +40,7 @@ je hem met de hele club.
 - **Zelf bijsturen** — sleep een speler naar een ander om ze te ruilen, ook
   van en naar de bank, of tik op een vakje. Dat blok
   ligt dan vast en de rest wordt eromheen opnieuw verdeeld.
-- **Live meelopen** — klok per periode, aftelling tot de volgende wissel
+- **Live meelopen** — een klok die per periode aftelt, aftelling tot de volgende wissel
   (of tot de rust, als er niets te wisselen valt),
   geluid en trilsignaal, en het scherm blijft aan.
 - **Wisselen wanneer jij wilt** — sleep in het live-scherm een bankspeler

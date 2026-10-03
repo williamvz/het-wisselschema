@@ -59,12 +59,11 @@ test('de app start, bouwt een schema en overleeft een uitval', async (t) => {
   // --- live
   await pagina.getByRole('button', { name: 'Wedstrijd starten' }).click();
   await pagina.waitForSelector('.klok');
-  assert.equal(await pagina.locator('.klok').textContent(), '0:00');
+  assert.equal(await pagina.locator('.klok').textContent(), '15:00', 'de klok telt af vanaf de hele periode');
 
   await pagina.getByRole('button', { name: '▶ Aftrap' }).click();
-  await pagina.waitForTimeout(1200);
-  const naStart = await pagina.locator('.klok').textContent();
-  assert.notEqual(naStart, '0:00', `klok loopt (${naStart})`);
+  // De klok telt af: van 15:00 naar 14:59 en verder.
+  await pagina.waitForFunction(() => /^14:\d\d$/.test(document.querySelector('.klok').textContent), null, { timeout: 5000 });
 
   // --- score bijhouden
   const veldVoorGoal = (await pagina.locator('svg.veld .naam').allTextContents()).map((x) => x.trim());
@@ -209,7 +208,7 @@ test('een lopende wedstrijd wordt niet per ongeluk gewist vanuit het opzetscherm
   assert.equal(await pagina.locator('table.schema tbody tr').count(), 7, 'schema is intact');
   await pagina.locator('nav').getByRole('button', { name: 'Live' }).click();
   await pagina.waitForSelector('.klok');
-  assert.notEqual(await pagina.locator('.klok').textContent(), '0:00', 'de gespeelde tijd is bewaard');
+  assert.notEqual(await pagina.locator('.klok').textContent(), '15:00', 'de gespeelde tijd is bewaard');
 });
 
 test('een gastspeler doet één wedstrijd mee en verdwijnt daarna weer', async (t) => {
@@ -348,11 +347,12 @@ test('tijdens de wedstrijd wisselen door te slepen: bankspeler erin, en terug te
   await pagina.getByRole('button', { name: 'Maak het wisselschema' }).click();
   await pagina.getByRole('button', { name: 'Wedstrijd starten' }).click();
   await pagina.getByRole('button', { name: '▶ Aftrap' }).click();
-  // Een paar minuten verder.
-  await pagina.getByRole('button', { name: 'Bijstellen' }).click();
-  await pagina.locator('.sheet').getByRole('button', { name: '+1 min' }).click();
-  await pagina.getByRole('button', { name: 'Bijstellen' }).click();
-  await pagina.locator('.sheet').getByRole('button', { name: '+1 min' }).click();
+  // Een paar minuten verder: twee minuten minder op de klok die aftelt.
+  for (let i = 0; i < 2; i++) {
+    await pagina.getByRole('button', { name: 'Bijstellen' }).click();
+    await pagina.locator('.sheet').getByRole('button', { name: '−1 min' }).click();
+  }
+  await pagina.waitForFunction(() => /^1[23]:\d\d$/.test(document.querySelector('.klok').textContent), null, { timeout: 3000 });
 
   const veld = pagina.locator('.kaart.sleepbaar svg.veld');
   const bankChip = pagina.locator('.kaart.sleepbaar .chip[data-speler]').first();

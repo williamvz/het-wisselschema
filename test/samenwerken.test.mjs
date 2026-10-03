@@ -72,7 +72,7 @@ test('twee trainers houden samen een wedstrijd bij, ook als er even geen bereik 
   await naarLive(D);
   await D.waitForFunction(() => {
     const k = document.querySelector('.klok');
-    return k && k.textContent !== '0:00' && !k.classList.contains('pauze');
+    return k && k.textContent !== '15:00' && !k.classList.contains('pauze');
   }, null, { timeout: 6000 });
   const seconden = async (p) => {
     const [m, s2] = (await p.locator('.klok').textContent()).split(':').map(Number);
