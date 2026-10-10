@@ -46,9 +46,25 @@ export function schermSchema(ganaar) {
   kaart.appendChild(h('div', { class: 'kaart-kop' },
     h('h2', {}, 'Wisselschema'),
     h('span', { class: 'mini' }, `${w.periodes * w.periodeMin} min`)));
-  kaart.appendChild(h('div', { class: 'schema-wrap' }, rasterTabel(w, p, spelers, formatie)));
+  const rasterWrap = h('div', { class: 'schema-wrap' }, rasterTabel(w, p, spelers, formatie));
+  const [vanBlok, vanId] = [(x) => +x.split(':')[0], (x) => x.slice(x.indexOf(':') + 1)];
+  maakSleepbaar(rasterWrap, {
+    // Alleen binnen één blok; twee bankzitters ruilen verandert niets.
+    mag: (a, b) => {
+      const i = vanBlok(a);
+      if (i !== vanBlok(b)) return false;
+      const op = Object.values(p.blokken[i].opstelling);
+      return op.includes(vanId(a)) || op.includes(vanId(b));
+    },
+    opRuil: (a, b) => {
+      ruil(w, p.blokken[vanBlok(a)], vanId(a), vanId(b));
+      melding(`${voornaam(spelerMetId(vanId(a))?.naam)} en ${voornaam(spelerMetId(vanId(b))?.naam)} geruild`);
+    },
+    label: (id) => voornaam(spelerMetId(vanId(id))?.naam),
+  });
+  kaart.appendChild(rasterWrap);
   kaart.appendChild(h('p', { class: 'uitleg', style: { marginTop: '10px', marginBottom: '0' } },
-    'Tik op een vakje om iemand te ruilen. Een dikke rand betekent dat je het blok zelf hebt vastgezet.'));
+    'Sleep een vakje naar een ander vakje in dezelfde kolom om te ruilen, of tik erop. Een dikke rand betekent dat je het blok zelf hebt vastgezet.'));
   wrap.appendChild(kaart);
 
   // ---- blok voor blok
@@ -105,6 +121,8 @@ function rasterTabel(w, p, spelers, formatie) {
         class: `cel ${slot ? slot.role : speeltNiet ? 'weg' : 'bank'}${gepind ? ' vast' : ''}`,
         disabled: b.vast,
         title: `${st.naam} · ${blokLabel(b, w)}`,
+        // blokIndex:spelerId, zodat slepen weet in welke kolom het speelt
+        'data-speler': b.vast || speeltNiet ? null : `${i}:${st.spelerId}`,
         onclick: () => ruilSheet(w, p, i, st.spelerId),
       }, slot ? slot.label : speeltNiet ? '–' : 'bank');
       return h('td', {}, knop);

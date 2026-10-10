@@ -142,11 +142,15 @@ export function schermLive(ganaar, herteken) {
     'Rechts: doelpunten voor en tegen terwijl de speler in het veld stond.'));
   wrap.appendChild(tijdKaart);
 
-  wrap.appendChild(h('button', { class: 'knop breed', style: { marginTop: '10px' },
-    onclick: () => bevestig('Wedstrijd afronden?',
+  const afrondenOnderaan = h('button', { class: 'knop breed', style: { marginTop: '10px' }, onclick: afronden },
+    'Wedstrijd afronden');
+  wrap.appendChild(afrondenOnderaan);
+
+  function afronden() {
+    bevestig('Wedstrijd afronden?',
       'De gespeelde minuten worden bijgeschreven in het seizoenssaldo en de wedstrijd gaat naar het archief.',
-      () => { rondAf(); ganaar('archief'); melding('Wedstrijd opgeslagen'); }, { knop: 'Afronden' }) },
-    'Wedstrijd afronden'));
+      () => { rondAf(); ganaar('archief'); melding('Wedstrijd opgeslagen'); }, { knop: 'Afronden' });
+  }
 
   // ------------------------------------------------------------- de klok
   function ververs() {
@@ -193,8 +197,12 @@ export function schermLive(ganaar, herteken) {
         : h('span', {}, doel >= totaal ? 'einde wedstrijd' : 'rust'));
     }
 
-    startKnop.replaceChildren(loopt ? '⏸ Pauze' : t === 0 ? '▶ Aftrap' : '▶ Verder');
-    startKnop.onclick = () => (loopt ? klokPauze('hand') : klokStart());
+    // Is de tijd om, dan is er niets om mee verder te gaan: de knop bovenin
+    // rondt de wedstrijd af en die onderaan is dan overbodig.
+    const afgelopen = !loopt && t >= totaal;
+    afrondenOnderaan.hidden = afgelopen;
+    startKnop.replaceChildren(afgelopen ? 'Wedstrijd afronden' : loopt ? '⏸ Pauze' : t === 0 ? '▶ Aftrap' : '▶ Verder');
+    startKnop.onclick = afgelopen ? afronden : () => (loopt ? klokPauze('hand') : klokStart());
 
     // Automatisch stoppen aan het eind van een periode; de klok loopt in het
     // echt ook niet door tijdens het limonadekwartier.

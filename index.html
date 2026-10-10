@@ -412,7 +412,8 @@ table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; col
 .tot-wissel.groot.nu .label { font-size: 1.2rem; }
 .tot-wissel.groot.nu .wie, .tot-wissel.groot.nu .wie span { color: #fff; }
 .tot-wissel.groot .plekken { margin-top: 4px; font-size: .8rem; font-weight: 600; color: var(--zacht); }
-.tot-wissel.groot.nu .plekken { color: #fff; }</style>
+.tot-wissel.groot.nu .plekken { color: #fff; }
+.schema .cel.sleepdoel { outline: 3px solid var(--accent); outline-offset: 1px; }</style>
 </head>
 <body>
 <div id="app"></div>
@@ -4085,9 +4086,25 @@ function schermSchema(ganaar) {
   kaart.appendChild(h('div', { class: 'kaart-kop' },
     h('h2', {}, 'Wisselschema'),
     h('span', { class: 'mini' }, `${w.periodes * w.periodeMin} min`)));
-  kaart.appendChild(h('div', { class: 'schema-wrap' }, rasterTabel(w, p, spelers, formatie)));
+  const rasterWrap = h('div', { class: 'schema-wrap' }, rasterTabel(w, p, spelers, formatie));
+  const [vanBlok, vanId] = [(x) => +x.split(':')[0], (x) => x.slice(x.indexOf(':') + 1)];
+  maakSleepbaar(rasterWrap, {
+    // Alleen binnen één blok; twee bankzitters ruilen verandert niets.
+    mag: (a, b) => {
+      const i = vanBlok(a);
+      if (i !== vanBlok(b)) return false;
+      const op = Object.values(p.blokken[i].opstelling);
+      return op.includes(vanId(a)) || op.includes(vanId(b));
+    },
+    opRuil: (a, b) => {
+      ruil(w, p.blokken[vanBlok(a)], vanId(a), vanId(b));
+      melding(`${voornaam(spelerMetId(vanId(a))?.naam)} en ${voornaam(spelerMetId(vanId(b))?.naam)} geruild`);
+    },
+    label: (id) => voornaam(spelerMetId(vanId(id))?.naam),
+  });
+  kaart.appendChild(rasterWrap);
   kaart.appendChild(h('p', { class: 'uitleg', style: { marginTop: '10px', marginBottom: '0' } },
-    'Tik op een vakje om iemand te ruilen. Een dikke rand betekent dat je het blok zelf hebt vastgezet.'));
+    'Sleep een vakje naar een ander vakje in dezelfde kolom om te ruilen, of tik erop. Een dikke rand betekent dat je het blok zelf hebt vastgezet.'));
   wrap.appendChild(kaart);
 
   // ---- blok voor blok
@@ -4144,6 +4161,8 @@ function rasterTabel(w, p, spelers, formatie) {
         class: `cel ${slot ? slot.role : speeltNiet ? 'weg' : 'bank'}${gepind ? ' vast' : ''}`,
         disabled: b.vast,
         title: `${st.naam} · ${blokLabel(b, w)}`,
+        // blokIndex:spelerId, zodat slepen weet in welke kolom het speelt
+        'data-speler': b.vast || speeltNiet ? null : `${i}:${st.spelerId}`,
         onclick: () => ruilSheet(w, p, i, st.spelerId),
       }, slot ? slot.label : speeltNiet ? '–' : 'bank');
       return h('td', {}, knop);
@@ -4559,11 +4578,15 @@ function schermLive(ganaar, herteken) {
     'Rechts: doelpunten voor en tegen terwijl de speler in het veld stond.'));
   wrap.appendChild(tijdKaart);
 
-  wrap.appendChild(h('button', { class: 'knop breed', style: { marginTop: '10px' },
-    onclick: () => bevestig('Wedstrijd afronden?',
+  const afrondenOnderaan = h('button', { class: 'knop breed', style: { marginTop: '10px' }, onclick: afronden },
+    'Wedstrijd afronden');
+  wrap.appendChild(afrondenOnderaan);
+
+  function afronden() {
+    bevestig('Wedstrijd afronden?',
       'De gespeelde minuten worden bijgeschreven in het seizoenssaldo en de wedstrijd gaat naar het archief.',
-      () => { rondAf(); ganaar('archief'); melding('Wedstrijd opgeslagen'); }, { knop: 'Afronden' }) },
-    'Wedstrijd afronden'));
+      () => { rondAf(); ganaar('archief'); melding('Wedstrijd opgeslagen'); }, { knop: 'Afronden' });
+  }
 
   // ------------------------------------------------------------- de klok
   function ververs() {
@@ -4610,8 +4633,12 @@ function schermLive(ganaar, herteken) {
         : h('span', {}, doel >= totaal ? 'einde wedstrijd' : 'rust'));
     }
 
-    startKnop.replaceChildren(loopt ? '⏸ Pauze' : t === 0 ? '▶ Aftrap' : '▶ Verder');
-    startKnop.onclick = () => (loopt ? klokPauze('hand') : klokStart());
+    // Is de tijd om, dan is er niets om mee verder te gaan: de knop bovenin
+    // rondt de wedstrijd af en die onderaan is dan overbodig.
+    const afgelopen = !loopt && t >= totaal;
+    afrondenOnderaan.hidden = afgelopen;
+    startKnop.replaceChildren(afgelopen ? 'Wedstrijd afronden' : loopt ? '⏸ Pauze' : t === 0 ? '▶ Aftrap' : '▶ Verder');
+    startKnop.onclick = afgelopen ? afronden : () => (loopt ? klokPauze('hand') : klokStart());
 
     // Automatisch stoppen aan het eind van een periode; de klok loopt in het
     // echt ook niet door tijdens het limonadekwartier.

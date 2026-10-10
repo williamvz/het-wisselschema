@@ -396,3 +396,4 @@ table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; col
 .tot-wissel.groot.nu .wie, .tot-wissel.groot.nu .wie span { color: #fff; }
 .tot-wissel.groot .plekken { margin-top: 4px; font-size: .8rem; font-weight: 600; color: var(--zacht); }
 .tot-wissel.groot.nu .plekken { color: #fff; }
+.schema .cel.sleepdoel { outline: 3px solid var(--accent); outline-offset: 1px; }
