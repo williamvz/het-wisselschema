@@ -1,5 +1,5 @@
 name: Het Wisselschema
-version: "2.2.0"
+version: "2.3.0"
 slug: wisselschema
 description: Wisselschema-assistent voor jeugdvoetbal - maakt het schema, bewaakt de wissels en herplant bij uitval.
 url: https://github.com/williamvz/het-wisselschema

@@ -1,5 +1,16 @@
 # Wijzigingen
 
+## 2.3.0
+
+- Is de wedstrijd afgelopen, dan staat bovenin de knop **Wedstrijd afronden**
+  in plaats van Verder. De losse knop onderaan verdwijnt dan.
+- Slepen om te ruilen werkt nu ook in het raster van het schema: sleep een
+  vakje naar een ander vakje in dezelfde kolom.
+- Clubbeheer: maak eerst een team aan en koppel daarna de trainers bij het
+  aanmaken van de trainer. Een nieuw team vraagt niet meer om trainers.
+- Als app op het beginscherm komt niets meer onder de statusbalk of de
+  homebalk van de iPhone te vallen.
+
 ## 2.2.0
 
 - Wedstrijden zijn nu echte, losse wedstrijden. Onder **Wedstrijden** staat
