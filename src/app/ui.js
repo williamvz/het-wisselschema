@@ -127,7 +127,7 @@ export function melding(tekst) {
   let el = document.getElementById('toast');
   if (!el) {
     el = h('div', { id: 'toast', style: {
-      position: 'fixed', left: '50%', bottom: '86px', transform: 'translateX(-50%)', zIndex: '70',
+      position: 'fixed', left: '50%', bottom: 'calc(86px + env(safe-area-inset-bottom))', transform: 'translateX(-50%)', zIndex: '70',
       background: 'var(--tekst)', color: 'var(--bg)', padding: '11px 18px', borderRadius: '11px',
       fontSize: '.88rem', fontWeight: '600', boxShadow: 'var(--schaduw)', maxWidth: '86vw', textAlign: 'center',
       pointerEvents: 'none', // anders blijft de onzichtbare balk tikken opvangen
