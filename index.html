@@ -5363,12 +5363,17 @@ async function probeer(fout, actie) {
 function teamSheet(team, ganaar) {
   toonSheet(team ? team.naam : 'Nieuw team', (c, sluit) => {
     const naam = h('input', { type: 'text', value: team ? team.naam : '', placeholder: 'JO9-1' });
-    const leden = kiesRij(beheer.gebruikers, team ? team.leden : [account.gebruiker.id]);
+    const leden = team ? kiesRij(beheer.gebruikers, team.leden) : null;
     const fout = foutVak();
     c.appendChild(h('label', { class: 'veld' }, h('span', {}, 'Teamnaam'), naam));
-    c.appendChild(h('div', { class: 'tussenkop', style: { marginTop: '4px' } }, 'Trainers van dit team'));
-    c.appendChild(leden.rij);
-    c.appendChild(h('p', { class: 'mini', style: { marginTop: '8px' } }, 'Zij zien dit team in de app en kunnen er samen aan werken, ook tegelijk tijdens de wedstrijd.'));
+    if (leden) {
+      c.appendChild(h('div', { class: 'tussenkop', style: { marginTop: '4px' } }, 'Trainers van dit team'));
+      c.appendChild(leden.rij);
+      c.appendChild(h('p', { class: 'mini', style: { marginTop: '8px' } }, 'Zij zien dit team in de app en kunnen er samen aan werken, ook tegelijk tijdens de wedstrijd.'));
+    } else {
+      // Eerst het team, dan de trainers: die koppel je bij het aanmaken van de trainer.
+      c.appendChild(h('p', { class: 'mini', style: { marginTop: '8px' } }, 'Maak eerst het team aan. Trainers koppel je daarna, bij het aanmaken van de trainer of door het team later te openen.'));
+    }
     c.appendChild(fout);
     c.appendChild(h('div', { class: 'knoprij', style: { marginTop: '10px' } },
       team ? h('button', { class: 'knop gevaar', onclick: () => {
@@ -5385,7 +5390,7 @@ function teamSheet(team, ganaar) {
           await doe(`api/teams/${team.id}`, 'PATCH', { naam: naam.value, leden: leden.gekozen() });
           melding('Team bijgewerkt');
         } else {
-          const r = await doe('api/teams', 'POST', { naam: naam.value, leden: leden.gekozen() });
+          const r = await doe('api/teams', 'POST', { naam: naam.value, leden: [] });
           melding(`${r.team.naam} aangemaakt`);
         }
         sluit();
@@ -5412,7 +5417,7 @@ function gebruikerSheet(g) {
     const gebruikersnaam = h('input', { type: 'text', value: g ? g.gebruikersnaam : '', autocomplete: 'off', autocapitalize: 'none', spellcheck: 'false' });
     const wachtwoord = h('input', { type: 'text', value: g ? '' : maakWachtwoord(), autocomplete: 'off', spellcheck: 'false',
       placeholder: g ? 'laat leeg om niet te wijzigen' : '' });
-    const teams = kiesRij(beheer.teams, g ? g.teams : (account.teamId ? [account.teamId] : []));
+    const teams = kiesRij(beheer.teams, g ? g.teams : []);
     let beheerder = g ? !!g.beheerder : false;
     const beheerderKnop = h('button', { class: 'schakel', type: 'button', 'aria-pressed': String(beheerder), 'aria-label': 'Beheerder',
       disabled: ikZelf, onclick: () => { beheerder = !beheerder; beheerderKnop.setAttribute('aria-pressed', String(beheerder)); } }, h('i', {}));
@@ -5430,6 +5435,7 @@ function gebruikerSheet(g) {
         h('button', { class: 'knop klein', type: 'button', style: { flex: 'none' }, onclick: () => { wachtwoord.value = maakWachtwoord(); } }, 'Nieuw'))));
     c.appendChild(h('div', { class: 'tussenkop', style: { marginTop: '4px' } }, 'Teams'));
     c.appendChild(teams.rij);
+    if (!g && !beheer.teams.length) c.appendChild(h('p', { class: 'mini', style: { marginTop: '8px' } }, 'Er zijn nog geen teams. Maak eerst een team aan.'));
     c.appendChild(h('div', { class: 'strook', style: { marginTop: '8px' } },
       h('div', { class: 'kop2' }, 'Beheerder', h('small', {}, ikZelf ? 'Je kunt jezelf geen beheerder af maken' : 'Mag trainers en teams beheren, en ziet alle teams')),
       beheerderKnop));
