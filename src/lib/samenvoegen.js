@@ -50,7 +50,7 @@ const isKlok = (pad) => pad === 'wedstrijd.klok' || pad === 'wedstrijden[].klok'
 // Het schema (blokken en de vastgezette opstellingen) hoort bij elkaar en
 // wordt nooit half van de een en half van de ander. De wedstrijd onthoudt
 // in `planMs` wanneer het schema voor het laatst veranderde.
-const SCHEMA = new Set(['blokken', 'pins', 'planMs']);
+const SCHEMA = new Set(['blokken', 'pins', 'bewust', 'correctie', 'planMs']);
 
 /**
  * @param basis  gemeenschappelijke voorganger (mag ontbreken)

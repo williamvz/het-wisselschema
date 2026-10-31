@@ -383,3 +383,35 @@ test('tijdens de wedstrijd wisselen door te slepen: bankspeler erin, en terug te
   await pagina.waitForFunction((n) => !document.querySelector('.kaart.sleepbaar svg.veld').textContent.includes(n), bankNaam);
   assert.deepEqual(fouten, []);
 });
+
+test('gespeelde minuten corrigeren: per speler een minuut erbij of eraf, zichtbaar in het schema', async (t) => {
+  const browser = await chromium.launch({ executablePath: EXE });
+  t.after(() => browser.close());
+  const { pagina, fouten } = await open(browser);
+  await klaarzetten(pagina);
+  await pagina.getByRole('button', { name: 'Maak het wisselschema' }).click();
+  await pagina.waitForSelector('table.schema');
+
+  const totaalVan = async (naam) => (await pagina.locator('table.schema tbody tr', { hasText: naam }).locator('td.tot').textContent()).trim();
+  const voor = await totaalVan('Daan');
+  const voorMin = parseInt(voor, 10);
+
+  await pagina.getByRole('button', { name: 'Minuten corrigeren' }).click();
+  await pagina.locator('.sheet').waitFor();
+  await pagina.locator('.sheet').getByRole('button', { name: 'Daan een minuut meer' }).click();
+  await pagina.locator('.sheet').getByRole('button', { name: 'Daan een minuut meer' }).click();
+  assert.match(await pagina.locator('.sheet').textContent(), /\+2 min/, 'de correctie staat bij Daan');
+  await pagina.locator('.overlay').click({ position: { x: 5, y: 5 } });
+  await pagina.locator('.sheet').waitFor({ state: 'detached' });
+
+  assert.equal(parseInt(await totaalVan('Daan'), 10), voorMin + 2, 'twee minuten erbij in het totaal');
+  assert.match(await pagina.locator('.melding').allTextContents().then((x) => x.join(' ')), /Gespeelde tijd gecorrigeerd: Daan \+2 min/);
+
+  // en terugdraaien kan door de minuten weer af te halen
+  await pagina.getByRole('button', { name: 'Minuten corrigeren' }).click();
+  await pagina.locator('.sheet').getByRole('button', { name: 'Daan een minuut minder' }).click();
+  await pagina.locator('.sheet').getByRole('button', { name: 'Daan een minuut minder' }).click();
+  await pagina.locator('.overlay').click({ position: { x: 5, y: 5 } });
+  assert.equal(parseInt(await totaalVan('Daan'), 10), voorMin);
+  assert.deepEqual(fouten, []);
+});

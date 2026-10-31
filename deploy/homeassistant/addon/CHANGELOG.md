@@ -1,5 +1,23 @@
 # Wijzigingen
 
+## 2.4.0
+
+- Zelf ingrijpen schudt het schema niet meer door elkaar. Een ruil, een
+  uitval of een wissel die later of eerder werd uitgevoerd verandert alleen
+  wat nodig is; voorheen werd bij elke ingreep de rest van de wedstrijd
+  opnieuw uitgerekend en verschoof er van alles.
+- Geef je iemand extra speeltijd ten koste van een ander, dan geldt dat als
+  jouw keuze. De app laat het zo staan, meldt wie hoeveel meer of minder
+  speelt, en geeft er geen waarschuwing "speeltijd loopt uiteen" meer over.
+- Nieuw: **Eerlijk herverdelen**, in het schema en in het live-scherm. Dat
+  maakt de bewuste afwijkingen goed in de rest van de wedstrijd, rond wat je
+  zelf hebt vastgezet. Gespeelde tijd blijft staan.
+- Nieuw: **Minuten corrigeren**, in het schema en in het live-scherm. Stond
+  iemand langer of korter in het veld dan de app dacht, zet het dan per
+  speler recht. Het telt mee in het totaal, in het seizoenssaldo en in de
+  verdeling van de rest van de wedstrijd. Het schema blijft staan, tenzij de
+  speeltijd daardoor echt scheef komt te liggen.
+
 ## 2.3.0
 
 - Is de wedstrijd afgelopen, dan staat bovenin de knop **Wedstrijd afronden**

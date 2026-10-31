@@ -7,7 +7,7 @@ import { getFormation } from '../lib/formations.js';
 import { totaleSpeeltijd } from '../lib/schedule.js';
 import { maakSleepbaar } from './slepen.js';
 import { tekenVeld } from './veld.js';
-import { blokLabel } from './scherm-schema.js';
+import { blokLabel, afwijkingKaart, speeltijden, ruilTekst, correctieSheet } from './scherm-schema.js';
 import { gastSheet } from './scherm-opzet.js';
 import { stand, plusMin, verloop, goalMinuut } from '../lib/score.js';
 
@@ -105,9 +105,11 @@ export function schermLive(ganaar, herteken) {
     opRuil: (a, b) => {
       const naam = (id) => voornaam(spelerMetId(id)?.naam);
       const [erin, eruit] = opVeld.has(a) ? [b, a] : [a, b];
+      const voor = speeltijden();
       ruilLive(a, b);
       tril(60);
-      melding(opVeld.has(a) && opVeld.has(b) ? `${naam(a)} en ${naam(b)} ruilen van plek` : `${naam(erin)} erin, ${naam(eruit)} eruit`);
+      const verschil = ruilTekst(voor, speeltijden(), [a, b]);
+      melding(opVeld.has(a) && opVeld.has(b) ? `${naam(a)} en ${naam(b)} ruilen van plek` : `${naam(erin)} erin, ${naam(eruit)} eruit · ${verschil}`);
     },
     label: (id) => voornaam(spelerMetId(id)?.naam),
   });
@@ -140,7 +142,10 @@ export function schermLive(ganaar, herteken) {
   }
   if (pm) tijdKaart.appendChild(h('p', { class: 'mini', style: { margin: '8px 0 0' } },
     'Rechts: doelpunten voor en tegen terwijl de speler in het veld stond.'));
+  tijdKaart.appendChild(h('button', { class: 'knop klein', style: { marginTop: '8px' }, onclick: correctieSheet }, 'Minuten corrigeren'));
   wrap.appendChild(tijdKaart);
+  const afwijking = afwijkingKaart();
+  if (afwijking) wrap.appendChild(afwijking);
 
   const afrondenOnderaan = h('button', { class: 'knop breed', style: { marginTop: '10px' }, onclick: afronden },
     'Wedstrijd afronden');

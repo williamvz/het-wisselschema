@@ -5,7 +5,7 @@
 // teamgegevens van de server; dan neemt samenwerken.js het bewaren van het
 // team over, en houdt deze module alleen bij wat er in het geheugen staat.
 
-import { planWedstrijd, herplan, wisselUitgevoerd, maakBlokken, totaleSpeeltijd, ruilNu } from '../lib/schedule.js';
+import { planWedstrijd, herplan, wisselUitgevoerd, maakBlokken, totaleSpeeltijd, ruilNu, ruilInBlok, herverdeelEerlijk } from '../lib/schedule.js';
 import { FORMATIONS, getFormation, formationsForSize } from '../lib/formations.js';
 import { voegSamen } from '../lib/samenvoegen.js';
 
@@ -50,7 +50,7 @@ export function nieuweWedstrijd(vorige = null) {
     periodes: vorige?.periodes ?? 4,
     periodeMin: vorige?.periodeMin ?? 15,
     blokkenPerPeriode: vorige?.blokkenPerPeriode ?? 1,
-    selectie: [], gasten: [], beschikbaar: {}, blokken: null, pins: {},
+    selectie: [], gasten: [], beschikbaar: {}, blokken: null, pins: {}, bewust: {}, correctie: {},
     opties: { seed: Math.floor(Math.random() * 1e6), vormAccent: 0, saldoGewicht: 0.6 },
     status: 'opzet',
     klok: { loopt: false, verstreken: 0, sindsMs: null, pauzeReden: null },
@@ -212,14 +212,14 @@ export function wijzig(fn, opties = {}) {
 // niet winnen van wat een collega intussen echt met de klok deed.
 function tijdInfo() {
   const w = S.wedstrijd;
-  return w ? { id: w.id, klok: JSON.stringify(w.klok ?? null), schema: JSON.stringify([w.blokken ?? null, w.pins ?? null]) } : null;
+  return w ? { id: w.id, klok: JSON.stringify(w.klok ?? null), schema: JSON.stringify([w.blokken ?? null, w.pins ?? null, w.bewust ?? null, w.correctie ?? null]) } : null;
 }
 function tijdstempels(voor, { vanzelf = false } = {}) {
   const w = S.wedstrijd;
   if (!w) return;
   const nieuw = !voor || voor.id !== w.id;
   if (w.klok && !vanzelf && (nieuw || JSON.stringify(w.klok) !== voor.klok)) w.klok = { ...w.klok, bijgewerkt: nu() };
-  if (nieuw || JSON.stringify([w.blokken ?? null, w.pins ?? null]) !== voor.schema) w.planMs = nu();
+  if (nieuw || JSON.stringify([w.blokken ?? null, w.pins ?? null, w.bewust ?? null, w.correctie ?? null]) !== voor.schema) w.planMs = nu();
 }
 
 // ------------------------------------------------------------- teamgegevens
@@ -361,6 +361,8 @@ export function genereer({ nieuweSeed = false } = {}) {
     // Zonder wissels alleen blokken per periode: halverwege valt er niets te wisselen.
     s.wedstrijd.blokken = maakBlokken(zonderWissels(s.wedstrijd) ? { ...s.wedstrijd, blokkenPerPeriode: 1 } : s.wedstrijd);
     s.wedstrijd.pins = {};
+    s.wedstrijd.bewust = {};
+    s.wedstrijd.correctie = {};
     planCache = null;
     const p = planWedstrijd(s.wedstrijd, wedstrijdSpelers(s.wedstrijd));
     s.wedstrijd.blokken = p.blokken;
@@ -382,6 +384,47 @@ export function ruilLive(a, b) {
     const res = ruilNu(s.wedstrijd, wedstrijdSpelers(s.wedstrijd), a, b, Math.round(klokStand(s.wedstrijd)));
     s.wedstrijd = { ...s.wedstrijd, ...res.match };
   }, { terugdraaibaar: true });
+}
+
+/** In het schema: twee spelers ruilen in één blok. De rest van het schema blijft staan. */
+export function ruilBlok(blokId, a, b) {
+  wijzig((s) => {
+    const res = ruilInBlok(s.wedstrijd, wedstrijdSpelers(s.wedstrijd), blokId, a, b);
+    s.wedstrijd = { ...s.wedstrijd, ...res.match };
+  }, { terugdraaibaar: true });
+}
+
+/** Bewuste afwijkingen goedmaken: de rest van het schema weer eerlijk verdelen. */
+export function herverdeel() {
+  wijzig((s) => {
+    const res = herverdeelEerlijk(s.wedstrijd, wedstrijdSpelers(s.wedstrijd));
+    s.wedstrijd = { ...s.wedstrijd, ...res.match };
+  }, { terugdraaibaar: true });
+}
+
+/**
+ * Gespeelde minuten corrigeren: `sec` is wat erbij (of af) moet ten opzichte
+ * van wat de app bijhield. Het schema wijzigt alleen als de speeltijd daardoor
+ * echt scheef komt te liggen.
+ */
+export function zetCorrectie(spelerId, sec) {
+  wijzig((s) => {
+    const w = s.wedstrijd;
+    if (!w) return;
+    const correctie = { ...(w.correctie || {}) };
+    if (Math.abs(sec) < 1) delete correctie[spelerId]; else correctie[spelerId] = Math.round(sec);
+    const bijgewerkt = { ...w, correctie };
+    const res = planWedstrijd(bijgewerkt, wedstrijdSpelers(w));
+    s.wedstrijd = { ...bijgewerkt, blokken: res.blokken };
+  }, { terugdraaibaar: true });
+}
+
+/** Wie nu bewust meer of minder speelt dan eerlijk: [{ spelerId, sec }], grootste plus eerst. */
+export function bewusteAfwijkingen(w = S.wedstrijd) {
+  return Object.entries((w && w.bewust) || {})
+    .filter(([id, sec]) => Math.abs(sec) >= 30 && (w.selectie || []).includes(id))
+    .map(([spelerId, sec]) => ({ spelerId, sec }))
+    .sort((a, b) => b.sec - a.sec);
 }
 
 /** `vanzelf`: een wisselmoment waarop niets verandert, door de app zelf afgevinkt. */

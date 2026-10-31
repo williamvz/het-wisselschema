@@ -28,7 +28,7 @@ export function schermOpzet(ganaar) {
   // Elke wijziging hier gooit het schema weg en laat het opnieuw berekenen.
   // Tijdens een lopende wedstrijd zou dat ook de al gespeelde tijd wissen,
   // dus daar vragen we eerst.
-  const doeZet = (fn) => wijzig((s) => { fn(s.wedstrijd); s.wedstrijd.blokken = null; s.wedstrijd.pins = {}; },
+  const doeZet = (fn) => wijzig((s) => { fn(s.wedstrijd); s.wedstrijd.blokken = null; s.wedstrijd.pins = {}; s.wedstrijd.bewust = {}; s.wedstrijd.correctie = {}; },
     { terugdraaibaar: true });
   const zet = (fn) => {
     if (!bezig) { doeZet(fn); return; }
