@@ -39,7 +39,10 @@ je hem met de hele club.
   blok, keepersbeurten verdeeld, en niemand twee blokken achter elkaar op de bank.
 - **Zelf bijsturen** — sleep een speler naar een ander om ze te ruilen, ook
   van en naar de bank, of tik op een vakje. Dat blok
-  ligt dan vast en de rest wordt eromheen opnieuw verdeeld.
+  ligt dan vast en de rest van het schema blijft precies zoals het was.
+  Geef je iemand zo extra speeltijd ten koste van een ander, dan is dat jouw
+  keuze: de app noemt het ("Daan +10 min, Sem −10 min") en trekt het niet
+  recht. Wil je het later toch goedmaken, tik dan op **Eerlijk herverdelen**.
 - **Live meelopen** — een klok die per periode aftelt, aftelling tot de volgende wissel
   (of tot de rust, als er niets te wisselen valt),
   geluid en trilsignaal, en het scherm blijft aan.

@@ -22,6 +22,7 @@ export const STANDAARD_OPTIES = {
   geenKeeperStraf: 500,  // strafpunten als er geen keeper op het veld staat
   vormAccent: 0,         // 0 = iedereen even veel, 1 = sterkte telt maximaal mee
   saldoGewicht: 0.6,     // hoe sterk het seizoenssaldo meeweegt (0 = niet)
+  stabiliteit: 60,       // strafpunten per speler die ten opzichte van het huidige schema in een ander blok komt te staan
   herstarts: 6,
   maxRondes: 12,
   seed: 20240101,
@@ -158,6 +159,15 @@ function bepaalDoelen(match, spelers, blokken, capaciteit, opties) {
     const gem = ruw.reduce((a, b) => a + b, 0) / (ruw.length || 1);
     spelers.forEach((p, i) => doelen.set(p.id, doelen.get(p.id) + (ruw[i] - gem)));
   }
+
+  // Bewuste afwijkingen van de trainer: wie extra tijd kreeg ten koste van een
+  // ander, heeft daar een hoger doel voor. Zo trekt de motor het niet recht.
+  const bewust = match.bewust || {};
+  if (spelers.some((p) => bewust[p.id])) {
+    const ruw = spelers.map((p) => bewust[p.id] || 0);
+    const gem = ruw.reduce((a, b) => a + b, 0) / (ruw.length || 1);
+    spelers.forEach((p, i) => doelen.set(p.id, doelen.get(p.id) + (ruw[i] - gem)));
+  }
   return { doelen, totaalVeldSec };
 }
 
@@ -186,7 +196,17 @@ function kostenVan(aanwezig, ctx) {
     }
   }
 
-  // 3. er hoort een keeper op het veld te staan
+  // 3. liever geen losse eindjes: wie in het huidige schema ergens anders stond,
+  //    verhuist alleen als dat de speeltijd echt eerlijker maakt
+  if (ctx.vorig && opties.stabiliteit > 0) {
+    for (const i of ctx.openIdx) {
+      const eerder = ctx.vorig[i];
+      if (!eerder) continue;
+      for (const id of aanwezig[i]) if (!eerder.has(id)) c += opties.stabiliteit;
+    }
+  }
+
+  // 4. er hoort een keeper op het veld te staan
   if (heeftKeepers) {
     for (let i = 0; i < blokken.length; i++) {
       if (capaciteit[i] <= 0) continue;
@@ -210,8 +230,10 @@ function losWieOp(ctx, rng) {
   const kandidatenVoor = (i) =>
     spelers.filter((p, s) => beschikbaarMatrix[s][i] && !gepind[i].has(p.id));
 
-  // --- greedy startoplossing: wie het verst achterloopt komt erin
-  const greedy = () => {
+  // --- greedy startoplossing: wie het verst achterloopt komt erin.
+  // Met `plakkerig` begint elk blok met wie er in het huidige schema stond;
+  // alleen wat dan nog openligt (uitval, een nieuwe speler) wordt aangevuld.
+  const greedy = (plakkerig = false) => {
     const aanwezig = startAanwezig();
     const gespeeld = new Map(spelers.map((p) => [p.id, 0]));
     for (let i = 0; i < blokken.length; i++) {
@@ -219,6 +241,13 @@ function losWieOp(ctx, rng) {
       if (!openIdx.includes(i)) {
         for (const id of aanwezig[i]) if (gespeeld.has(id)) gespeeld.set(id, gespeeld.get(id) + duur);
         continue;
+      }
+      if (plakkerig && ctx.vorig && ctx.vorig[i]) {
+        for (const id of ctx.vorig[i]) {
+          if (aanwezig[i].size >= capaciteit[i]) break;
+          const s = idx.get(id);
+          if (s !== undefined && beschikbaarMatrix[s][i]) aanwezig[i].add(id);
+        }
       }
       const nodig = capaciteit[i] - aanwezig[i].size;
       const kand = kandidatenVoor(i)
@@ -272,8 +301,13 @@ function losWieOp(ctx, rng) {
     return beste;
   };
 
-  let besteOpl = greedy();
+  let besteOpl = greedy(false);
   let besteKosten = verbeter(besteOpl);
+  if (ctx.vorig && ctx.vorig.some(Boolean)) {
+    const kand = greedy(true);
+    const k = verbeter(kand);
+    if (k < besteKosten - 1e-9) { besteKosten = k; besteOpl = kand; }
+  }
   for (let r = 0; r < ctx.opties.herstarts; r++) {
     const kand = willekeurig();
     const k = verbeter(kand);
@@ -460,7 +494,16 @@ export function planWedstrijd(match, alleSpelers, opties = {}) {
   const { doelen } = bepaalDoelen(match, spelers, blokken, capaciteit, o);
   const heeftKeepers = spelers.some((p) => p.keeper) && formatie.slots.some((s) => s.role === 'K');
 
-  const ctx = { blokken, spelers, doelen, opties: o, beschikbaarMatrix, capaciteit, openIdx, gepind, basisAanwezig, heeftKeepers };
+  // Wat er nu in het schema staat. Dat is het vertrekpunt: een kleine ingreep
+  // mag niet het hele schema door elkaar schudden.
+  const bekend = new Set(spelers.map((p) => p.id));
+  const vorig = blokken.map((b) => {
+    if (b.vast) return null;
+    const ids = Object.values(b.opstelling || {}).filter((id) => bekend.has(id));
+    return ids.length ? new Set(ids) : null;
+  });
+
+  const ctx = { blokken, spelers, doelen, opties: o, beschikbaarMatrix, capaciteit, openIdx, gepind, basisAanwezig, heeftKeepers, vorig };
   const rng = mulberry32(o.seed);
   const { aanwezig, kosten } = losWieOp(ctx, rng);
 
@@ -531,6 +574,7 @@ export function wisselLijst(blokken, spelers, formatie) {
 }
 
 function maakWaarschuwingen({ match, blokken, spelers, formatie, stats, capaciteit, zonderKeeper }) {
+  const bewust = match.bewust || {};
   const w = [];
   const kwart = (b) => `kwart ${b.periode + 1}`;
 
@@ -551,10 +595,13 @@ function maakWaarschuwingen({ match, blokken, spelers, formatie, stats, capacite
     return v.tot < heleWedstrijd - 1 || v.vanaf > 1;
   }));
 
-  const volledig = stats.filter((s) => s.speelSec > 0 && !deeltijd.has(s.spelerId));
+  // Wat de trainer bewust anders deed telt niet als scheefgroei.
+  const eerlijk = (s) => s.speelSec - (bewust[s.spelerId] || 0);
+  const volledig = stats.filter((s) => s.speelSec > 0 && !deeltijd.has(s.spelerId))
+    .sort((a, b) => eerlijk(b) - eerlijk(a));
   if (volledig.length > 1) {
     const max = volledig[0], laagste = volledig[volledig.length - 1];
-    const verschilMin = (max.speelSec - laagste.speelSec) / 60;
+    const verschilMin = (eerlijk(max) - eerlijk(laagste)) / 60;
     const blokDuur = blokken.length ? (blokken[0].totSec - blokken[0].vanSec) / 60 : 10;
     if (verschilMin > blokDuur * 1.2) {
       w.push({ ernst: 'midden', tekst: `Speeltijd loopt uiteen: ${max.naam} ${Math.round(max.speelSec / 60)} min, ${laagste.naam} ${Math.round(laagste.speelSec / 60)} min.` });
@@ -564,6 +611,13 @@ function maakWaarschuwingen({ match, blokken, spelers, formatie, stats, capacite
     if (deeltijd.has(s.spelerId)) continue;
     if (s.speelSec === 0) w.push({ ernst: 'hoog', tekst: `${s.naam} komt in dit schema helemaal niet in actie.` });
     else if (s.langsteBankReeks >= 2) w.push({ ernst: 'midden', tekst: `${s.naam} zit ${s.langsteBankReeks} blokken achter elkaar op de bank.` });
+  }
+
+  const afwijkend = spelers.filter((p) => Math.abs(bewust[p.id] || 0) >= 30)
+    .sort((a, b) => bewust[b.id] - bewust[a.id]);
+  if (afwijkend.length) {
+    const minuten = (sec) => `${sec > 0 ? '+' : '−'}${Math.round(Math.abs(sec) / 60)}`;
+    w.push({ ernst: 'info', tekst: `Bewust anders verdeeld: ${afwijkend.map((p) => `${p.naam} ${minuten(bewust[p.id])} min`).join(', ')}. De rest van het schema blijft staan.` });
   }
 
   for (const id of deeltijd) {
@@ -623,27 +677,86 @@ export function herplan(match, alleSpelers, { opSec = 0, wijzigingen = [], optie
 }
 
 /**
+ * Wat een handmatige ingreep aan de speeltijd verandert: wie er in het blok
+ * bij kwam krijgt de duur erbij, wie eruit ging verliest die. Dat telt als
+ * bewuste keuze van de trainer en wordt opgeteld bij eerdere keuzes.
+ */
+function metBewust(bewust, voorOpstelling, naOpstelling, duurSec) {
+  const voor = new Set(Object.values(voorOpstelling));
+  const na = new Set(Object.values(naOpstelling));
+  const uit = { ...(bewust || {}) };
+  const tel = (id, d) => { uit[id] = (uit[id] || 0) + d; if (Math.abs(uit[id]) < 1) delete uit[id]; };
+  for (const id of na) if (!voor.has(id)) tel(id, duurSec);
+  for (const id of voor) if (!na.has(id)) tel(id, -duurSec);
+  return uit;
+}
+
+/** Ruil `a` en `b` in een opstelling: van plek, of een bankspeler erin voor een veldspeler. */
+function ruilOpstelling(opstelling, a, b) {
+  const nieuw = { ...opstelling };
+  const plekA = Object.keys(nieuw).find((sid) => nieuw[sid] === a);
+  const plekB = Object.keys(nieuw).find((sid) => nieuw[sid] === b);
+  if (plekA) nieuw[plekA] = b;
+  if (plekB) nieuw[plekB] = a;
+  return nieuw;
+}
+
+/** Het schema zoals de trainer het nu ziet: wat er staat, vastgelegd als uitgangspunt. */
+function huidigSchema(match, alleSpelers) {
+  return planWedstrijd(match, alleSpelers).blokken;
+}
+
+/**
+ * Twee spelers ruilen in één blok van het schema. Alleen dat blok verandert
+ * en ligt daarna vast. Wat de ruil aan speeltijd verschuift geldt als bewuste
+ * keuze, dus de rest van het schema blijft precies zoals het was.
+ */
+export function ruilInBlok(match, alleSpelers, blokId, a, b) {
+  const blokken = huidigSchema(match, alleSpelers);
+  const i = blokken.findIndex((x) => x.id === blokId);
+  if (i < 0 || blokken[i].vast) return { match, ...planWedstrijd(match, alleSpelers) };
+
+  const voor = blokken[i].opstelling;
+  const opstelling = ruilOpstelling(voor, a, b);
+  const bewust = metBewust(match.bewust, voor, opstelling, blokken[i].totSec - blokken[i].vanSec);
+  const nieuweBlokken = blokken.map((x, j) => (j === i ? { ...x, opstelling } : x));
+
+  const bijgewerkt = { ...match, blokken: nieuweBlokken, bewust, pins: { ...(match.pins || {}), [blokId]: opstelling } };
+  const resultaat = planWedstrijd(bijgewerkt, alleSpelers);
+  return { match: { ...bijgewerkt, blokken: resultaat.blokken }, ...resultaat };
+}
+
+/**
  * Twee spelers ruilen nu, tijdens de wedstrijd: van plek in het veld, of een
  * bankspeler erin voor een veldspeler. Wat tot `opSec` gespeeld is, blijft
  * staan (het blok wordt hier doorgeknipt). De nieuwe opstelling ligt vast
- * tot het volgende wisselmoment; de rest van de wedstrijd wordt eromheen
- * opnieuw verdeeld, zodat de speeltijd eerlijk blijft.
+ * tot het volgende wisselmoment; de rest van het schema blijft staan en
+ * de verschoven speeltijd geldt als bewuste keuze van de trainer.
  */
 export function ruilNu(match, alleSpelers, a, b, opSec = 0) {
-  let blokken = match.blokken && match.blokken.length ? match.blokken : maakBlokken(match);
+  let blokken = huidigSchema(match, alleSpelers);
   if (opSec > 0) blokken = vergrendelTot(splitsOp(blokken, opSec), opSec);
   const i = blokken.findIndex((x) => !x.vast);
   if (i < 0) return { match, ...planWedstrijd(match, alleSpelers) };
 
-  const opstelling = { ...blokken[i].opstelling };
-  const plekA = Object.keys(opstelling).find((sid) => opstelling[sid] === a);
-  const plekB = Object.keys(opstelling).find((sid) => opstelling[sid] === b);
-  if (plekA) opstelling[plekA] = b;
-  if (plekB) opstelling[plekB] = a;
+  const voor = blokken[i].opstelling;
+  const opstelling = ruilOpstelling(voor, a, b);
+  const bewust = metBewust(match.bewust, voor, opstelling, blokken[i].totSec - blokken[i].vanSec);
   blokken = blokken.map((x, j) => (j === i ? { ...x, opstelling } : x));
 
-  const bijgewerkt = { ...match, blokken, pins: { ...(match.pins || {}), [blokken[i].id]: opstelling } };
+  const bijgewerkt = { ...match, blokken, bewust, pins: { ...(match.pins || {}), [blokken[i].id]: opstelling } };
   const resultaat = planWedstrijd(bijgewerkt, alleSpelers);
+  return { match: { ...bijgewerkt, blokken: resultaat.blokken }, ...resultaat };
+}
+
+/**
+ * Maakt de bewuste afwijkingen goed: de rest van het schema wordt opnieuw
+ * eerlijk verdeeld, rond de blokken die de trainer zelf vastzette.
+ * Gespeelde blokken blijven staan.
+ */
+export function herverdeelEerlijk(match, alleSpelers) {
+  const bijgewerkt = { ...match, blokken: huidigSchema(match, alleSpelers), bewust: {} };
+  const resultaat = planWedstrijd(bijgewerkt, alleSpelers, { stabiliteit: 0 });
   return { match: { ...bijgewerkt, blokken: resultaat.blokken }, ...resultaat };
 }
 
