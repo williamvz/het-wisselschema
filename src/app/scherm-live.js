@@ -7,7 +7,7 @@ import { getFormation } from '../lib/formations.js';
 import { totaleSpeeltijd } from '../lib/schedule.js';
 import { maakSleepbaar } from './slepen.js';
 import { tekenVeld } from './veld.js';
-import { blokLabel, afwijkingKaart, speeltijden, ruilTekst } from './scherm-schema.js';
+import { blokLabel, afwijkingKaart, speeltijden, ruilTekst, correctieSheet } from './scherm-schema.js';
 import { gastSheet } from './scherm-opzet.js';
 import { stand, plusMin, verloop, goalMinuut } from '../lib/score.js';
 
@@ -142,6 +142,7 @@ export function schermLive(ganaar, herteken) {
   }
   if (pm) tijdKaart.appendChild(h('p', { class: 'mini', style: { margin: '8px 0 0' } },
     'Rechts: doelpunten voor en tegen terwijl de speler in het veld stond.'));
+  tijdKaart.appendChild(h('button', { class: 'knop klein', style: { marginTop: '8px' }, onclick: correctieSheet }, 'Minuten corrigeren'));
   wrap.appendChild(tijdKaart);
   const afwijking = afwijkingKaart();
   if (afwijking) wrap.appendChild(afwijking);

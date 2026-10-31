@@ -117,3 +117,44 @@ test('een nieuw schema begint zonder bewuste afwijkingen en stabiel gedrag veran
   const sec = vers.statistieken.map((s) => s.speelSec);
   assert.ok((Math.max(...sec) - Math.min(...sec)) / 60 <= 12, 'vers schema is nog steeds eerlijk');
 });
+
+// ------------------------------------------------- gespeelde minuten corrigeren
+
+test('een correctie telt mee in de speeltijd van die speler', () => {
+  const { spelers, w } = opzet();
+  const voor = planWedstrijd(w, spelers);
+  const id = spelers[3].id;
+  const na = planWedstrijd({ ...w, correctie: { [id]: 180 } }, spelers);
+  assert.equal(speelSec(na, id), speelSec(voor, id) + 180);
+  assert.equal(na.statistieken.find((s) => s.spelerId === id).correctieSec, 180);
+  assert.ok(na.waarschuwingen.some((x) => x.tekst.includes('Gespeelde tijd gecorrigeerd')));
+});
+
+test('een kleine correctie laat het schema staan', () => {
+  const { spelers, w } = opzet();
+  const na = planWedstrijd({ ...w, correctie: { [spelers[3].id]: 120, [spelers[4].id]: -120 } }, spelers);
+  assert.equal(verschillen(w.blokken, na.blokken), 0, '2 minuten verschil is geen reden om te schuiven');
+});
+
+test('een grote correctie wordt in de rest van de wedstrijd opgevangen', () => {
+  const { spelers, w } = opzet();
+  const id = spelers[3].id;
+  const twaalf = 12 * 60;
+  const zonder = planWedstrijd(w, spelers);
+  const met = planWedstrijd({ ...w, correctie: { [id]: 2 * twaalf } }, spelers);
+  // Hij heeft al twee blokken extra gespeeld: de motor zet hem vaker op de bank.
+  assert.ok(met.statistieken.find((s) => s.spelerId === id).blokken < zonder.statistieken.find((s) => s.spelerId === id).blokken);
+  // En dat is eerlijk: het gecorrigeerde totaal ligt dicht bij de rest.
+  const sec = met.statistieken.map((s) => s.speelSec);
+  assert.ok((Math.max(...sec) - Math.min(...sec)) / 60 <= 2 * 12, 'verschil blijft binnen twee blokken');
+});
+
+test('een correctie blijft staan bij ruilen en herverdelen', () => {
+  const { spelers, w } = opzet();
+  const id = spelers[3].id;
+  const metCorrectie = { ...w, correctie: { [id]: 180 } };
+  const { eruit, erin } = ruilPaar(metCorrectie, 2);
+  const na = ruilInBlok(metCorrectie, spelers, w.blokken[2].id, erin, eruit);
+  assert.equal(na.match.correctie[id], 180);
+  assert.equal(herverdeelEerlijk(na.match, spelers).match.correctie[id], 180, 'een feit blijft een feit');
+});

@@ -50,7 +50,7 @@ export function nieuweWedstrijd(vorige = null) {
     periodes: vorige?.periodes ?? 4,
     periodeMin: vorige?.periodeMin ?? 15,
     blokkenPerPeriode: vorige?.blokkenPerPeriode ?? 1,
-    selectie: [], gasten: [], beschikbaar: {}, blokken: null, pins: {}, bewust: {},
+    selectie: [], gasten: [], beschikbaar: {}, blokken: null, pins: {}, bewust: {}, correctie: {},
     opties: { seed: Math.floor(Math.random() * 1e6), vormAccent: 0, saldoGewicht: 0.6 },
     status: 'opzet',
     klok: { loopt: false, verstreken: 0, sindsMs: null, pauzeReden: null },
@@ -212,14 +212,14 @@ export function wijzig(fn, opties = {}) {
 // niet winnen van wat een collega intussen echt met de klok deed.
 function tijdInfo() {
   const w = S.wedstrijd;
-  return w ? { id: w.id, klok: JSON.stringify(w.klok ?? null), schema: JSON.stringify([w.blokken ?? null, w.pins ?? null, w.bewust ?? null]) } : null;
+  return w ? { id: w.id, klok: JSON.stringify(w.klok ?? null), schema: JSON.stringify([w.blokken ?? null, w.pins ?? null, w.bewust ?? null, w.correctie ?? null]) } : null;
 }
 function tijdstempels(voor, { vanzelf = false } = {}) {
   const w = S.wedstrijd;
   if (!w) return;
   const nieuw = !voor || voor.id !== w.id;
   if (w.klok && !vanzelf && (nieuw || JSON.stringify(w.klok) !== voor.klok)) w.klok = { ...w.klok, bijgewerkt: nu() };
-  if (nieuw || JSON.stringify([w.blokken ?? null, w.pins ?? null, w.bewust ?? null]) !== voor.schema) w.planMs = nu();
+  if (nieuw || JSON.stringify([w.blokken ?? null, w.pins ?? null, w.bewust ?? null, w.correctie ?? null]) !== voor.schema) w.planMs = nu();
 }
 
 // ------------------------------------------------------------- teamgegevens
@@ -362,6 +362,7 @@ export function genereer({ nieuweSeed = false } = {}) {
     s.wedstrijd.blokken = maakBlokken(zonderWissels(s.wedstrijd) ? { ...s.wedstrijd, blokkenPerPeriode: 1 } : s.wedstrijd);
     s.wedstrijd.pins = {};
     s.wedstrijd.bewust = {};
+    s.wedstrijd.correctie = {};
     planCache = null;
     const p = planWedstrijd(s.wedstrijd, wedstrijdSpelers(s.wedstrijd));
     s.wedstrijd.blokken = p.blokken;
@@ -398,6 +399,23 @@ export function herverdeel() {
   wijzig((s) => {
     const res = herverdeelEerlijk(s.wedstrijd, wedstrijdSpelers(s.wedstrijd));
     s.wedstrijd = { ...s.wedstrijd, ...res.match };
+  }, { terugdraaibaar: true });
+}
+
+/**
+ * Gespeelde minuten corrigeren: `sec` is wat erbij (of af) moet ten opzichte
+ * van wat de app bijhield. Het schema wijzigt alleen als de speeltijd daardoor
+ * echt scheef komt te liggen.
+ */
+export function zetCorrectie(spelerId, sec) {
+  wijzig((s) => {
+    const w = s.wedstrijd;
+    if (!w) return;
+    const correctie = { ...(w.correctie || {}) };
+    if (Math.abs(sec) < 1) delete correctie[spelerId]; else correctie[spelerId] = Math.round(sec);
+    const bijgewerkt = { ...w, correctie };
+    const res = planWedstrijd(bijgewerkt, wedstrijdSpelers(w));
+    s.wedstrijd = { ...bijgewerkt, blokken: res.blokken };
   }, { terugdraaibaar: true });
 }
 

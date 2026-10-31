@@ -43,6 +43,11 @@ je hem met de hele club.
   Geef je iemand zo extra speeltijd ten koste van een ander, dan is dat jouw
   keuze: de app noemt het ("Daan +10 min, Sem −10 min") en trekt het niet
   recht. Wil je het later toch goedmaken, tik dan op **Eerlijk herverdelen**.
+- **Gespeelde minuten corrigeren** — liep de klok of een wissel niet precies
+  zoals gepland? Zet per speler een minuut erbij of eraf, in het schema en
+  in het live-scherm. Dat is een feit en telt mee in de speeltijd, in de
+  rest van de verdeling en in het seizoenssaldo. Het schema blijft staan,
+  tenzij de speeltijd daardoor echt scheef komt te liggen.
 - **Live meelopen** — een klok die per periode aftelt, aftelling tot de volgende wissel
   (of tot de rust, als er niets te wisselen valt),
   geluid en trilsignaal, en het scherm blijft aan.

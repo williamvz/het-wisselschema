@@ -12,6 +12,11 @@
 - Nieuw: **Eerlijk herverdelen**, in het schema en in het live-scherm. Dat
   maakt de bewuste afwijkingen goed in de rest van de wedstrijd, rond wat je
   zelf hebt vastgezet. Gespeelde tijd blijft staan.
+- Nieuw: **Minuten corrigeren**, in het schema en in het live-scherm. Stond
+  iemand langer of korter in het veld dan de app dacht, zet het dan per
+  speler recht. Het telt mee in het totaal, in het seizoenssaldo en in de
+  verdeling van de rest van de wedstrijd. Het schema blijft staan, tenzij de
+  speeltijd daardoor echt scheef komt te liggen.
 
 ## 2.3.0
 

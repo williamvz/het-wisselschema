@@ -2,7 +2,7 @@
 // speelt, plus per blok de opstelling en de wisselinstructie.
 
 import { h, icoon, toonSheet, melding, minutenTekst, mmss, kopieer, bevestig, voornaam } from './ui.js';
-import { S, wijzig, wedstrijdSpelers, spelerMetId, plan, genereer, deelLink, klokStart, zonderWissels, ruilBlok, herverdeel, bewusteAfwijkingen } from './store.js';
+import { S, wijzig, wedstrijdSpelers, spelerMetId, plan, genereer, deelLink, klokStart, zonderWissels, ruilBlok, herverdeel, bewusteAfwijkingen, zetCorrectie } from './store.js';
 import { getFormation, slotsForCount } from '../lib/formations.js';
 import { maakSleepbaar } from './slepen.js';
 import { tekenVeld } from './veld.js';
@@ -92,6 +92,7 @@ export function schermSchema(ganaar) {
   wrap.appendChild(h('div', { class: 'knoprij niet-printen', style: { marginTop: '14px' } },
     h('button', { class: 'knop', onclick: () => { genereer({ nieuweSeed: true }); melding('Nieuw schema gemaakt'); } },
       icoon('vernieuw', 18), 'Andere variant'),
+    h('button', { class: 'knop', onclick: correctieSheet }, 'Minuten corrigeren'),
     h('button', { class: 'knop', onclick: deelSheet }, icoon('deel', 18), 'Delen'),
     h('button', { class: 'knop', onclick: () => window.print() }, 'Printen')));
 
@@ -267,6 +268,40 @@ export function ruilTekst(voor, na, ids) {
   const geruild = `${naam(ids[0])} en ${naam(ids[1])} geruild`;
   if (!delen.length) return geruild;
   return `${geruild} · ${delen.map((x) => `${naam(x.id)} ${x.d > 0 ? '+' : '−'}${Math.abs(x.d)} min`).join(', ')}`;
+}
+
+/**
+ * Gespeelde minuten corrigeren: de klok of de wissels liepen niet precies
+ * zoals gepland, dus zet hier per speler recht wat er echt gespeeld is.
+ */
+export function correctieSheet() {
+  const w = S.wedstrijd;
+  if (!w) return;
+  toonSheet('Gespeelde minuten corrigeren', (c) => {
+    c.appendChild(h('p', { class: 'uitleg' },
+      'Stond iemand langer of korter in het veld dan de app dacht? Zet het hier recht. Het schema blijft staan, tenzij de speeltijd daardoor echt scheef komt te liggen.'));
+    const rijen = w.selectie.map((id) => spelerMetId(id)).filter(Boolean).map((q) => {
+      const totaal = h('span', { class: 'saldo', style: { width: '56px', textAlign: 'right' } });
+      const extra = h('span', { class: 'mini', style: { width: '60px', textAlign: 'right' } });
+      const ververs = () => {
+        const sec = speeltijden().get(q.id) || 0;
+        const corr = ((S.wedstrijd.correctie || {})[q.id]) || 0;
+        totaal.textContent = minutenTekst(sec);
+        extra.textContent = corr ? `${corr > 0 ? '+' : '−'}${Math.round(Math.abs(corr) / 60)} min` : '';
+      };
+      const stap = (d) => () => {
+        zetCorrectie(q.id, (((S.wedstrijd.correctie || {})[q.id]) || 0) + d);
+        ververs();
+      };
+      ververs();
+      return h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: '1px solid var(--rand)' } },
+        h('span', { style: { flex: '1', fontWeight: '600' } }, voornaam(q.naam)),
+        extra, totaal,
+        h('button', { class: 'knop klein', 'aria-label': `${q.naam} een minuut minder`, onclick: stap(-60) }, '−1'),
+        h('button', { class: 'knop klein', 'aria-label': `${q.naam} een minuut meer`, onclick: stap(60) }, '+1'));
+    });
+    c.appendChild(h('div', {}, ...rijen));
+  });
 }
 
 /**

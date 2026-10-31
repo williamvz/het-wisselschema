@@ -134,7 +134,10 @@ export function verlegGrens(blokken, index, tSec) {
 // ------------------------------------------------------- laag 1: wie speelt
 
 function bepaalDoelen(match, spelers, blokken, capaciteit, opties) {
-  const totaalVeldSec = blokken.reduce((s, b, i) => s + (b.totSec - b.vanSec) * capaciteit[i], 0);
+  // Gecorrigeerde minuten zijn een feit: wie langer stond dan de app dacht, heeft die tijd al gehad.
+  const correctie = match.correctie || {};
+  const correctieTotaal = spelers.reduce((n, p) => n + (correctie[p.id] || 0), 0);
+  const totaalVeldSec = blokken.reduce((s, b, i) => s + (b.totSec - b.vanSec) * capaciteit[i], 0) + correctieTotaal;
 
   const sterktes = spelers.map((p) => p.sterkte ?? 3);
   const gemSterkte = sterktes.reduce((a, b) => a + b, 0) / (sterktes.length || 1);
@@ -176,7 +179,7 @@ function kostenVan(aanwezig, ctx) {
   let c = 0;
 
   // 1. eerlijke speeltijd
-  const gespeeld = new Map(spelers.map((p) => [p.id, 0]));
+  const gespeeld = new Map(spelers.map((p) => [p.id, (ctx.correctie[p.id] || 0)]));
   for (let i = 0; i < blokken.length; i++) {
     const duur = blokken[i].totSec - blokken[i].vanSec;
     for (const id of aanwezig[i]) if (gespeeld.has(id)) gespeeld.set(id, gespeeld.get(id) + duur);
@@ -235,7 +238,7 @@ function losWieOp(ctx, rng) {
   // alleen wat dan nog openligt (uitval, een nieuwe speler) wordt aangevuld.
   const greedy = (plakkerig = false) => {
     const aanwezig = startAanwezig();
-    const gespeeld = new Map(spelers.map((p) => [p.id, 0]));
+    const gespeeld = new Map(spelers.map((p) => [p.id, (ctx.correctie[p.id] || 0)]));
     for (let i = 0; i < blokken.length; i++) {
       const duur = blokken[i].totSec - blokken[i].vanSec;
       if (!openIdx.includes(i)) {
@@ -503,20 +506,31 @@ export function planWedstrijd(match, alleSpelers, opties = {}) {
     return ids.length ? new Set(ids) : null;
   });
 
-  const ctx = { blokken, spelers, doelen, opties: o, beschikbaarMatrix, capaciteit, openIdx, gepind, basisAanwezig, heeftKeepers, vorig };
+  const ctx = { blokken, spelers, doelen, opties: o, beschikbaarMatrix, capaciteit, openIdx, gepind, basisAanwezig, heeftKeepers, vorig, correctie: match.correctie || {} };
   const rng = mulberry32(o.seed);
   const { aanwezig, kosten } = losWieOp(ctx, rng);
 
   const { keeperPer, zonderKeeper } = kiesKeepers(blokken, aanwezig, spelers, formatie, rng);
   blokken = wijsPositiesToe(blokken, aanwezig, spelers, formatie, keeperPer, pinsPerBlok);
 
-  const stats = statistieken(blokken, spelers, formatie);
+  const stats = metCorrectie(statistieken(blokken, spelers, formatie), match.correctie);
   const waarschuwingen = maakWaarschuwingen({ match, blokken, spelers, formatie, stats, capaciteit, zonderKeeper, beschikbaarMatrix, doelen });
 
   return { blokken, waarschuwingen, statistieken: stats, wissels: wisselLijst(blokken, spelers, formatie), kosten };
 }
 
 // ------------------------------------------------------------- afgeleide info
+
+/** Telt de handmatig gecorrigeerde minuten bij de speeltijd op (`correctieSec` blijft zichtbaar). */
+export function metCorrectie(stats, correctie) {
+  if (!correctie || !Object.keys(correctie).length) return stats;
+  return stats
+    .map((st) => {
+      const c = correctie[st.spelerId] || 0;
+      return c ? { ...st, speelSec: Math.max(0, st.speelSec + c), correctieSec: c } : st;
+    })
+    .sort((a, b) => b.speelSec - a.speelSec);
+}
 
 export function statistieken(blokken, spelers, formatie) {
   const keeperSlots = new Set(formatie.slots.filter((s) => s.role === 'K').map((s) => s.id));
@@ -611,6 +625,12 @@ function maakWaarschuwingen({ match, blokken, spelers, formatie, stats, capacite
     if (deeltijd.has(s.spelerId)) continue;
     if (s.speelSec === 0) w.push({ ernst: 'hoog', tekst: `${s.naam} komt in dit schema helemaal niet in actie.` });
     else if (s.langsteBankReeks >= 2) w.push({ ernst: 'midden', tekst: `${s.naam} zit ${s.langsteBankReeks} blokken achter elkaar op de bank.` });
+  }
+
+  const gecorrigeerd = spelers.filter((p) => Math.abs((match.correctie || {})[p.id] || 0) >= 30);
+  if (gecorrigeerd.length) {
+    const minuten = (sec) => `${sec > 0 ? '+' : '−'}${Math.round(Math.abs(sec) / 60)}`;
+    w.push({ ernst: 'info', tekst: `Gespeelde tijd gecorrigeerd: ${gecorrigeerd.map((p) => `${p.naam} ${minuten(match.correctie[p.id])} min`).join(', ')}.` });
   }
 
   const afwijkend = spelers.filter((p) => Math.abs(bewust[p.id] || 0) >= 30)
