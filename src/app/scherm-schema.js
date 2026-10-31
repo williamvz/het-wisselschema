@@ -260,12 +260,13 @@ export function speeltijden() {
   return new Map((p ? p.statistieken : []).map((x) => [x.spelerId, x.speelSec]));
 }
 
-/** "Daan en Sem geruild" of, als er speeltijd verschuift: "Daan +10 min, Sem −10 min · rest blijft staan". */
+/** "Daan en Sem geruild" of, als er speeltijd verschuift: "Bram en Sem geruild · Bram +10 min, Sem −10 min". */
 export function ruilTekst(voor, na, ids) {
   const naam = (id) => voornaam(spelerMetId(id)?.naam);
   const delen = ids.map((id) => ({ id, d: Math.round(((na.get(id) || 0) - (voor.get(id) || 0)) / 60) })).filter((x) => x.d !== 0);
-  if (!delen.length) return `${naam(ids[0])} en ${naam(ids[1])} geruild`;
-  return `${delen.map((x) => `${naam(x.id)} ${x.d > 0 ? '+' : '−'}${Math.abs(x.d)} min`).join(', ')} · rest van het schema blijft staan`;
+  const geruild = `${naam(ids[0])} en ${naam(ids[1])} geruild`;
+  if (!delen.length) return geruild;
+  return `${geruild} · ${delen.map((x) => `${naam(x.id)} ${x.d > 0 ? '+' : '−'}${Math.abs(x.d)} min`).join(', ')}`;
 }
 
 /**
