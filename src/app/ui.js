@@ -93,7 +93,13 @@ export function icoon(naam, grootte = 21) {
 // ------------------------------------------------------------------ sheets
 let openSheet = null;
 export function sluitSheet() {
-  if (openSheet) { openSheet.remove(); openSheet = null; document.body.style.overflow = ''; }
+  if (openSheet) {
+    // Laat geen invoerveld gefocust achter: iOS Safari biedt dan na het
+    // schudden van de telefoon "typen ongedaan maken" aan.
+    const actief = document.activeElement;
+    if (actief && openSheet.contains(actief) && typeof actief.blur === 'function') actief.blur();
+    openSheet.remove(); openSheet = null; document.body.style.overflow = '';
+  }
 }
 export function toonSheet(titel, bouwInhoud, { breed = false } = {}) {
   sluitSheet();
@@ -186,10 +192,10 @@ export async function kopieer(tekst) {
   try { await navigator.clipboard.writeText(tekst); return true; }
   catch (e) {
     const ta = h('textarea', { style: { position: 'fixed', opacity: '0' } });
-    ta.value = tekst; document.body.appendChild(ta); ta.select();
+    ta.value = tekst; ta.readOnly = true; document.body.appendChild(ta); ta.select();
     let ok = false;
     try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
-    ta.remove();
+    ta.blur(); ta.remove();
     return ok;
   }
 }

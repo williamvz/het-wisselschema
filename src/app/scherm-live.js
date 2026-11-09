@@ -2,7 +2,7 @@
 // waar het langs de lijn om draait: "wissel gedaan" en "speler eruit".
 
 import { h, icoon, toonSheet, bevestig, melding, mmss, minutenTekst, piep, tril, voornaam } from './ui.js';
-import { S, wijzig, wedstrijdSpelers, spelerMetId, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal, echteWissel, ruilLive } from './store.js';
+import { S, wijzig, wedstrijdSpelers, spelerMetId, plan, klokStand, klokStart, klokPauze, klokZet, klokAutoPauze, periodeGrens, herplanNu, bevestigWissel, rondAf, kanTerug, draaiTerug, noteerGoal, schrapGoal, echteWissel, ruilLive, zonderWissels } from './store.js';
 import { getFormation } from '../lib/formations.js';
 import { totaleSpeeltijd } from '../lib/schedule.js';
 import { maakSleepbaar } from './slepen.js';
@@ -58,6 +58,9 @@ export function schermLive(ganaar, herteken) {
   const kwartEl = h('div', { class: 'kwartlabel' }, '');
   const balk = h('div', { class: 'balk' }, h('i', { style: { width: '0%' } }));
   const restEl = h('div', { class: 'tot-wissel' });
+  // Zonder wissels (niet meer spelers dan plekken) valt er niets af te tellen.
+  const geenWissels = zonderWissels(w);
+  restEl.hidden = geenWissels;
   const startKnop = h('button', { class: 'knop primair groot', style: { flex: '2' } });
 
   const klokKaart = h('div', { class: 'kaart klok-kaart' }, kwartEl, klokEl, balk, restEl,
@@ -185,16 +188,19 @@ export function schermLive(ganaar, herteken) {
     balk.classList.toggle('bijna', volgendeSec !== null && rest <= 120 && rest > 0);
     balk.classList.toggle('nu', rest <= 0);
 
-    if (volgendeSec !== null) {
+    if (geenWissels) {
+      restEl.replaceChildren();
+    } else if (volgendeSec !== null) {
       // Groot in beeld: over hoeveel tijd, en wie erin en eruit gaat.
       // Valt de wissel op de rust, dan zegt de klok erboven het al.
       const bijRust = volgendeSec === periodeEind && rest > 0;
       restEl.className = `tot-wissel groot${rest <= 0 ? ' nu' : rest <= 120 && !bijRust ? ' bijna' : ''}`;
-      restEl.replaceChildren(
+      restEl.replaceChildren(...[
         h('div', { class: 'label' }, rest <= 0 ? 'Nu wisselen' : bijRust ? (doel >= totaal ? 'Wissel aan het eind' : 'Wissel bij de rust') : 'Volgende wissel over'),
         rest > 0 && !bijRust ? h('div', { class: 'tijd' }, mmss(Math.ceil(rest))) : null,
         wie.length ? h('div', { class: 'wie' }, ...wie.map((x) => h('span', { class: x.soort }, x.tekst))) : null,
-        plekken ? h('div', { class: 'plekken' }, plekken) : null);
+        plekken ? h('div', { class: 'plekken' }, plekken) : null,
+      ].filter(Boolean));
     } else {
       restEl.className = 'tot-wissel';
       restEl.replaceChildren(rest > 0
