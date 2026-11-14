@@ -36,7 +36,7 @@ je hem met de hele club.
 - **Wedstrijd klaarzetten** — wie is er, welke speelvorm (4-, 6-, 7-,
   8- of 11-tal), hoeveel perioden van hoeveel minuten, en welke opstelling.
 - **Schema maken** — zo eerlijk mogelijk verdeeld, met een echte keeper in elk
-  blok, keepersbeurten verdeeld, en niemand twee blokken achter elkaar op de bank.
+  blok, keepersbeurten verdeeld, en spelers staan zo lang mogelijk achter elkaar in het veld (geen bank-spelen-bank).
 - **Zelf bijsturen** — sleep een speler naar een ander om ze te ruilen, ook
   van en naar de bank, of tik op een vakje. Dat blok
   ligt dan vast en de rest van het schema blijft precies zoals het was.

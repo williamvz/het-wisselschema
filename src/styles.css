@@ -216,8 +216,13 @@ input:focus, select:focus, textarea:focus, .knop:focus-visible, .chip:focus-visi
 .veld .pos { font-size: 3.4px; fill: rgba(255,255,255,.75); text-anchor: middle; font-weight: 600; }
 
 /* ------------------------------------------------------------------ schema-tabel */
-.schema-wrap { overflow-x: auto; margin: 0 -14px; padding: 0 14px; }
-table.schema { border-collapse: separate; border-spacing: 0; width: 100%; font-size: .82rem; }
+.schema-wrap { overflow-x: auto; margin: 0 -14px; padding: 0 14px; overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.schema-wrap::-webkit-scrollbar { display: none; }
+table.schema { border-collapse: separate; border-spacing: 0; width: 100%; min-width: max-content; font-size: .82rem; }
+table.schema td:not(.sp):not(.tot) { min-width: 46px; }
+/* de spelersnaam blijft staan terwijl je door de blokken scrolt */
+table.schema th.sp, table.schema td.sp { position: sticky; left: 0; z-index: 2; background: var(--vlak); }
 table.schema th, table.schema td { padding: 0; }
 table.schema thead th { font-size: .7rem; font-weight: 700; color: var(--zacht); text-align: center;
   padding-bottom: 6px; white-space: nowrap; }
@@ -373,7 +378,8 @@ table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; col
 .opslag.uit { color: var(--alarm); }
 
 /* ---- slepen om te ruilen (slepen.js) */
-.sleepbaar [data-speler] { touch-action: none; -webkit-user-select: none; user-select: none; }
+.sleepbaar [data-speler] { touch-action: pan-x pan-y; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.sleepbaar [data-speler].vastgehouden { transform: scale(1.06); }
 .sleepbaar .veld [data-speler] { cursor: grab; }
 .sleepbal { position: fixed; left: 0; top: 0; z-index: 90; pointer-events: none;
   margin: -46px 0 0 -30px; min-width: 60px; padding: 8px 12px; border-radius: 999px; text-align: center;
