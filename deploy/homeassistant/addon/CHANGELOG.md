@@ -1,5 +1,15 @@
 # Wijzigingen
 
+## 2.5.0
+
+- Het schema laat spelers zo lang mogelijk achter elkaar in het veld staan.
+  Geen "6 minuten kant, 6 minuten spelen, 6 minuten kant" meer: wie rust,
+  rust in één keer, en wie speelt blijft staan. De speeltijd blijft even
+  eerlijk verdeeld.
+- Horizontaal scrollen in het schema werkt nu soepel: veeg gewoon over de
+  vakjes. Wil je slepen om te ruilen, houd dan een vakje even ingedrukt. De
+  spelersnamen blijven links staan terwijl je door de blokken scrolt.
+
 ## 2.4.0
 
 - Zelf ingrijpen schudt het schema niet meer door elkaar. Een ruil, een

@@ -233,8 +233,13 @@ input:focus, select:focus, textarea:focus, .knop:focus-visible, .chip:focus-visi
 .veld .pos { font-size: 3.4px; fill: rgba(255,255,255,.75); text-anchor: middle; font-weight: 600; }
 
 /* ------------------------------------------------------------------ schema-tabel */
-.schema-wrap { overflow-x: auto; margin: 0 -14px; padding: 0 14px; }
-table.schema { border-collapse: separate; border-spacing: 0; width: 100%; font-size: .82rem; }
+.schema-wrap { overflow-x: auto; margin: 0 -14px; padding: 0 14px; overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.schema-wrap::-webkit-scrollbar { display: none; }
+table.schema { border-collapse: separate; border-spacing: 0; width: 100%; min-width: max-content; font-size: .82rem; }
+table.schema td:not(.sp):not(.tot) { min-width: 46px; }
+/* de spelersnaam blijft staan terwijl je door de blokken scrolt */
+table.schema th.sp, table.schema td.sp { position: sticky; left: 0; z-index: 2; background: var(--vlak); }
 table.schema th, table.schema td { padding: 0; }
 table.schema thead th { font-size: .7rem; font-weight: 700; color: var(--zacht); text-align: center;
   padding-bottom: 6px; white-space: nowrap; }
@@ -390,7 +395,8 @@ table.schema td.tot { text-align: right; font-variant-numeric: tabular-nums; col
 .opslag.uit { color: var(--alarm); }
 
 /* ---- slepen om te ruilen (slepen.js) */
-.sleepbaar [data-speler] { touch-action: none; -webkit-user-select: none; user-select: none; }
+.sleepbaar [data-speler] { touch-action: pan-x pan-y; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.sleepbaar [data-speler].vastgehouden { transform: scale(1.06); }
 .sleepbaar .veld [data-speler] { cursor: grab; }
 .sleepbal { position: fixed; left: 0; top: 0; z-index: 90; pointer-events: none;
   margin: -46px 0 0 -30px; min-width: 60px; padding: 8px 12px; border-radius: 999px; text-align: center;
@@ -1485,7 +1491,9 @@ const { getFormation, slotsForCount } = __mod("lib/formations.js");
 
 const STANDAARD_OPTIES = {
   eerlijkheid: 1,        // gewicht op kwadratische afwijking van de eerlijke speeltijd (per minuut^2)
-  rustGewicht: 25,       // strafpunten als iemand twee blokken achter elkaar op de bank zit
+  rustGewicht: 12,       // strafpunten per blok dat iemand vanaf het derde blok achter elkaar op de bank zit
+  wisselGewicht: 8,      // strafpunten per keer dat iemand van bank naar veld gaat of andersom: liever lange stukken
+  eenzaamGewicht: 45,    // extra strafpunten voor bank - één blok spelen - bank (dat is nergens goed voor)
   geenKeeperStraf: 500,  // strafpunten als er geen keeper op het veld staat
   vormAccent: 0,         // 0 = iedereen even veel, 1 = sterkte telt maximaal mee
   saldoGewicht: 0.6,     // hoe sterk het seizoenssaldo meeweegt (0 = niet)
@@ -1641,6 +1649,22 @@ function bepaalDoelen(match, spelers, blokken, capaciteit, opties) {
   return { doelen, totaalVeldSec };
 }
 
+/** Kosten van het op-en-af gaan binnen één rij (true = op het veld). */
+function reeksKosten(rij, opties) {
+  let c = 0, bank = 0;
+  for (let i = 0; i < rij.length; i++) {
+    if (i > 0 && rij[i] !== rij[i - 1]) c += opties.wisselGewicht;
+    if (rij[i]) { bank = 0; continue; }
+    bank += 1;
+    if (bank >= 3) c += opties.rustGewicht;
+  }
+  // bank - één blok spelen - bank
+  for (let i = 1; i < rij.length - 1; i++) {
+    if (rij[i] && !rij[i - 1] && !rij[i + 1]) c += opties.eenzaamGewicht;
+  }
+  return c;
+}
+
 function kostenVan(aanwezig, ctx) {
   const { blokken, spelers, doelen, opties, beschikbaarMatrix, heeftKeepers, capaciteit } = ctx;
   let c = 0;
@@ -1656,14 +1680,18 @@ function kostenVan(aanwezig, ctx) {
     c += opties.eerlijkheid * dev * dev;
   }
 
-  // 2. niet twee blokken achter elkaar op de bank
+  // 2. lange stukken: wie speelt blijft zo lang mogelijk staan, wie rust rust
+  //    in één keer. Elke overgang kost iets, één blok spelen tussen twee
+  //    bankstukken kost extra, en heel lang op de bank kost ook iets.
   for (let s = 0; s < spelers.length; s++) {
-    let reeks = 0;
+    const id = spelers[s].id;
+    let reeks = [];                       // stand per blok binnen één aaneengesloten beschikbaar stuk
+    const sluit = () => { c += reeksKosten(reeks, opties); reeks = []; };
     for (let i = 0; i < blokken.length; i++) {
-      if (!beschikbaarMatrix[s][i]) { reeks = 0; continue; }
-      if (aanwezig[i].has(spelers[s].id)) reeks = 0;
-      else { reeks += 1; if (reeks >= 2) c += opties.rustGewicht; }
+      if (!beschikbaarMatrix[s][i]) { sluit(); continue; }
+      reeks.push(aanwezig[i].has(id));
     }
+    sluit();
   }
 
   // 3. liever geen losse eindjes: wie in het huidige schema ergens anders stond,
@@ -1763,6 +1791,33 @@ function losWieOp(ctx, rng) {
             const k = kostenVan(aanwezig, ctx);
             if (k < beste - 1e-9) { beste = k; verbeterd = true; }
             else { aanwezig[i].delete(b); aanwezig[i].add(a); }
+          }
+        }
+      }
+      // ruil over twee blokken: a speelt in i en rust in j, b andersom. De speeltijd
+      // blijft gelijk; alleen de lengte van de stukken verandert.
+      for (let x = 0; x < openIdx.length; x++) {
+        for (let y = x + 1; y < openIdx.length; y++) {
+          const i = openIdx[x], j = openIdx[y];
+          for (const a of [...aanwezig[i]]) {
+            if (gepind[i].has(a) || aanwezig[j].has(a) || gepind[j].has(a)) continue;
+            const sa = idx.get(a);
+            if (!beschikbaarMatrix[sa][j]) continue;
+            for (const b of [...aanwezig[j]]) {
+              if (gepind[j].has(b) || aanwezig[i].has(b)) continue;
+              const sb = idx.get(b);
+              if (!beschikbaarMatrix[sb][i]) continue;
+              if (!aanwezig[i].has(a) || !aanwezig[j].has(b)) continue;
+              aanwezig[i].delete(a); aanwezig[i].add(b);
+              aanwezig[j].delete(b); aanwezig[j].add(a);
+              const k = kostenVan(aanwezig, ctx);
+              if (k < beste - 1e-9) { beste = k; verbeterd = true; }
+              else {
+                aanwezig[i].delete(b); aanwezig[i].add(a);
+                aanwezig[j].delete(a); aanwezig[j].add(b);
+              }
+              if (!aanwezig[i].has(a)) break;
+            }
           }
         }
       }
@@ -2091,7 +2146,7 @@ function maakWaarschuwingen({ match, blokken, spelers, formatie, stats, capacite
   for (const s of stats) {
     if (deeltijd.has(s.spelerId)) continue;
     if (s.speelSec === 0) w.push({ ernst: 'hoog', tekst: `${s.naam} komt in dit schema helemaal niet in actie.` });
-    else if (s.langsteBankReeks >= 2) w.push({ ernst: 'midden', tekst: `${s.naam} zit ${s.langsteBankReeks} blokken achter elkaar op de bank.` });
+    else if (s.langsteBankReeks >= 3) w.push({ ernst: 'midden', tekst: `${s.naam} zit ${s.langsteBankReeks} blokken achter elkaar op de bank.` });
   }
 
   const gecorrigeerd = spelers.filter((p) => Math.abs((match.correctie || {})[p.id] || 0) >= 30);
@@ -4611,6 +4666,7 @@ __defs["app/slepen.js"] = function () {
 const { h } = __mod("app/ui.js");
 
 const DREMPEL = 8; // pixels voordat een tik een sleep wordt
+const VASTHOUDEN = 260; // ms indrukken voordat een vinger gaat slepen; daarvoor is het scrollen
 
 /**
  * @param {Element} houder
@@ -4626,6 +4682,18 @@ function maakSleepbaar(houder, { mag, opRuil, label }) {
     const start = { x: e.clientX, y: e.clientY };
     let bal = null;
     let doel = null;
+    // Met een vinger begint slepen pas na even vasthouden. Wie meteen beweegt,
+    // scrolt de pagina of het schema; zo blijft horizontaal scrollen gewoon werken.
+    const aanraking = e.pointerType === 'touch';
+    let klaarVoorSleep = !aanraking;
+    const timer = aanraking ? setTimeout(() => {
+      klaarVoorSleep = true;
+      bron.classList.add('vastgehouden');
+      if (navigator.vibrate) { try { navigator.vibrate(12); } catch { /* niet overal beschikbaar */ } }
+    }, VASTHOUDEN) : null;
+    // Zodra het slepen loopt mag de pagina niet meer meescrollen.
+    const blokkeerScroll = (ev) => { if (klaarVoorSleep) ev.preventDefault(); };
+    if (aanraking) window.addEventListener('touchmove', blokkeerScroll, { passive: false });
 
     const zetDoel = (el) => {
       if (el === doel) return;
@@ -4637,7 +4705,9 @@ function maakSleepbaar(houder, { mag, opRuil, label }) {
     const beweeg = (ev) => {
       if (ev.pointerId !== e.pointerId) return;
       if (!bal) {
-        if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < DREMPEL) return;
+        const afstand = Math.hypot(ev.clientX - start.x, ev.clientY - start.y);
+        if (afstand < DREMPEL) return;
+        if (!klaarVoorSleep) { opruimen(); return; } // te vroeg bewogen: dit is scrollen
         bal = h('div', { class: 'sleepbal', 'aria-hidden': 'true' }, label(id));
         document.body.appendChild(bal);
         bron.classList.add('gesleept');
@@ -4650,11 +4720,18 @@ function maakSleepbaar(houder, { mag, opRuil, label }) {
       zetDoel(ander && ander !== id && mag(id, ander) ? onder : null);
     };
 
-    const klaar = (ev) => {
-      if (ev.pointerId !== e.pointerId) return;
+    const opruimen = () => {
+      clearTimeout(timer);
+      bron.classList.remove('vastgehouden');
       window.removeEventListener('pointermove', beweeg);
       window.removeEventListener('pointerup', klaar);
       window.removeEventListener('pointercancel', klaar);
+      window.removeEventListener('touchmove', blokkeerScroll);
+    };
+
+    const klaar = (ev) => {
+      if (ev.pointerId !== e.pointerId) return;
+      opruimen();
       if (!bal) return; // een gewone tik: de klik doet de rest
       bal.remove();
       bron.classList.remove('gesleept');

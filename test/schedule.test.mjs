@@ -148,3 +148,17 @@ test('wisselinstructies benoemen wie eruit, wie erin en wie verschuift', () => {
   assert.ok(totaalErin >= 3, 'er wordt daadwerkelijk gewisseld');
   assert.ok(blokken.every((b) => b.bank.length === 1));
 });
+
+test('spelers staan in lange stukken in het veld: geen bank-speel-bank', () => {
+  const spelers = maakTeam(['Daan', 'Sem', 'Luuk', 'Noud', 'Tijn', 'Bram', 'Finn', 'Mees', 'Jur'], { keepers: ['Daan'] });
+  const w = maakWedstrijd(spelers, { blokkenPerPeriode: 2, periodeMin: 12 });
+  for (const seed of [1, 2, 3, 4]) {
+    const res = planWedstrijd(w, spelers, { seed });
+    for (const st of res.statistieken) {
+      const rij = res.blokken.map((b) => Object.values(b.opstelling).includes(st.spelerId));
+      for (let i = 1; i < rij.length - 1; i++) {
+        assert.ok(!(rij[i] && !rij[i - 1] && !rij[i + 1]), `seed ${seed}: ${st.naam} speelt één blok tussen twee bankstukken`);
+      }
+    }
+  }
+});
