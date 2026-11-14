@@ -18,7 +18,9 @@ import { getFormation, slotsForCount } from './formations.js';
 
 export const STANDAARD_OPTIES = {
   eerlijkheid: 1,        // gewicht op kwadratische afwijking van de eerlijke speeltijd (per minuut^2)
-  rustGewicht: 25,       // strafpunten als iemand twee blokken achter elkaar op de bank zit
+  rustGewicht: 12,       // strafpunten per blok dat iemand vanaf het derde blok achter elkaar op de bank zit
+  wisselGewicht: 8,      // strafpunten per keer dat iemand van bank naar veld gaat of andersom: liever lange stukken
+  eenzaamGewicht: 45,    // extra strafpunten voor bank - één blok spelen - bank (dat is nergens goed voor)
   geenKeeperStraf: 500,  // strafpunten als er geen keeper op het veld staat
   vormAccent: 0,         // 0 = iedereen even veel, 1 = sterkte telt maximaal mee
   saldoGewicht: 0.6,     // hoe sterk het seizoenssaldo meeweegt (0 = niet)
@@ -174,6 +176,22 @@ function bepaalDoelen(match, spelers, blokken, capaciteit, opties) {
   return { doelen, totaalVeldSec };
 }
 
+/** Kosten van het op-en-af gaan binnen één rij (true = op het veld). */
+function reeksKosten(rij, opties) {
+  let c = 0, bank = 0;
+  for (let i = 0; i < rij.length; i++) {
+    if (i > 0 && rij[i] !== rij[i - 1]) c += opties.wisselGewicht;
+    if (rij[i]) { bank = 0; continue; }
+    bank += 1;
+    if (bank >= 3) c += opties.rustGewicht;
+  }
+  // bank - één blok spelen - bank
+  for (let i = 1; i < rij.length - 1; i++) {
+    if (rij[i] && !rij[i - 1] && !rij[i + 1]) c += opties.eenzaamGewicht;
+  }
+  return c;
+}
+
 function kostenVan(aanwezig, ctx) {
   const { blokken, spelers, doelen, opties, beschikbaarMatrix, heeftKeepers, capaciteit } = ctx;
   let c = 0;
@@ -189,14 +207,18 @@ function kostenVan(aanwezig, ctx) {
     c += opties.eerlijkheid * dev * dev;
   }
 
-  // 2. niet twee blokken achter elkaar op de bank
+  // 2. lange stukken: wie speelt blijft zo lang mogelijk staan, wie rust rust
+  //    in één keer. Elke overgang kost iets, één blok spelen tussen twee
+  //    bankstukken kost extra, en heel lang op de bank kost ook iets.
   for (let s = 0; s < spelers.length; s++) {
-    let reeks = 0;
+    const id = spelers[s].id;
+    let reeks = [];                       // stand per blok binnen één aaneengesloten beschikbaar stuk
+    const sluit = () => { c += reeksKosten(reeks, opties); reeks = []; };
     for (let i = 0; i < blokken.length; i++) {
-      if (!beschikbaarMatrix[s][i]) { reeks = 0; continue; }
-      if (aanwezig[i].has(spelers[s].id)) reeks = 0;
-      else { reeks += 1; if (reeks >= 2) c += opties.rustGewicht; }
+      if (!beschikbaarMatrix[s][i]) { sluit(); continue; }
+      reeks.push(aanwezig[i].has(id));
     }
+    sluit();
   }
 
   // 3. liever geen losse eindjes: wie in het huidige schema ergens anders stond,
@@ -296,6 +318,33 @@ function losWieOp(ctx, rng) {
             const k = kostenVan(aanwezig, ctx);
             if (k < beste - 1e-9) { beste = k; verbeterd = true; }
             else { aanwezig[i].delete(b); aanwezig[i].add(a); }
+          }
+        }
+      }
+      // ruil over twee blokken: a speelt in i en rust in j, b andersom. De speeltijd
+      // blijft gelijk; alleen de lengte van de stukken verandert.
+      for (let x = 0; x < openIdx.length; x++) {
+        for (let y = x + 1; y < openIdx.length; y++) {
+          const i = openIdx[x], j = openIdx[y];
+          for (const a of [...aanwezig[i]]) {
+            if (gepind[i].has(a) || aanwezig[j].has(a) || gepind[j].has(a)) continue;
+            const sa = idx.get(a);
+            if (!beschikbaarMatrix[sa][j]) continue;
+            for (const b of [...aanwezig[j]]) {
+              if (gepind[j].has(b) || aanwezig[i].has(b)) continue;
+              const sb = idx.get(b);
+              if (!beschikbaarMatrix[sb][i]) continue;
+              if (!aanwezig[i].has(a) || !aanwezig[j].has(b)) continue;
+              aanwezig[i].delete(a); aanwezig[i].add(b);
+              aanwezig[j].delete(b); aanwezig[j].add(a);
+              const k = kostenVan(aanwezig, ctx);
+              if (k < beste - 1e-9) { beste = k; verbeterd = true; }
+              else {
+                aanwezig[i].delete(b); aanwezig[i].add(a);
+                aanwezig[j].delete(a); aanwezig[j].add(b);
+              }
+              if (!aanwezig[i].has(a)) break;
+            }
           }
         }
       }
@@ -624,7 +673,7 @@ function maakWaarschuwingen({ match, blokken, spelers, formatie, stats, capacite
   for (const s of stats) {
     if (deeltijd.has(s.spelerId)) continue;
     if (s.speelSec === 0) w.push({ ernst: 'hoog', tekst: `${s.naam} komt in dit schema helemaal niet in actie.` });
-    else if (s.langsteBankReeks >= 2) w.push({ ernst: 'midden', tekst: `${s.naam} zit ${s.langsteBankReeks} blokken achter elkaar op de bank.` });
+    else if (s.langsteBankReeks >= 3) w.push({ ernst: 'midden', tekst: `${s.naam} zit ${s.langsteBankReeks} blokken achter elkaar op de bank.` });
   }
 
   const gecorrigeerd = spelers.filter((p) => Math.abs((match.correctie || {})[p.id] || 0) >= 30);

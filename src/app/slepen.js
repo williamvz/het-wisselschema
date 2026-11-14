@@ -9,6 +9,7 @@
 import { h } from './ui.js';
 
 const DREMPEL = 8; // pixels voordat een tik een sleep wordt
+const VASTHOUDEN = 260; // ms indrukken voordat een vinger gaat slepen; daarvoor is het scrollen
 
 /**
  * @param {Element} houder
@@ -24,6 +25,18 @@ export function maakSleepbaar(houder, { mag, opRuil, label }) {
     const start = { x: e.clientX, y: e.clientY };
     let bal = null;
     let doel = null;
+    // Met een vinger begint slepen pas na even vasthouden. Wie meteen beweegt,
+    // scrolt de pagina of het schema; zo blijft horizontaal scrollen gewoon werken.
+    const aanraking = e.pointerType === 'touch';
+    let klaarVoorSleep = !aanraking;
+    const timer = aanraking ? setTimeout(() => {
+      klaarVoorSleep = true;
+      bron.classList.add('vastgehouden');
+      if (navigator.vibrate) { try { navigator.vibrate(12); } catch { /* niet overal beschikbaar */ } }
+    }, VASTHOUDEN) : null;
+    // Zodra het slepen loopt mag de pagina niet meer meescrollen.
+    const blokkeerScroll = (ev) => { if (klaarVoorSleep) ev.preventDefault(); };
+    if (aanraking) window.addEventListener('touchmove', blokkeerScroll, { passive: false });
 
     const zetDoel = (el) => {
       if (el === doel) return;
@@ -35,7 +48,9 @@ export function maakSleepbaar(houder, { mag, opRuil, label }) {
     const beweeg = (ev) => {
       if (ev.pointerId !== e.pointerId) return;
       if (!bal) {
-        if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < DREMPEL) return;
+        const afstand = Math.hypot(ev.clientX - start.x, ev.clientY - start.y);
+        if (afstand < DREMPEL) return;
+        if (!klaarVoorSleep) { opruimen(); return; } // te vroeg bewogen: dit is scrollen
         bal = h('div', { class: 'sleepbal', 'aria-hidden': 'true' }, label(id));
         document.body.appendChild(bal);
         bron.classList.add('gesleept');
@@ -48,11 +63,18 @@ export function maakSleepbaar(houder, { mag, opRuil, label }) {
       zetDoel(ander && ander !== id && mag(id, ander) ? onder : null);
     };
 
-    const klaar = (ev) => {
-      if (ev.pointerId !== e.pointerId) return;
+    const opruimen = () => {
+      clearTimeout(timer);
+      bron.classList.remove('vastgehouden');
       window.removeEventListener('pointermove', beweeg);
       window.removeEventListener('pointerup', klaar);
       window.removeEventListener('pointercancel', klaar);
+      window.removeEventListener('touchmove', blokkeerScroll);
+    };
+
+    const klaar = (ev) => {
+      if (ev.pointerId !== e.pointerId) return;
+      opruimen();
       if (!bal) return; // een gewone tik: de klik doet de rest
       bal.remove();
       bron.classList.remove('gesleept');
